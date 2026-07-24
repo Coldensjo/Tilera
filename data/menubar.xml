@@ -221,6 +221,8 @@
 	</menu>
 
 	<menu name="Selection">
+		<item name="Select Item from ID..." action="SELECT_ITEM_FROM_ID" help="Select all items with a given ID on the entire map." />
+		<separator />
 		<item name="Replace Items on Selection" action="REPLACE_ON_SELECTION_ITEMS" help="Replace items on the selected area." />
 		<item name="Find Item on Selection" action="SEARCH_ON_SELECTION_ITEM" help="Find items on the selected area." />
 		<item name="Remove Item on Selection" action="REMOVE_ON_SELECTION_ITEM" help="Remove an item on the selected area." />

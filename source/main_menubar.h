@@ -68,6 +68,7 @@ namespace MenuBar {
 		REPLACE_ON_SELECTION_ITEMS,
 		REMOVE_ON_SELECTION_ITEM,
 		EXPORT_CREATURES_IN_SELECTION,
+		SELECT_ITEM_FROM_ID,
 		SELECT_MODE_COMPENSATE,
 		SELECT_MODE_CURRENT,
 		SELECT_MODE_LOWER,
@@ -296,6 +297,7 @@ public:
 	void OnReplaceItemsOnSelection(wxCommandEvent& event);
 	void OnRemoveItemOnSelection(wxCommandEvent& event);
 	void OnExportCreaturesInSelection(wxCommandEvent& event);
+	void OnSelectItemFromId(wxCommandEvent& event);
 	void OnSelectExitButton(wxCommandEvent& event);
 
 	// Map menu

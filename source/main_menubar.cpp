@@ -102,6 +102,7 @@ MainMenuBar::MainMenuBar(MainFrame* frame) : frame(frame) {
 	MAKE_ACTION(REPLACE_ON_SELECTION_ITEMS, wxITEM_NORMAL, OnReplaceItemsOnSelection);
 	MAKE_ACTION(REMOVE_ON_SELECTION_ITEM, wxITEM_NORMAL, OnRemoveItemOnSelection);
 	MAKE_ACTION(EXPORT_CREATURES_IN_SELECTION, wxITEM_NORMAL, OnExportCreaturesInSelection);
+	MAKE_ACTION(SELECT_ITEM_FROM_ID, wxITEM_NORMAL, OnSelectItemFromId);
 	MAKE_ACTION(SELECT_MODE_COMPENSATE, wxITEM_RADIO, OnSelectionTypeChange);
 	MAKE_ACTION(SELECT_MODE_LOWER, wxITEM_RADIO, OnSelectionTypeChange);
 	MAKE_ACTION(SELECT_MODE_CURRENT, wxITEM_RADIO, OnSelectionTypeChange);
@@ -467,6 +468,7 @@ void MainMenuBar::Update() {
 	EnableItem(REPLACE_ON_SELECTION_ITEMS, has_selection && is_host);
 	EnableItem(REMOVE_ON_SELECTION_ITEM, has_selection && is_host);
 	EnableItem(EXPORT_CREATURES_IN_SELECTION, has_selection && is_host);
+	EnableItem(SELECT_ITEM_FROM_ID, is_host);
 
 	EnableItem(CUT, has_map && editor->IsClipboardAllowed());
 	EnableItem(COPY, has_map && editor->IsClipboardAllowed());
@@ -1523,6 +1525,65 @@ void MainMenuBar::OnRemoveItemOnSelection(wxCommandEvent& WXUNUSED(event)) {
 		g_gui.PopupDialog("Remove Item", msg, wxOK);
 		g_gui.GetCurrentMap().doChange();
 		g_gui.RefreshView();
+	}
+	dialog.Destroy();
+}
+
+void MainMenuBar::OnSelectItemFromId(wxCommandEvent& WXUNUSED(event)) {
+	if (!g_gui.IsEditorOpen()) {
+		return;
+	}
+
+	FindItemDialog dialog(frame, "Select Item from ID");
+	dialog.setSearchMode((FindItemDialog::SearchMode)g_settings.getInteger(Config::FIND_ITEM_MODE));
+	if (dialog.ShowModal() == wxID_OK) {
+		uint16_t itemId = dialog.getResultID();
+		Editor* editor = g_gui.GetCurrentEditor();
+
+		g_gui.SetSelectionMode();
+		g_gui.CreateLoadBar("Selecting items...");
+
+		Selection& selection = editor->selection;
+		selection.start();
+		selection.clear();
+		selection.commit();
+
+		int64_t count = 0;
+		MapIterator tileiter = editor->map.begin();
+		MapIterator mapend = editor->map.end();
+		while (tileiter != mapend) {
+			Tile* tile = (*tileiter)->get();
+			if (tile) {
+				if (tile->ground && tile->ground->getID() == itemId) {
+					selection.add(tile, tile->ground);
+					++count;
+				}
+				for (Item* item : tile->items) {
+					if (item && item->getID() == itemId) {
+						selection.add(tile, item);
+						++count;
+					}
+				}
+			}
+			++tileiter;
+		}
+
+		selection.finish();
+
+		g_gui.DestroyLoadBar();
+
+		if (count == 0) {
+			wxString msg;
+			msg << "No items with ID " << itemId << " found on the map.";
+			g_gui.PopupDialog("Select Item", msg, wxOK);
+		} else {
+			wxString ss;
+			ss << count << " items selected.";
+			g_gui.SetStatusText(ss);
+		}
+		g_gui.RefreshView();
+
+		g_settings.setInteger(Config::FIND_ITEM_MODE, (int)dialog.getSearchMode());
 	}
 	dialog.Destroy();
 }
