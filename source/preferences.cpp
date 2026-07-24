@@ -235,7 +235,7 @@ wxNotebookPage* PreferencesWindow::CreateGeneralPage() {
 		SetWindowToolTip(tmptext, worker_threads_spin, "Threads used for intensive operations. Usually match your logical CPU count.");
 
 		grid->Add(tmptext = newd wxStaticText(panel, wxID_ANY, "Replace item limit:"), 0, wxALIGN_CENTER_VERTICAL);
-		replace_size_spin = newd wxSpinCtrl(panel, wxID_ANY, i2ws(g_settings.getInteger(Config::REPLACE_SIZE)), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 100000);
+		replace_size_spin = newd wxSpinCtrl(panel, wxID_ANY, i2ws(g_settings.getInteger(Config::REPLACE_SIZE)), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10000000);
 		grid->Add(replace_size_spin, 0, wxEXPAND);
 		SetWindowToolTip(tmptext, replace_size_spin, "How many items you can replace using the Replace Item tool.");
 
