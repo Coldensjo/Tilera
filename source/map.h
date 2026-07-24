@@ -38,7 +38,7 @@ public:
 	void cleanInvalidTiles(bool showdialog = false);
 	void convertHouseTiles(uint32_t fromId, uint32_t toId);
 
-	// Save a bmp image of the minimap
+	// Save a png image of the minimap
 	bool exportMinimap(FileName filename, int floor = GROUND_LAYER, bool showdialog = false);
 	//
 	bool convert(MapVersion to, bool showdialog = false);

@@ -553,7 +553,7 @@ void ExportMiniMapWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 			case 0: { // All floors
 				for (int floor = 0; floor < MAP_LAYERS; ++floor) {
 					g_gui.SetLoadScale(int(floor * (100.f / 16.f)), int((floor + 1) * (100.f / 16.f)));
-					FileName file(file_name_text_field->GetValue() + "_" + i2ws(floor) + ".bmp");
+					FileName file(file_name_text_field->GetValue() + "_" + i2ws(floor) + ".png");
 					file.Normalize(wxPATH_NORM_ALL, directory.GetFullPath());
 					editor.exportMiniMap(file, floor, true);
 				}
@@ -561,7 +561,7 @@ void ExportMiniMapWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 			}
 
 			case 1: { // Ground floor
-				FileName file(file_name_text_field->GetValue() + "_" + i2ws(GROUND_LAYER) + ".bmp");
+				FileName file(file_name_text_field->GetValue() + "_" + i2ws(GROUND_LAYER) + ".png");
 				file.Normalize(wxPATH_NORM_ALL, directory.GetFullPath());
 				editor.exportMiniMap(file, GROUND_LAYER, true);
 				break;
@@ -569,7 +569,7 @@ void ExportMiniMapWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 
 			case 2: { // Specific floors
 				int floor = floor_number->GetValue();
-				FileName file(file_name_text_field->GetValue() + "_" + i2ws(floor) + ".bmp");
+				FileName file(file_name_text_field->GetValue() + "_" + i2ws(floor) + ".png");
 				file.Normalize(wxPATH_NORM_ALL, directory.GetFullPath());
 				editor.exportMiniMap(file, floor, true);
 				break;

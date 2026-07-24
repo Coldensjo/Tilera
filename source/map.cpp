@@ -448,80 +448,32 @@ bool Map::exportMinimap(FileName filename, int floor /*= GROUND_LAYER*/, bool di
 			}
 		}
 
-		// Create a file for writing
-		FileWriteHandle fh(nstr(filename.GetFullPath()));
-
-		if (!fh.isOpen()) {
-			delete[] pic;
-			return false;
-		}
-		// Store the magic number
-		fh.addRAW("BM");
-
-		// Store the file size
-		// We need to predict how large it will be
-		uint32_t file_size = 14 // header
-			+ 40 // image data header
-			+ 256 * 4 // color palette
-			+ ((minimap_width + 3) / 4 * 4) * height; // pixels
-		fh.addU32(file_size);
-
-		// Two values reserved, must always be 0.
-		fh.addU16(0);
-		fh.addU16(0);
-
-		// Bitmapdata offset
-		fh.addU32(14 + 40 + 256 * 4);
-
-		// Header size
-		fh.addU32(40);
-
-		// Header width/height
-		fh.addU32(minimap_width);
-		fh.addU32(minimap_height);
-
-		// Color planes
-		fh.addU16(1);
-
-		// bits per pixel, OT map format is 8
-		fh.addU16(8);
-
-		// compression type, 0 is no compression
-		fh.addU32(0);
-
-		// image size, 0 is valid if we use no compression
-		fh.addU32(0);
-
-		// horizontal/vertical resolution in pixels / meter
-		fh.addU32(4000);
-		fh.addU32(4000);
-
-		// Number of colors
-		fh.addU32(256);
-		// Important colors, 0 is all
-		fh.addU32(0);
-
-		// Write the color palette
-		for (int i = 0; i < 256; ++i) {
-			fh.addU32(uint32_t(minimap_color[i]));
-		}
-
-		// Bitmap width must be divisible by four, calculate how much padding we need
-		int padding = ((minimap_width & 3) != 0 ? 4 - (minimap_width & 3) : 0);
-		// Bitmap rows are saved in reverse order
-		for (int y = minimap_height - 1; y >= 0; --y) {
-			fh.addRAW(pic + y * minimap_width, minimap_width);
-			for (int i = 0; i < padding; ++i) {
-				fh.addU8(0);
+		// Convert palette indices to RGB and save as PNG
+		uint8_t* rgb = newd uint8_t[minimap_width * minimap_height * 3]; // 3 bytes per pixel
+		for (int y = 0; y < minimap_height; ++y) {
+			for (int x = 0; x < minimap_width; ++x) {
+				const RGBQuad& color = minimap_color[pic[y * minimap_width + x]];
+				uint32_t index = (y * minimap_width + x) * 3;
+				rgb[index] = color.red;
+				rgb[index + 1] = color.green;
+				rgb[index + 2] = color.blue;
 			}
 			if (y % 100 == 0 && displaydialog) {
-				g_gui.SetLoadDone(90 + int((minimap_height - y) / double(minimap_height) * 10.0));
+				g_gui.SetLoadDone(90 + int(y / double(minimap_height) * 10.0));
 			}
 		}
 
 		delete[] pic;
-		// fclose(file);
-		fh.close();
+		pic = nullptr;
+
+		wxImage image(minimap_width, minimap_height, rgb, true);
+		bool saved = image.SaveFile(filename.GetFullPath(), wxBITMAP_TYPE_PNG);
+		image.Destroy();
+		delete[] rgb;
+
+		if (!saved) {
+			return false;
+		}
 	} catch (...) {
 		delete[] pic;
 	}
