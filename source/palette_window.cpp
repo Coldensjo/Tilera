@@ -62,7 +62,12 @@ EVT_KEY_DOWN(PaletteWindow::OnKey)
 END_EVENT_TABLE()
 
 PaletteWindow::PaletteWindow(wxWindow* parent, const TilesetContainer& tilesets) :
-	wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(450, 250)),
+	// wxCLIP_CHILDREN (MSW: WS_CLIPCHILDREN) is required on every container in the
+	// palette hierarchy. Without it a Refresh() on this window erases its whole
+	// client area - including the rectangles occupied by the child buttons and
+	// panels - while those children are *not* invalidated, so their icons stay
+	// blank until something else (e.g. a mouse hover) invalidates them.
+	wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(450, 250), wxTAB_TRAVERSAL | wxCLIP_CHILDREN),
 	page_container(nullptr),
 	terrain_button(nullptr),
 	doodad_button(nullptr),
@@ -81,7 +86,7 @@ PaletteWindow::PaletteWindow(wxWindow* parent, const TilesetContainer& tilesets)
 	SetMinSize(wxSize(450, 250));
 
 	// Create page container
-	page_container = newd wxPanel(this, wxID_ANY);
+	page_container = newd wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxCLIP_CHILDREN);
 
 	// Create palette panels
 	terrain_palette = static_cast<BrushPalettePanel*>(CreateTerrainPalette(page_container, tilesets));

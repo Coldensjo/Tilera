@@ -141,7 +141,7 @@ BrushPalettePanel::BrushPalettePanel(wxWindow* parent, const TilesetContainer& t
 
 	// Create the tileset panel
 	wxSizer* ts_sizer = newd wxStaticBoxSizer(wxVERTICAL, this, "Tileset");
-	wxChoicebook* tmp_choicebook = newd wxChoicebook(this, wxID_ANY, wxDefaultPosition, wxSize(180, 250));
+	wxChoicebook* tmp_choicebook = newd wxChoicebook(this, wxID_ANY, wxDefaultPosition, wxSize(180, 250), wxCLIP_CHILDREN);
 	ts_sizer->Add(tmp_choicebook, 1, wxEXPAND);
 	topsizer->Add(ts_sizer, 1, wxEXPAND);
 
@@ -445,7 +445,7 @@ EVT_LISTBOX(wxID_ANY, BrushPanel::OnClickListBoxRow)
 END_EVENT_TABLE()
 
 BrushPanel::BrushPanel(wxWindow* parent) :
-	wxPanel(parent, wxID_ANY),
+	wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxCLIP_CHILDREN),
 	tileset(nullptr),
 	brushbox(nullptr),
 	loaded(false),

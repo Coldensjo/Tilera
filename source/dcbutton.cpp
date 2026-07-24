@@ -121,10 +121,10 @@ bool DCButton::GetValue() const {
 void DCButton::OnPaint(wxPaintEvent& event) {
 	wxBufferedPaintDC pdc(this);
 
-	if (g_gui.gfx.isUnloaded()) {
-		return;
-	}
-
+	// Note: wxBufferedPaintDC hands out an *uninitialised* bitmap, and this window
+	// uses wxBG_STYLE_PAINT so nothing else clears it. Bailing out before the
+	// background is filled would blit garbage (or nothing) over the button, so the
+	// "graphics not loaded" check now sits next to the sprite drawing below.
 	const ThemePalette& palette = ThemeManager::Get().GetPalette();
 	const wxPen highlight_pen(palette.surface, 1, wxSOLID);
 	const wxPen dark_highlight_pen(palette.hover, 1, wxSOLID);
@@ -178,7 +178,7 @@ void DCButton::OnPaint(wxPaintEvent& event) {
 		pdc.DrawRectangle(0, 0, size_x, size_y);
 	}
 
-	if (sprite) {
+	if (sprite && !g_gui.gfx.isUnloaded()) {
 		int draw_width = std::max(0, size_x - 4);
 		int draw_height = std::max(0, size_y - 4);
 		SpriteSize sprite_size = SPRITE_SIZE_32x32;

@@ -54,7 +54,9 @@ public:
 
 class PalettePanel : public wxPanel {
 public:
-	PalettePanel(wxWindow* parent, wxWindowID id = wxID_ANY, long style = wxTAB_TRAVERSAL);
+	// wxCLIP_CHILDREN keeps this panel from painting over its child buttons /
+	// brush boxes when it erases its background (see PaletteWindow ctor).
+	PalettePanel(wxWindow* parent, wxWindowID id = wxID_ANY, long style = wxTAB_TRAVERSAL | wxCLIP_CHILDREN);
 	~PalettePanel();
 
 	// Interface
