@@ -64,6 +64,11 @@
 
 namespace {
 
+// A lasso needs one byte of scratch per tile in its bounding box. Traces that
+// large only come from scrolling the view around for a very long drag, and the
+// resulting selection would be unusable anyway, so refuse rather than allocate.
+constexpr size_t MAX_LASSO_AREA = 8u * 1024u * 1024u;
+
 // Sorts and removes duplicate positions in place. Callers that build a tile list
 // out of overlapping pieces need this: Editor::draw walks the list emitting one
 // change per entry, so a repeated tile means two changes for it in one action.
@@ -360,6 +365,116 @@ void GetLineTiles(int start_x, int start_y, int end_x, int end_y, int z, Positio
 	}
 }
 
+bool GetLassoTiles(const PositionVector& trace, PositionVector& tiles) {
+	if (trace.empty()) {
+		return true;
+	}
+
+	const int z = trace.front().z;
+
+	// Mouse motion events skip tiles whenever the cursor moves faster than one
+	// tile per event, so bridge consecutive samples — a gap in the boundary
+	// would let the flood fill below leak out. The wrap on the last sample
+	// closes the loop, which is what makes an open trace still enclose an area.
+	PositionVector boundary;
+	boundary.reserve(trace.size() * 2);
+	for (size_t i = 0; i < trace.size(); ++i) {
+		const Position& from = trace[i];
+		const Position& to = trace[(i + 1) % trace.size()];
+		GetLineTiles(from.x, from.y, to.x, to.y, z, boundary);
+	}
+
+	int min_x = boundary.front().x;
+	int min_y = boundary.front().y;
+	int max_x = min_x;
+	int max_y = min_y;
+	for (const Position& pos : boundary) {
+		min_x = std::min(min_x, pos.x);
+		min_y = std::min(min_y, pos.y);
+		max_x = std::max(max_x, pos.x);
+		max_y = std::max(max_y, pos.y);
+	}
+
+	// Pad by one tile so the flood fill always has an unobstructed ring of
+	// outside cells to start from, whatever shape the trace has.
+	--min_x;
+	--min_y;
+	++max_x;
+	++max_y;
+
+	const size_t width = static_cast<size_t>(max_x - min_x) + 1;
+	const size_t height = static_cast<size_t>(max_y - min_y) + 1;
+	if (width * height > MAX_LASSO_AREA) {
+		return false;
+	}
+
+	enum LassoCell : uint8_t {
+		CELL_ENCLOSED = 0,
+		CELL_BOUNDARY = 1,
+		CELL_OUTSIDE = 2
+	};
+
+	std::vector<uint8_t> cells(width * height, CELL_ENCLOSED);
+	auto cellIndex = [min_x, min_y, width](int x, int y) -> size_t {
+		return static_cast<size_t>(y - min_y) * width + static_cast<size_t>(x - min_x);
+	};
+
+	for (const Position& pos : boundary) {
+		cells[cellIndex(pos.x, pos.y)] = CELL_BOUNDARY;
+	}
+
+	// Flood inwards from the padding ring. The boundary is 8-connected (its
+	// lines may step diagonally) and this fill is 4-connected, so the fill can
+	// never squeeze through it. Whatever it fails to reach is enclosed.
+	std::vector<size_t> pending;
+	for (size_t x = 0; x < width; ++x) {
+		pending.push_back(x);
+		pending.push_back((height - 1) * width + x);
+	}
+	for (size_t y = 0; y < height; ++y) {
+		pending.push_back(y * width);
+		pending.push_back(y * width + width - 1);
+	}
+	for (size_t index : pending) {
+		cells[index] = CELL_OUTSIDE;
+	}
+
+	while (!pending.empty()) {
+		const size_t index = pending.back();
+		pending.pop_back();
+
+		const size_t cell_x = index % width;
+		const size_t cell_y = index / width;
+
+		if (cell_x > 0 && cells[index - 1] == CELL_ENCLOSED) {
+			cells[index - 1] = CELL_OUTSIDE;
+			pending.push_back(index - 1);
+		}
+		if (cell_x + 1 < width && cells[index + 1] == CELL_ENCLOSED) {
+			cells[index + 1] = CELL_OUTSIDE;
+			pending.push_back(index + 1);
+		}
+		if (cell_y > 0 && cells[index - width] == CELL_ENCLOSED) {
+			cells[index - width] = CELL_OUTSIDE;
+			pending.push_back(index - width);
+		}
+		if (cell_y + 1 < height && cells[index + width] == CELL_ENCLOSED) {
+			cells[index + width] = CELL_OUTSIDE;
+			pending.push_back(index + width);
+		}
+	}
+
+	for (int y = min_y; y <= max_y; ++y) {
+		for (int x = min_x; x <= max_x; ++x) {
+			if (cells[cellIndex(x, y)] != CELL_OUTSIDE) {
+				tiles.push_back(Position(x, y, z));
+			}
+		}
+	}
+
+	return true;
+}
+
 BEGIN_EVENT_TABLE(MapCanvas, wxGLCanvas)
 EVT_KEY_DOWN(MapCanvas::OnKeyDown)
 EVT_KEY_DOWN(MapCanvas::OnKeyUp)
@@ -439,6 +554,7 @@ MapCanvas::MapCanvas(MapWindow* parent, Editor& editor, int* attriblist) :
 	dragging(false),
 	boundbox_selection(false),
 	boundbox_deselection(false),
+	lasso_selection(false),
 	screendragging(false),
 	drawing(false),
 	dragging_draw(false),
@@ -881,9 +997,14 @@ void MapCanvas::OnMouseMove(wxMouseEvent& event) {
 			if (map_update) {
 				wxString ss;
 
-				int move_x = std::abs(last_click_map_x - mouse_map_x);
-				int move_y = std::abs(last_click_map_y - mouse_map_y);
-				ss << (boundbox_deselection ? "Deselection " : "Selection ") << move_x + 1 << ":" << move_y + 1;
+				if (lasso_selection) {
+					AppendLassoPoint(mouse_map_x, mouse_map_y);
+					ss << (boundbox_deselection ? "Lasso deselection " : "Lasso selection ") << lasso_trace.size() << " points";
+				} else {
+					int move_x = std::abs(last_click_map_x - mouse_map_x);
+					int move_y = std::abs(last_click_map_y - mouse_map_y);
+					ss << (boundbox_deselection ? "Deselection " : "Selection ") << move_x + 1 << ":" << move_y + 1;
+				}
 				g_gui.SetStatusText(ss);
 			}
 
@@ -1149,8 +1270,14 @@ void MapCanvas::OnMouseActionClick(wxMouseEvent& event) {
 			do {
 				boundbox_selection = false;
 				boundbox_deselection = false;
+				lasso_selection = false;
+				lasso_trace.clear();
 				if (event.ShiftDown()) {
 					boundbox_selection = true;
+					lasso_selection = g_settings.getBoolean(Config::LASSO_SELECT);
+					if (lasso_selection) {
+						AppendLassoPoint(mouse_map_x, mouse_map_y);
+					}
 
 					if (!event.ControlDown()) {
 						editor.selection.start(); // Start selection session
@@ -1411,6 +1538,71 @@ void MapCanvas::OnMouseActionClick(wxMouseEvent& event) {
 	g_gui.UpdateMinimap();
 }
 
+void MapCanvas::AppendLassoPoint(int map_x, int map_y) {
+	// Only the corners matter — GetLassoTiles bridges the samples — so skip a
+	// point that repeats the previous one and keep the trace compact.
+	if (!lasso_trace.empty()) {
+		const Position& last = lasso_trace.back();
+		if (last.x == map_x && last.y == map_y) {
+			return;
+		}
+	}
+	lasso_trace.push_back(Position(map_x, map_y, floor));
+}
+
+void MapCanvas::ApplyLassoSelection(bool deselect) {
+	PositionVector tiles;
+	if (!GetLassoTiles(lasso_trace, tiles)) {
+		g_gui.SetStatusText("Lasso area is too large.");
+		return;
+	}
+
+	// Mirrors the floor range and per-floor drift that SelectionThread applies
+	// for the rectangular boundbox, so both selection shapes honour the
+	// Selection Mode settings identically.
+	int start_z = floor;
+	int end_z = floor;
+	switch (g_settings.getInteger(Config::SELECTION_TYPE)) {
+		case SELECT_ALL_FLOORS: {
+			start_z = MAP_MAX_LAYER;
+			break;
+		}
+		case SELECT_VISIBLE_FLOORS: {
+			start_z = floor <= GROUND_LAYER ? GROUND_LAYER : std::min(MAP_MAX_LAYER, floor + 2);
+			break;
+		}
+		case SELECT_CURRENT_FLOOR:
+		default: {
+			break;
+		}
+	}
+
+	const bool compensate = start_z != end_z && g_settings.getBoolean(Config::COMPENSATED_SELECT);
+	int offset = compensate && floor < GROUND_LAYER ? -(GROUND_LAYER - floor) : 0;
+
+	editor.selection.start(); // Start a selection session
+	for (int z = start_z; z >= end_z; --z) {
+		for (const Position& pos : tiles) {
+			Tile* tile = editor.map.getTile(pos.x + offset, pos.y + offset, z);
+			if (!tile) {
+				continue;
+			}
+			if (deselect) {
+				if (tile->isSelected()) {
+					editor.selection.remove(tile);
+				}
+			} else {
+				editor.selection.add(tile);
+			}
+		}
+		if (z <= GROUND_LAYER && compensate) {
+			++offset;
+		}
+	}
+	editor.selection.finish(); // Finish the selection session
+	editor.selection.updateSelectionCount();
+}
+
 void MapCanvas::OnMouseActionRelease(wxMouseEvent& event) {
 	int mouse_map_x, mouse_map_y;
 	ScreenToMap(event.GetX(), event.GetY(), &mouse_map_x, &mouse_map_y);
@@ -1437,6 +1629,8 @@ void MapCanvas::OnMouseActionRelease(wxMouseEvent& event) {
 						editor.selection.finish(); // Finish the selection session
 						editor.selection.updateSelectionCount();
 					}
+				} else if (lasso_selection) {
+					ApplyLassoSelection(false);
 				} else {
 					// The cursor has moved, do some boundboxing!
 					if (last_click_map_x > mouse_map_x) {
@@ -1584,6 +1778,8 @@ void MapCanvas::OnMouseActionRelease(wxMouseEvent& event) {
 		dragging = false;
 		boundbox_selection = false;
 		boundbox_deselection = false;
+		lasso_selection = false;
+		lasso_trace.clear();
 	} else if (g_gui.GetCurrentBrush()) { // Drawing mode
 		Brush* brush = g_gui.GetCurrentBrush();
 		if (dragging_draw) {
@@ -1767,10 +1963,16 @@ void MapCanvas::OnMousePropertiesClick(wxMouseEvent& event) {
 
 	boundbox_selection = false;
 	boundbox_deselection = false;
+	lasso_selection = false;
+	lasso_trace.clear();
 	if (event.ShiftDown()) {
 		// Shift + right drag = rectangular deselect; keep the current selection intact
 		boundbox_selection = true;
 		boundbox_deselection = true;
+		lasso_selection = g_settings.getBoolean(Config::LASSO_SELECT);
+		if (lasso_selection) {
+			AppendLassoPoint(mouse_map_x, mouse_map_y);
+		}
 	} else if (!tile) {
 		editor.selection.start(); // Start selection session
 		editor.selection.clear(); // Clear out selection
@@ -1819,7 +2021,11 @@ void MapCanvas::OnMousePropertiesRelease(wxMouseEvent& event) {
 	}
 
 	bool did_boundbox_deselect = false;
-	if (boundbox_selection) {
+	if (boundbox_selection && lasso_selection) {
+		// Shift + right drag with Lasso Select on = freehand deselect
+		did_boundbox_deselect = true;
+		ApplyLassoSelection(true);
+	} else if (boundbox_selection) {
 		// Shift + right drag = rectangular deselect (zero-size box deselects a single tile)
 		did_boundbox_deselect = true;
 		if (last_click_map_x > mouse_map_x) {
@@ -1943,6 +2149,8 @@ void MapCanvas::OnMousePropertiesRelease(wxMouseEvent& event) {
 	dragging = false;
 	boundbox_selection = false;
 	boundbox_deselection = false;
+	lasso_selection = false;
+	lasso_trace.clear();
 
 	last_cursor_map_x = mouse_map_x;
 	last_cursor_map_y = mouse_map_y;
@@ -2013,6 +2221,8 @@ void MapCanvas::OnGainMouse(wxMouseEvent& event) {
 		dragging = false;
 		boundbox_selection = false;
 		boundbox_deselection = false;
+		lasso_selection = false;
+		lasso_trace.clear();
 		drawing = false;
 	}
 	if (!event.MiddleIsDown()) {
@@ -3281,6 +3491,8 @@ void MapCanvas::EnterDrawingMode() {
 	dragging = false;
 	boundbox_selection = false;
 	boundbox_deselection = false;
+	lasso_selection = false;
+	lasso_trace.clear();
 	EndPasting();
 	Refresh();
 }
@@ -3316,6 +3528,8 @@ void MapCanvas::Reset() {
 	dragging = false;
 	boundbox_selection = false;
 	boundbox_deselection = false;
+	lasso_selection = false;
+	lasso_trace.clear();
 	screendragging = false;
 	drawing = false;
 	dragging_draw = false;

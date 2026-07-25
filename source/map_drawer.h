@@ -180,6 +180,7 @@ public:
 	void DrawDraggingShadow();
 	void DrawHigherFloors();
 	void DrawSelectionBox();
+	void DrawLassoOutline();
 	void DrawBrush();
 	void DrawIngameBox();
 	void DrawGrid();

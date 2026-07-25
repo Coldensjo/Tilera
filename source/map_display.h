@@ -49,6 +49,25 @@ class MapDrawer;
  */
 void GetLineTiles(int start_x, int start_y, int end_x, int end_y, int z, PositionVector& tilestodraw, PositionVector* tilestoborder = nullptr);
 
+/**
+ * Resolves a freehand lasso trace into the set of tile columns it encloses.
+ *
+ * Consecutive trace samples are bridged with straight lines and the loop is
+ * closed from the last sample back to the first, giving a watertight
+ * 8-connected boundary. Everything a 4-connected flood fill cannot reach from
+ * outside that boundary counts as enclosed, so a self-intersecting trace — easy
+ * to produce by accident when drawing quickly — behaves sensibly instead of
+ * punching even-odd holes. The traced tiles themselves are always included.
+ *
+ * @param trace Tile positions the cursor passed through, in order. All are
+ * expected to be on the same floor; the first one's z is used for the output.
+ * @param tiles Receives the enclosed tiles, on the trace's floor. The caller
+ * decides which floors to actually apply them to.
+ * @return False if the trace's bounding box is too large to resolve, in which
+ * case tiles is left untouched.
+ */
+bool GetLassoTiles(const PositionVector& trace, PositionVector& tiles);
+
 class MapCanvas : public wxGLCanvas {
 public:
 	MapCanvas(MapWindow* parent, Editor& editor, int* attriblist);
@@ -183,9 +202,16 @@ private:
 	int cursor_x;
 	int cursor_y;
 
+	void AppendLassoPoint(int map_x, int map_y);
+	void ApplyLassoSelection(bool deselect);
+
 	bool dragging;
 	bool boundbox_selection;
 	bool boundbox_deselection;
+	// A lasso trace is in progress: boundbox_selection is also set, so the drag
+	// bookkeeping is shared, but the traced path replaces the rectangle.
+	bool lasso_selection;
+	PositionVector lasso_trace;
 	bool screendragging;
 	bool isPasting() const;
 	bool drawing;

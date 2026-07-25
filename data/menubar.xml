@@ -245,6 +245,7 @@
 		<separator />
 		<menu name="Selection Mode">
 			<item name="Compensate Selection" action="SELECT_MODE_COMPENSATE" help="Compensate for floor difference when selecting." />
+			<item name="Lasso Select" action="SELECT_MODE_LASSO" help="Shift+drag traces a freehand lasso instead of a rectangle." />
 			<separator />
 			<item name="Current Floor" action="SELECT_MODE_CURRENT" help="Select only the current floor." />
 			<item name="Lower Floors" action="SELECT_MODE_LOWER" help="Select all lower floors." />

@@ -1170,6 +1170,11 @@ void MapDrawer::DrawSelectionBox() {
 		return;
 	}
 
+	if (canvas->lasso_selection) {
+		DrawLassoOutline();
+		return;
+	}
+
 	// Draw bounding box
 
 	int last_click_rx = canvas->last_click_abs_x - view_scroll_x;
@@ -1213,6 +1218,43 @@ void MapDrawer::DrawSelectionBox() {
 		glVertex2f(lines[i][2], lines[i][3]);
 	}
 	glEnd();
+	glDisable(GL_LINE_STIPPLE);
+}
+
+void MapDrawer::DrawLassoOutline() {
+	const PositionVector& trace = canvas->lasso_trace;
+	if (trace.empty()) {
+		return;
+	}
+
+	// Tile centres, so the outline reads as running through the tiles that will
+	// actually be selected rather than along their edges.
+	const int half_tile = TileSize / 2;
+	const int adjustment = getFloorAdjustment(floor);
+	auto centerX = [this, half_tile, adjustment](int map_x) {
+		return static_cast<float>(map_x * TileSize - view_scroll_x - adjustment + half_tile);
+	};
+	auto centerY = [this, half_tile, adjustment](int map_y) {
+		return static_cast<float>(map_y * TileSize - view_scroll_y - adjustment + half_tile);
+	};
+
+	glEnable(GL_LINE_STIPPLE);
+	glLineStipple(1, 0xf0);
+	glLineWidth(1.0);
+	if (canvas->boundbox_deselection) {
+		glColor4f(1.0f, 0.35f, 0.35f, 1.0f); // red lasso = freehand deselect
+	} else {
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+	}
+
+	glBegin(GL_LINE_STRIP);
+	for (const Position& pos : trace) {
+		glVertex2f(centerX(pos.x), centerY(pos.y));
+	}
+	// Close the loop, matching what GetLassoTiles will resolve on release.
+	glVertex2f(centerX(trace.front().x), centerY(trace.front().y));
+	glEnd();
+
 	glDisable(GL_LINE_STIPPLE);
 }
 

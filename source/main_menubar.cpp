@@ -104,6 +104,7 @@ MainMenuBar::MainMenuBar(MainFrame* frame) : frame(frame) {
 	MAKE_ACTION(EXPORT_CREATURES_IN_SELECTION, wxITEM_NORMAL, OnExportCreaturesInSelection);
 	MAKE_ACTION(SELECT_ITEM_FROM_ID, wxITEM_NORMAL, OnSelectItemFromId);
 	MAKE_ACTION(SELECT_MODE_COMPENSATE, wxITEM_RADIO, OnSelectionTypeChange);
+	MAKE_ACTION(SELECT_MODE_LASSO, wxITEM_CHECK, OnSelectionTypeChange);
 	MAKE_ACTION(SELECT_MODE_LOWER, wxITEM_RADIO, OnSelectionTypeChange);
 	MAKE_ACTION(SELECT_MODE_CURRENT, wxITEM_RADIO, OnSelectionTypeChange);
 	MAKE_ACTION(SELECT_MODE_VISIBLE, wxITEM_RADIO, OnSelectionTypeChange);
@@ -536,6 +537,7 @@ void MainMenuBar::LoadValues() {
 	CheckItem(VIEW_PALETTE_BRUSH_SIZE, g_settings.getBoolean(Config::SHOW_PALETTE_BRUSH_SIZE));
 
 	CheckItem(SELECT_MODE_COMPENSATE, g_settings.getBoolean(Config::COMPENSATED_SELECT));
+	CheckItem(SELECT_MODE_LASSO, g_settings.getBoolean(Config::LASSO_SELECT));
 
 	if (IsItemChecked(MenuBar::SELECT_MODE_CURRENT)) {
 		g_settings.setInteger(Config::SELECTION_TYPE, SELECT_CURRENT_FLOOR);
@@ -1713,6 +1715,7 @@ void MainMenuBar::OnExportCreaturesInSelection(wxCommandEvent& WXUNUSED(event)) 
 
 void MainMenuBar::OnSelectionTypeChange(wxCommandEvent& WXUNUSED(event)) {
 	g_settings.setInteger(Config::COMPENSATED_SELECT, IsItemChecked(MenuBar::SELECT_MODE_COMPENSATE));
+	g_settings.setInteger(Config::LASSO_SELECT, IsItemChecked(MenuBar::SELECT_MODE_LASSO));
 
 	if (IsItemChecked(MenuBar::SELECT_MODE_CURRENT)) {
 		g_settings.setInteger(Config::SELECTION_TYPE, SELECT_CURRENT_FLOOR);
