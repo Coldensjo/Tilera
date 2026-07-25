@@ -32,6 +32,23 @@ class MapPopupMenu;
 class AnimationTimer;
 class MapDrawer;
 
+/**
+ * Computes the tiles covered by a one-tile-wide straight line between two map
+ * coordinates, using Bresenham's algorithm, so arbitrary angles (not just
+ * axis-aligned ones) come out as an unbroken run of tiles.
+ *
+ * @param start_x X coordinate the line starts at.
+ * @param start_y Y coordinate the line starts at.
+ * @param end_x X coordinate the line ends at (inclusive).
+ * @param end_y Y coordinate the line ends at (inclusive).
+ * @param z Floor all produced positions live on.
+ * @param tilestodraw Receives the line tiles, appended in order from start to end.
+ * @param tilestoborder When non-null, receives the line tiles plus their
+ * 8-neighbourhood, de-duplicated (Editor::draw must never see the same border
+ * tile twice).
+ */
+void GetLineTiles(int start_x, int start_y, int end_x, int end_y, int z, PositionVector& tilestodraw, PositionVector* tilestoborder = nullptr);
+
 class MapCanvas : public wxGLCanvas {
 public:
 	MapCanvas(MapWindow* parent, Editor& editor, int* attriblist);
@@ -140,6 +157,7 @@ public:
 
 protected:
 	void getTilesToDraw(int mouse_map_x, int mouse_map_y, int floor, PositionVector* tilestodraw, PositionVector* tilestoborder, bool fill = false);
+	void getLineTilesToDraw(int start_x, int start_y, int end_x, int end_y, int floor, PositionVector& tilestodraw, PositionVector* tilestoborder = nullptr);
 	bool floodFill(Map* map, const Position& center, int x, int y, GroundBrush* brush, PositionVector* positions);
 	void ShowObjectProperties(ObjectPropertiesWindowBase* window, Tile* edited_tile, Item* protected_item);
 
@@ -172,6 +190,9 @@ private:
 	bool isPasting() const;
 	bool drawing;
 	bool dragging_draw;
+	// Alt was held during the current drag-draw: draw a straight line from the
+	// click position to the cursor instead of the brush shape's square/circle.
+	bool dragging_draw_line;
 	bool replace_dragging;
 
 	uint8_t* screenshot_buffer;

@@ -492,6 +492,7 @@ void MapDrawer::SetupVars() {
 
 	dragging = canvas->dragging;
 	dragging_draw = canvas->dragging_draw;
+	dragging_draw_line = canvas->dragging_draw_line;
 
 	zoom = (float)canvas->GetZoom();
 	tile_size = int(TileSize / zoom); // after zoom
@@ -1912,7 +1913,37 @@ void MapDrawer::DrawBrush() {
 	if (dragging_draw) {
 		ASSERT(brush->canDrag());
 
-		if (brush->isWall()) {
+		if (dragging_draw_line && !brush->isSpawn()) {
+			// Alt-drag: preview the line that will be drawn, brush size and shape
+			// included. Takes precedence over the wall rectangle.
+			PositionVector tilestodraw;
+			canvas->getLineTilesToDraw(canvas->last_click_map_x, canvas->last_click_map_y, mouse_map_x, mouse_map_y, floor, tilestodraw);
+
+			RAWBrush* raw_brush = brush->isRaw() ? brush->asRaw() : nullptr;
+			if (raw_brush) {
+				glEnable(GL_TEXTURE_2D);
+			}
+
+			for (const Position& pos : tilestodraw) {
+				int cx = pos.x * TileSize - view_scroll_x - getFloorAdjustment(floor);
+				int cy = pos.y * TileSize - view_scroll_y - getFloorAdjustment(floor);
+				if (raw_brush) {
+					DrawRawBrush(cx, cy, raw_brush->getItemType(), 160, 160, 160, 160);
+				} else {
+					glColor(brushColor);
+					glBegin(GL_QUADS);
+					glVertex2f(cx, cy + TileSize);
+					glVertex2f(cx + TileSize, cy + TileSize);
+					glVertex2f(cx + TileSize, cy);
+					glVertex2f(cx, cy);
+					glEnd();
+				}
+			}
+
+			if (raw_brush) {
+				glDisable(GL_TEXTURE_2D);
+			}
+		} else if (brush->isWall()) {
 			int last_click_start_map_x = std::min(canvas->last_click_map_x, mouse_map_x);
 			int last_click_start_map_y = std::min(canvas->last_click_map_y, mouse_map_y);
 			int last_click_end_map_x = std::max(canvas->last_click_map_x, mouse_map_x) + 1;

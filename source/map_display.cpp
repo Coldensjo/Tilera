@@ -64,6 +64,14 @@
 
 namespace {
 
+// Sorts and removes duplicate positions in place. Callers that build a tile list
+// out of overlapping pieces need this: Editor::draw walks the list emitting one
+// change per entry, so a repeated tile means two changes for it in one action.
+void dedupePositions(PositionVector& positions) {
+	std::sort(positions.begin(), positions.end());
+	positions.erase(std::unique(positions.begin(), positions.end()), positions.end());
+}
+
 bool liveEditAllowed(const Editor& editor, int x, int y) {
 	if (!editor.IsLive()) {
 		return true;
@@ -310,6 +318,48 @@ void replaceSelectedItemsWith(Editor& editor, uint16_t withId) {
 
 } // namespace
 
+void GetLineTiles(int start_x, int start_y, int end_x, int end_y, int z, PositionVector& tilestodraw, PositionVector* tilestoborder) {
+	const int dx = std::abs(end_x - start_x);
+	const int dy = std::abs(end_y - start_y);
+	const int step_x = start_x < end_x ? 1 : -1;
+	const int step_y = start_y < end_y ? 1 : -1;
+	const int length = std::max(dx, dy) + 1;
+
+	tilestodraw.reserve(tilestodraw.size() + length);
+
+	std::set<Position> border_tiles;
+	int error = dx - dy;
+	int x = start_x;
+	int y = start_y;
+	while (true) {
+		tilestodraw.push_back(Position(x, y, z));
+		if (tilestoborder) {
+			for (int offset_y = -1; offset_y <= 1; ++offset_y) {
+				for (int offset_x = -1; offset_x <= 1; ++offset_x) {
+					border_tiles.insert(Position(x + offset_x, y + offset_y, z));
+				}
+			}
+		}
+		if (x == end_x && y == end_y) {
+			break;
+		}
+		const int double_error = error * 2;
+		if (double_error > -dy) {
+			error -= dy;
+			x += step_x;
+		}
+		if (double_error < dx) {
+			error += dx;
+			y += step_y;
+		}
+	}
+
+	if (tilestoborder) {
+		tilestoborder->reserve(tilestoborder->size() + border_tiles.size());
+		tilestoborder->insert(tilestoborder->end(), border_tiles.begin(), border_tiles.end());
+	}
+}
+
 BEGIN_EVENT_TABLE(MapCanvas, wxGLCanvas)
 EVT_KEY_DOWN(MapCanvas::OnKeyDown)
 EVT_KEY_DOWN(MapCanvas::OnKeyUp)
@@ -392,6 +442,7 @@ MapCanvas::MapCanvas(MapWindow* parent, Editor& editor, int* attriblist) :
 	screendragging(false),
 	drawing(false),
 	dragging_draw(false),
+	dragging_draw_line(false),
 	replace_dragging(false),
 
 	screenshot_buffer(nullptr),
@@ -927,6 +978,13 @@ void MapCanvas::OnMouseMove(wxMouseEvent& event) {
 
 			g_gui.RefreshView();
 		} else if (dragging_draw) {
+			// Alt may be pressed or released halfway through the drag.
+			dragging_draw_line = event.AltDown();
+			if (dragging_draw_line && map_update) {
+				wxString ss;
+				ss << "Line " << std::max(std::abs(last_click_map_x - mouse_map_x), std::abs(last_click_map_y - mouse_map_y)) + 1 << " tiles";
+				g_gui.SetStatusText(ss);
+			}
 			g_gui.RefreshView();
 		} else if (map_update && brush) {
 			Refresh();
@@ -1186,6 +1244,8 @@ void MapCanvas::OnMouseActionClick(wxMouseEvent& event) {
 		Brush* brush = g_gui.GetCurrentBrush();
 		if (event.ShiftDown() && brush->canDrag()) {
 			dragging_draw = true;
+			// Alt turns the drag into a straight line instead of a square/circle.
+			dragging_draw_line = event.AltDown();
 		} else {
 			if (g_gui.IsSingleTileBrush() && !brush->oneSizeFitsAll()) {
 				drawing = true;
@@ -1529,6 +1589,7 @@ void MapCanvas::OnMouseActionRelease(wxMouseEvent& event) {
 		if (dragging_draw) {
 			if (!liveEditAllowed(editor, last_click_map_x, last_click_map_y) || !liveEditAllowed(editor, mouse_map_x, mouse_map_y)) {
 				dragging_draw = false;
+				dragging_draw_line = false;
 				drawing = false;
 				return;
 			}
@@ -1549,7 +1610,15 @@ void MapCanvas::OnMouseActionRelease(wxMouseEvent& event) {
 			} else {
 				PositionVector tilestodraw;
 				PositionVector tilestoborder;
-				if (brush->isWall()) {
+				// Alt turns the drag into a straight line of any angle, taking
+				// precedence over the wall rectangle and the square/circle brush
+				// shape. Alt therefore can't double as the alternate-draw flag
+				// while a line is being drawn.
+				const bool draw_line = event.AltDown();
+				const bool alt_draw = draw_line ? false : event.AltDown();
+				if (draw_line) {
+					getLineTilesToDraw(last_click_map_x, last_click_map_y, mouse_map_x, mouse_map_y, floor, tilestodraw, &tilestoborder);
+				} else if (brush->isWall()) {
 					int start_map_x = std::min(last_click_map_x, mouse_map_x);
 					int start_map_y = std::min(last_click_map_y, mouse_map_y);
 					int end_map_x = std::max(last_click_map_x, mouse_map_x);
@@ -1635,15 +1704,16 @@ void MapCanvas::OnMouseActionRelease(wxMouseEvent& event) {
 					}
 				}
 				if (event.ControlDown()) {
-					editor.undraw(tilestodraw, tilestoborder, event.AltDown());
+					editor.undraw(tilestodraw, tilestoborder, alt_draw);
 				} else {
-					editor.draw(tilestodraw, tilestoborder, event.AltDown());
+					editor.draw(tilestodraw, tilestoborder, alt_draw);
 				}
 			}
 		}
 		editor.actionQueue->resetTimer();
 		drawing = false;
 		dragging_draw = false;
+		dragging_draw_line = false;
 		replace_dragging = false;
 		editor.replace_brush = nullptr;
 	}
@@ -3218,6 +3288,7 @@ void MapCanvas::EnterDrawingMode() {
 void MapCanvas::EnterSelectionMode() {
 	drawing = false;
 	dragging_draw = false;
+	dragging_draw_line = false;
 	replace_dragging = false;
 	editor.replace_brush = nullptr;
 	Refresh();
@@ -3248,6 +3319,7 @@ void MapCanvas::Reset() {
 	screendragging = false;
 	drawing = false;
 	dragging_draw = false;
+	dragging_draw_line = false;
 
 	replace_dragging = false;
 	editor.replace_brush = nullptr;
@@ -3586,6 +3658,32 @@ void MapCanvas::getTilesToDraw(int mouse_map_x, int mouse_map_y, int floor, Posi
 				}
 			}
 		}
+	}
+}
+
+void MapCanvas::getLineTilesToDraw(int start_x, int start_y, int end_x, int end_y, int floor, PositionVector& tilestodraw, PositionVector* tilestoborder) {
+	Brush* brush = g_gui.GetCurrentBrush();
+	if (!brush || brush->oneSizeFitsAll()) {
+		// Brush size means nothing to these brushes (creatures, doodads, spawns,
+		// house exits), so the line stays one tile wide.
+		GetLineTiles(start_x, start_y, end_x, end_y, floor, tilestodraw, tilestoborder);
+		return;
+	}
+
+	PositionVector centers;
+	GetLineTiles(start_x, start_y, end_x, end_y, floor, centers);
+
+	// Stamp the brush — current size and square/circle shape — at every tile
+	// along the line, exactly as a single click would at each of them.
+	for (const Position& center : centers) {
+		getTilesToDraw(center.x, center.y, floor, &tilestodraw, tilestoborder);
+	}
+
+	// Consecutive stamps overlap heavily, and a duplicate would make
+	// Editor::draw emit two changes for the same tile inside one action.
+	dedupePositions(tilestodraw);
+	if (tilestoborder) {
+		dedupePositions(*tilestoborder);
 	}
 }
 

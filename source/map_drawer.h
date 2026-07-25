@@ -165,6 +165,9 @@ public:
 
 	bool dragging;
 	bool dragging_draw;
+	// Mirrors MapCanvas::dragging_draw_line — preview a straight line rather
+	// than the brush shape's square/circle.
+	bool dragging_draw_line = false;
 	uint32_t hovered_live_participant = 0;
 
 	void SetupVars();
