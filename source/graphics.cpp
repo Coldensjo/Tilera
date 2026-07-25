@@ -29,18 +29,6 @@
 #include <wx/dir.h>
 #include "pngfiles.h"
 
-#include "../brushes/door_normal.xpm"
-#include "../brushes/door_normal_small.xpm"
-#include "../brushes/door_locked.xpm"
-#include "../brushes/door_locked_small.xpm"
-#include "../brushes/door_magic.xpm"
-#include "../brushes/door_magic_small.xpm"
-#include "../brushes/door_quest.xpm"
-#include "../brushes/door_quest_small.xpm"
-#include "../brushes/door_normal_alt.xpm"
-#include "../brushes/door_normal_alt_small.xpm"
-#include "../brushes/door_archway.xpm"
-#include "../brushes/door_archway_small.xpm"
 
 // All 133 template colors
 static uint32_t TemplateOutfitLookupTable[] = {
@@ -336,11 +324,29 @@ inline wxBitmap* _wxGetBitmapFromMemory(const unsigned char* data, int length) {
 	return newd wxBitmap(img, -1);
 }
 
+namespace {
+
+// The selection marker is a 50% checkerboard dither of a single colour, so it
+// is generated rather than stored as an image.
+wxBitmap* createSelectionMarker(int size) {
+	wxImage image(size, size);
+	image.InitAlpha();
+	for (int y = 0; y < size; ++y) {
+		for (int x = 0; x < size; ++x) {
+			image.SetRGB(x, y, 0x00, 0x00, 0x80);
+			image.SetAlpha(x, y, (x + y) % 2 == 1 ? wxIMAGE_ALPHA_OPAQUE : wxIMAGE_ALPHA_TRANSPARENT);
+		}
+	}
+	return newd wxBitmap(image);
+}
+
+} // namespace
+
 bool GraphicManager::loadEditorSprites() {
 	// Unused graphics MIGHT be loaded here, but it's a neglectable loss
 	sprite_space[EDITOR_SPRITE_SELECTION_MARKER] = newd EditorSprite(
-		newd wxBitmap(selection_marker_xpm16x16),
-		newd wxBitmap(selection_marker_xpm32x32)
+		createSelectionMarker(16),
+		createSelectionMarker(32)
 	);
 	sprite_space[EDITOR_SPRITE_BRUSH_CD_1x1] = newd EditorSprite(
 		loadPNGFile(circular_1_small_png),
@@ -433,28 +439,28 @@ bool GraphicManager::loadEditorSprites() {
 	);
 
 	sprite_space[EDITOR_SPRITE_DOOR_NORMAL] = newd EditorSprite(
-		newd wxBitmap(door_normal_small_xpm),
-		newd wxBitmap(door_normal_xpm)
+		loadPNGFile(door_normal_small_png),
+		loadPNGFile(door_normal_png)
 	);
 	sprite_space[EDITOR_SPRITE_DOOR_LOCKED] = newd EditorSprite(
-		newd wxBitmap(door_locked_small_xpm),
-		newd wxBitmap(door_locked_xpm)
+		loadPNGFile(door_locked_small_png),
+		loadPNGFile(door_locked_png)
 	);
 	sprite_space[EDITOR_SPRITE_DOOR_MAGIC] = newd EditorSprite(
-		newd wxBitmap(door_magic_small_xpm),
-		newd wxBitmap(door_magic_xpm)
+		loadPNGFile(door_magic_small_png),
+		loadPNGFile(door_magic_png)
 	);
 	sprite_space[EDITOR_SPRITE_DOOR_QUEST] = newd EditorSprite(
-		newd wxBitmap(door_quest_small_xpm),
-		newd wxBitmap(door_quest_xpm)
+		loadPNGFile(door_quest_small_png),
+		loadPNGFile(door_quest_png)
 	);
 	sprite_space[EDITOR_SPRITE_DOOR_NORMAL_ALT] = newd EditorSprite(
-		newd wxBitmap(door_normal_alt_small_xpm),
-		newd wxBitmap(door_normal_alt_xpm)
+		loadPNGFile(door_normal_alt_small_png),
+		loadPNGFile(door_normal_alt_png)
 	);
 	sprite_space[EDITOR_SPRITE_DOOR_ARCHWAY] = newd EditorSprite(
-		newd wxBitmap(door_archway_small_xpm),
-		newd wxBitmap(door_archway_xpm)
+		loadPNGFile(door_archway_small_png),
+		loadPNGFile(door_archway_png)
 	);
 	sprite_space[EDITOR_SPRITE_WINDOW_NORMAL] = newd EditorSprite(
 		loadPNGFile(window_normal_small_png),

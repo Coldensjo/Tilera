@@ -31,20 +31,7 @@
 #include "house_brush.h"
 #include "map.h"
 #include "editor.h"
-
-namespace {
-
-wxBitmap LoadPaletteCategoryIcon(const char* filename) {
-	wxFileName path(g_gui.GetExecDirectory(), wxString::FromUTF8(filename));
-	path.AppendDir("icons");
-	wxImage image;
-	if (!image.LoadFile(path.GetFullPath(), wxBITMAP_TYPE_PNG)) {
-		return wxNullBitmap;
-	}
-	return wxBitmap(image);
-}
-
-} // namespace
+#include "pngfiles.h"
 
 // ============================================================================
 // Palette window
@@ -97,12 +84,12 @@ PaletteWindow::PaletteWindow(wxWindow* parent, const TilesetContainer& tilesets)
 	raw_palette = static_cast<BrushPalettePanel*>(CreateRAWPalette(page_container, tilesets));
 
 	// Create buttons
-	terrain_button = newd PaletteButton(this, PALETTE_BUTTON_TERRAIN, "&Terrain", LoadPaletteCategoryIcon("terrain.png"));
-	doodad_button = newd PaletteButton(this, PALETTE_BUTTON_DOODAD, "&Doodad", LoadPaletteCategoryIcon("doodad.png"));
-	item_button = newd PaletteButton(this, PALETTE_BUTTON_ITEM, "&Item", LoadPaletteCategoryIcon("item.png"));
-	house_button = newd PaletteButton(this, PALETTE_BUTTON_HOUSE, "&House", LoadPaletteCategoryIcon("house.png"));
-	creature_button = newd PaletteButton(this, PALETTE_BUTTON_CREATURE, "&Creature", LoadPaletteCategoryIcon("creature.png"));
-	raw_button = newd PaletteButton(this, PALETTE_BUTTON_RAW, "&RAW", LoadPaletteCategoryIcon("raw.png"));
+	terrain_button = newd PaletteButton(this, PALETTE_BUTTON_TERRAIN, "&Terrain", PNG_BITMAP(icon_terrain_png));
+	doodad_button = newd PaletteButton(this, PALETTE_BUTTON_DOODAD, "&Doodad", PNG_BITMAP(icon_doodad_png));
+	item_button = newd PaletteButton(this, PALETTE_BUTTON_ITEM, "&Item", PNG_BITMAP(icon_item_png));
+	house_button = newd PaletteButton(this, PALETTE_BUTTON_HOUSE, "&House", PNG_BITMAP(icon_house_png));
+	creature_button = newd PaletteButton(this, PALETTE_BUTTON_CREATURE, "&Creature", PNG_BITMAP(icon_creature_png));
+	raw_button = newd PaletteButton(this, PALETTE_BUTTON_RAW, "&RAW", PNG_BITMAP(icon_raw_png));
 
 	// Give all category buttons the same size so they line up neatly, since
 	// each button otherwise sizes itself to fit its own label text.
@@ -132,7 +119,7 @@ PaletteWindow::PaletteWindow(wxWindow* parent, const TilesetContainer& tilesets)
 
 	// Live-mapping-only shortcut: browse all map comments, see who left them,
 	// jump to one, and edit/delete it. Hidden until OnUpdate finds a live editor.
-	comments_button = newd wxBitmapButton(this, wxID_ANY, LoadPaletteCategoryIcon("comments.png"));
+	comments_button = newd wxBitmapButton(this, wxID_ANY, PNG_BITMAP(icon_comments_png));
 	comments_button->SetToolTip("Map Comments");
 	comments_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
 		if (g_gui.IsCommentsWindowShown()) {

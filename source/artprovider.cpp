@@ -18,90 +18,66 @@
 #include "main.h"
 #include "artprovider.h"
 
-#include "../icons/circular_1.xpm"
-#include "../icons/circular_2.xpm"
-#include "../icons/circular_3.xpm"
-#include "../icons/circular_4.xpm"
-#include "../icons/circular_5.xpm"
-#include "../icons/circular_6.xpm"
-#include "../icons/circular_7.xpm"
-#include "../icons/nologout_zone.xpm"
-#include "../icons/nopvp_zone.xpm"
-#include "../icons/position_go.xpm"
-#include "../icons/protected_zone.xpm"
-#include "../icons/pvp_zone.xpm"
-#include "../icons/rectangular_1.xpm"
-#include "../icons/rectangular_2.xpm"
-#include "../icons/rectangular_3.xpm"
-#include "../icons/rectangular_4.xpm"
-#include "../icons/rectangular_5.xpm"
-#include "../icons/rectangular_6.xpm"
-#include "../icons/rectangular_7.xpm"
-#include "../brushes/door_normal_small.xpm"
-#include "../brushes/door_locked_small.xpm"
-#include "../brushes/door_magic_small.xpm"
-#include "../brushes/door_quest_small.xpm"
-#include "../brushes/door_normal_alt_small.xpm"
-#include "../brushes/door_archway_small.xpm"
+#include "pngfiles.h"
 
 wxBitmap ArtProvider::CreateBitmap(const wxArtID& id, const wxArtClient& client, const wxSize& WXUNUSED(size)) {
 	if (client == wxART_TOOLBAR) {
 		if (id == ART_CIRCULAR) {
-			return wxBitmap(circular_4_xpm);
+			return PNG_BITMAP(icon_circular_4_png);
 		} else if (id == ART_CIRCULAR_1) {
-			return wxBitmap(circular_1_xpm);
+			return PNG_BITMAP(icon_circular_1_png);
 		} else if (id == ART_CIRCULAR_2) {
-			return wxBitmap(circular_2_xpm);
+			return PNG_BITMAP(icon_circular_2_png);
 		} else if (id == ART_CIRCULAR_3) {
-			return wxBitmap(circular_3_xpm);
+			return PNG_BITMAP(icon_circular_3_png);
 		} else if (id == ART_CIRCULAR_4) {
-			return wxBitmap(circular_4_xpm);
+			return PNG_BITMAP(icon_circular_4_png);
 		} else if (id == ART_CIRCULAR_5) {
-			return wxBitmap(circular_5_xpm);
+			return PNG_BITMAP(icon_circular_5_png);
 		} else if (id == ART_CIRCULAR_6) {
-			return wxBitmap(circular_6_xpm);
+			return PNG_BITMAP(icon_circular_6_png);
 		} else if (id == ART_CIRCULAR_7) {
-			return wxBitmap(circular_7_xpm);
+			return PNG_BITMAP(icon_circular_7_png);
 		} else if (id == ART_NOLOOUT_BRUSH) {
-			return wxBitmap(nologout_zone_xpm);
+			return PNG_BITMAP(icon_nologout_zone_png);
 		} else if (id == ART_NOPVP_BRUSH) {
-			return wxBitmap(nopvp_zone_xpm);
+			return PNG_BITMAP(icon_nopvp_zone_png);
 		} else if (id == ART_POSITION_GO) {
-			return wxBitmap(position_go_xpm);
+			return PNG_BITMAP(icon_position_go_png);
 		} else if (id == ART_PVP_BRUSH) {
-			return wxBitmap(pvp_zone_xpm);
+			return PNG_BITMAP(icon_pvp_zone_png);
 		} else if (id == ART_PZ_BRUSH) {
-			return wxBitmap(protected_zone_xpm);
+			return PNG_BITMAP(icon_protected_zone_png);
 		} else if (id == ART_RECTANGULAR) {
-			return wxBitmap(rectangular_4_xpm);
+			return PNG_BITMAP(icon_rectangular_4_png);
 		} else if (id == ART_RECTANGULAR_1) {
-			return wxBitmap(rectangular_1_xpm);
+			return PNG_BITMAP(icon_rectangular_1_png);
 		} else if (id == ART_RECTANGULAR_2) {
-			return wxBitmap(rectangular_2_xpm);
+			return PNG_BITMAP(icon_rectangular_2_png);
 		} else if (id == ART_RECTANGULAR_3) {
-			return wxBitmap(rectangular_3_xpm);
+			return PNG_BITMAP(icon_rectangular_3_png);
 		} else if (id == ART_RECTANGULAR_4) {
-			return wxBitmap(rectangular_4_xpm);
+			return PNG_BITMAP(icon_rectangular_4_png);
 		} else if (id == ART_RECTANGULAR_5) {
-			return wxBitmap(rectangular_5_xpm);
+			return PNG_BITMAP(icon_rectangular_5_png);
 		} else if (id == ART_RECTANGULAR_6) {
-			return wxBitmap(rectangular_6_xpm);
+			return PNG_BITMAP(icon_rectangular_6_png);
 		} else if (id == ART_RECTANGULAR_7) {
-			return wxBitmap(rectangular_7_xpm);
+			return PNG_BITMAP(icon_rectangular_7_png);
 		}
 
 		else if (id == ART_DOOR_NORMAL_SMALL) {
-			return wxBitmap(door_normal_small_xpm);
+			return PNG_BITMAP(door_normal_small_png);
 		} else if (id == ART_DOOR_LOCKED_SMALL) {
-			return wxBitmap(door_locked_small_xpm);
+			return PNG_BITMAP(door_locked_small_png);
 		} else if (id == ART_DOOR_MAGIC_SMALL) {
-			return wxBitmap(door_magic_small_xpm);
+			return PNG_BITMAP(door_magic_small_png);
 		} else if (id == ART_DOOR_QUEST_SMALL) {
-			return wxBitmap(door_quest_small_xpm);
+			return PNG_BITMAP(door_quest_small_png);
 		} else if (id == ART_DOOR_NORMAL_ALT_SMALL) {
-			return wxBitmap(door_normal_alt_small_xpm);
+			return PNG_BITMAP(door_normal_alt_small_png);
 		} else if (id == ART_DOOR_ARCHWAY_SMALL) {
-			return wxBitmap(door_archway_small_xpm);
+			return PNG_BITMAP(door_archway_small_png);
 		}
 	}
 

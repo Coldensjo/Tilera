@@ -54,7 +54,7 @@
 	#include <GL/glut.h>
 #endif
 
-#include "../brushes/icon/editor_icon.xpm"
+#include "pngfiles.h"
 
 BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 EVT_CHAR_HOOK(MainFrame::OnCharHook)
@@ -271,7 +271,8 @@ bool Application::OnInit() {
 	// Load palette
 	g_gui.LoadPerspective();
 
-	wxIcon icon(editor_icon);
+	wxIcon icon;
+	icon.CopyFromBitmap(PNG_BITMAP(editor_icon_png));
 	g_gui.root->SetIcon(icon);
 
 	bool startup_map_enabled = g_settings.getInteger(Config::OPEN_MAP_ON_STARTUP) == 1;

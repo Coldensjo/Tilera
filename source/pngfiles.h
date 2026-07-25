@@ -18,28 +18,50 @@
 #ifndef RME_PNG_HEADER_FILE_H_
 #define RME_PNG_HEADER_FILE_H_
 
-extern unsigned char circular_1_png[453];
-extern unsigned char circular_1_small_png[253];
-extern unsigned char circular_2_png[643];
-extern unsigned char circular_2_small_png[318];
-extern unsigned char circular_3_png[796];
-extern unsigned char circular_3_small_png[398];
-extern unsigned char circular_4_png[1076];
-extern unsigned char circular_4_small_png[501];
-extern unsigned char circular_5_png[1230];
-extern unsigned char circular_5_small_png[600];
-extern unsigned char circular_6_png[1467];
-extern unsigned char circular_6_small_png[678];
-extern unsigned char circular_7_png[1563];
-extern unsigned char circular_7_small_png[740];
-extern unsigned char door_locked_png[752];
-extern unsigned char door_locked_small_png[552];
-extern unsigned char door_magic_png[761];
-extern unsigned char door_magic_small_png[552];
-extern unsigned char door_normal_png[748];
-extern unsigned char door_normal_small_png[552];
-extern unsigned char door_quest_png[764];
-extern unsigned char door_quest_small_png[552];
+#include <wx/bitmap.h>
+#include <wx/image.h>
+#include <wx/mstream.h>
+
+/**
+ * Decodes one of the embedded PNG blobs declared below into a bitmap.
+ *
+ * Prefer the PNG_BITMAP() macro, which supplies the length automatically.
+ * Returns wxNullBitmap if the data is not a valid PNG.
+ */
+inline wxBitmap wxBitmapFromPNG(const unsigned char* data, size_t length) {
+	wxMemoryInputStream stream(data, length);
+	wxImage image(stream, "image/png");
+	if (!image.IsOk()) {
+		return wxNullBitmap;
+	}
+	return wxBitmap(image, -1);
+}
+
+// Builds a wxBitmap from an embedded PNG array, e.g. PNG_BITMAP(icon_circular_4_png).
+#define PNG_BITMAP(name) wxBitmapFromPNG(name, sizeof(name))
+
+extern unsigned char circular_1_png[410];
+extern unsigned char circular_1_small_png[168];
+extern unsigned char circular_2_png[560];
+extern unsigned char circular_2_small_png[193];
+extern unsigned char circular_3_png[718];
+extern unsigned char circular_3_small_png[390];
+extern unsigned char circular_4_png[830];
+extern unsigned char circular_4_small_png[467];
+extern unsigned char circular_5_png[990];
+extern unsigned char circular_5_small_png[532];
+extern unsigned char circular_6_png[1110];
+extern unsigned char circular_6_small_png[607];
+extern unsigned char circular_7_png[1154];
+extern unsigned char circular_7_small_png[591];
+extern unsigned char door_locked_png[738];
+extern unsigned char door_locked_small_png[596];
+extern unsigned char door_magic_png[943];
+extern unsigned char door_magic_small_png[580];
+extern unsigned char door_normal_png[821];
+extern unsigned char door_normal_small_png[497];
+extern unsigned char door_quest_png[842];
+extern unsigned char door_quest_small_png[558];
 extern unsigned char eraser_png[878];
 extern unsigned char eraser_small_png[667];
 extern unsigned char exclamation_png[256];
@@ -55,24 +77,55 @@ extern unsigned char protection_zone_png[961];
 extern unsigned char protection_zone_small_png[687];
 extern unsigned char pvp_zone_png[677];
 extern unsigned char pvp_zone_small_png[620];
-extern unsigned char rectangular_1_png[353];
-extern unsigned char rectangular_1_small_png[250];
-extern unsigned char rectangular_2_png[393];
-extern unsigned char rectangular_2_small_png[248];
-extern unsigned char rectangular_3_png[424];
-extern unsigned char rectangular_3_small_png[276];
-extern unsigned char rectangular_4_png[483];
-extern unsigned char rectangular_4_small_png[333];
-extern unsigned char rectangular_5_png[535];
-extern unsigned char rectangular_5_small_png[375];
-extern unsigned char rectangular_6_png[600];
-extern unsigned char rectangular_6_small_png[431];
-extern unsigned char rectangular_7_png[697];
-extern unsigned char rectangular_7_small_png[429];
+extern unsigned char rectangular_1_png[226];
+extern unsigned char rectangular_1_small_png[169];
+extern unsigned char rectangular_2_png[275];
+extern unsigned char rectangular_2_small_png[182];
+extern unsigned char rectangular_3_png[323];
+extern unsigned char rectangular_3_small_png[207];
+extern unsigned char rectangular_4_png[371];
+extern unsigned char rectangular_4_small_png[228];
+extern unsigned char rectangular_5_png[406];
+extern unsigned char rectangular_5_small_png[252];
+extern unsigned char rectangular_6_png[433];
+extern unsigned char rectangular_6_small_png[273];
+extern unsigned char rectangular_7_png[446];
+extern unsigned char rectangular_7_small_png[284];
 extern unsigned char refresh_png[595];
 extern unsigned char refresh_small_png[563];
 extern unsigned char window_hatch_png[910];
 extern unsigned char window_hatch_small_png[641];
 extern unsigned char window_normal_png[947];
 extern unsigned char window_normal_small_png[641];
+extern unsigned char icon_circular_1_png[168];
+extern unsigned char icon_rectangular_1_png[169];
+extern unsigned char icon_circular_2_png[193];
+extern unsigned char icon_rectangular_2_png[182];
+extern unsigned char icon_circular_3_png[390];
+extern unsigned char icon_rectangular_3_png[207];
+extern unsigned char icon_circular_4_png[467];
+extern unsigned char icon_rectangular_4_png[228];
+extern unsigned char icon_circular_5_png[532];
+extern unsigned char icon_rectangular_5_png[252];
+extern unsigned char icon_circular_6_png[607];
+extern unsigned char icon_rectangular_6_png[273];
+extern unsigned char icon_circular_7_png[591];
+extern unsigned char icon_rectangular_7_png[284];
+extern unsigned char icon_nologout_zone_png[671];
+extern unsigned char icon_nopvp_zone_png[651];
+extern unsigned char icon_position_go_png[410];
+extern unsigned char icon_protected_zone_png[672];
+extern unsigned char icon_pvp_zone_png[665];
+extern unsigned char door_archway_png[6042];
+extern unsigned char door_archway_small_png[5481];
+extern unsigned char door_normal_alt_png[6713];
+extern unsigned char door_normal_alt_small_png[5773];
+extern unsigned char editor_icon_png[776];
+extern unsigned char icon_terrain_png[2499];
+extern unsigned char icon_doodad_png[975];
+extern unsigned char icon_item_png[1713];
+extern unsigned char icon_house_png[1429];
+extern unsigned char icon_creature_png[896];
+extern unsigned char icon_raw_png[1600];
+extern unsigned char icon_comments_png[1474];
 #endif //_RME_PNG_HEADER_FILE_H_

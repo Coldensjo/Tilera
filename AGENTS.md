@@ -39,6 +39,8 @@ Rules for personas:
 | Toolset | MSVC **v143** (Visual Studio 2022) |
 | C++ standard | C++17 |
 | Dependency manager | **vcpkg** manifest mode (`vcpkg.json` at repo root) |
+| Triplet | `x64-windows-static-v143` (overlay in `triplets/`) |
+| Linkage | **Fully static** — static CRT (`/MT`) and static deps; no DLLs shipped |
 | Outputs | `Editor_x64.exe`, `MapServer_x64.exe` in **repo root** |
 | Intermediate files | `vcproj/Project/x64/{Debug\|Release}/{Editor\|MapServer}/` |
 
@@ -101,6 +103,49 @@ A successful build ends with lines like (paths must be under the **repo root**, 
 Editor.vcxproj -> C:\path\to\Tilera\Editor_x64.exe
 MapServer.vcxproj -> C:\path\to\Tilera\MapServer_x64.exe
 ```
+
+The executables are self-contained: they import only Windows system DLLs, so **no
+`.dll` files (and no VC++ redistributable) need to sit next to them**. `data/` is
+still required at runtime. If a build ever deposits third-party DLLs in the repo
+root again, the static triplet is not being applied — see **Static linking** below.
+
+### Editor images
+
+Every editor image is compiled into the executable as a byte array in
+`source/pngfiles.cpp`; **nothing is loaded from `icons/` or `brushes/` at
+runtime**, so neither folder ships with the binary. Those folders hold the
+*source* art — editing a `.png` there changes nothing until its array is
+regenerated:
+
+```powershell
+.\tools\sync_png_arrays.ps1                        # report drift, write nothing
+.\tools\sync_png_arrays.ps1 brushes\door_locked.png # sync one file
+.\tools\sync_png_arrays.ps1 -All                    # sync everything drifted
+```
+
+Then rebuild. Use `PNG_BITMAP(name)` (from `pngfiles.h`) to turn an array into a
+`wxBitmap`. Images under `icons/` are embedded with an `icon_` prefix
+(`icons/terrain.png` → `icon_terrain_png`) to avoid clashing with the
+same-named-but-different art in `brushes/`.
+
+### Static linking
+
+Dependencies are built and linked statically. The moving parts, if you need to
+change them:
+
+- `triplets/x64-windows-static-v143.cmake` — overlay triplet; static CRT + static
+  libs, and pins `VCPKG_PLATFORM_TOOLSET` to **v143** so vcpkg's dependencies use
+  the same toolset the `.vcxproj` files declare. Without the pin, vcpkg silently
+  uses the newest installed MSVC, and wxWidgets picks up STL helpers missing from
+  v143's `libcpmt.lib` (`LNK2001: __std_find_last_not_of_trivial_pos_2`).
+- `vcpkg.json` — registers `./triplets` via `vcpkg-configuration.overlay-triplets`.
+- Both `.vcxproj` — `<VcpkgTriplet>`, `<RuntimeLibrary>MultiThreaded[Debug]</…>`,
+  and the `FREEGLUT_STATIC` / `LIBARCHIVE_STATIC` defines. `WXUSINGDLL` must
+  **not** be defined. Static freeglut/libarchive/openssl also need `opengl32`,
+  `glu32`, `winmm`, `crypt32`, `rpcrt4` and `xmllite` on the link line.
+
+Changing the triplet or toolset invalidates the vcpkg ABI and rebuilds all ~89
+packages from source (slow — tens of minutes).
 
 ### Build one project only
 
