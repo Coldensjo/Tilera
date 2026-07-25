@@ -1696,6 +1696,136 @@ void Editor::moveSelection(Position offset) {
 	selection.updateSelectionCount();
 }
 
+void Editor::transformSelection(MapTransform transform) {
+	if (selection.size() == 0) {
+		g_gui.SetStatusText("No selected items to transform.");
+		return;
+	}
+
+	const Position min_pos = selection.minPosition();
+	const Position max_pos = selection.maxPosition();
+
+	BatchAction* batchAction = actionQueue->createBatch(ACTION_MOVE);
+	Action* action = actionQueue->createAction(batchAction);
+
+	// Lift the selected content off the source tiles into temporary tiles
+	TileSet tmp_storage;
+	for (Tile* tile : selection) {
+		Tile* new_src_tile = tile->deepCopy(map);
+		Tile* tmp_storage_tile = map.allocator(tile->getLocation());
+
+		// This transfers ownership of the selected items to the temporary tile
+		ItemVector tile_selection = new_src_tile->popSelectedItems();
+		for (Item* item : tile_selection) {
+			// Borders, walls, carpets and tables follow the new orientation
+			transformItemOrientation(item, transform);
+			tmp_storage_tile->addItem(item);
+		}
+
+		// Move spawns
+		if (new_src_tile->spawn && new_src_tile->spawn->isSelected()) {
+			tmp_storage_tile->spawn = new_src_tile->spawn;
+			new_src_tile->spawn = nullptr;
+		}
+		// Move creatures
+		if (new_src_tile->creature && new_src_tile->creature->isSelected()) {
+			tmp_storage_tile->creature = new_src_tile->creature;
+			new_src_tile->creature = nullptr;
+		}
+
+		// Move house data & tile status if ground is transferred
+		if (tmp_storage_tile->ground) {
+			tmp_storage_tile->house_id = new_src_tile->house_id;
+			new_src_tile->house_id = 0;
+			tmp_storage_tile->setMapFlags(new_src_tile->getMapFlags());
+			new_src_tile->setMapFlags(TILESTATE_NONE);
+		}
+
+		tmp_storage.insert(tmp_storage_tile);
+		action->addChange(newd Change(new_src_tile));
+	}
+	batchAction->addAndCommitAction(action);
+
+	// Put the lifted content back down on the transformed positions
+	action = actionQueue->createAction(batchAction);
+	size_t discarded_tiles = 0;
+	PositionVector destination_positions;
+	destination_positions.reserve(tmp_storage.size());
+	for (Tile* tile : tmp_storage) {
+		const Position new_pos = transformPosition(tile->getPosition(), transform, min_pos, max_pos);
+
+		if (new_pos.x < 0 || new_pos.x >= map.getWidth() || new_pos.y < 0 || new_pos.y >= map.getHeight()) {
+			// The transformed area would leave the map, drop what doesn't fit
+			delete tile;
+			++discarded_tiles;
+			continue;
+		}
+
+		TileLocation* location = map.createTileL(new_pos);
+		Tile* old_dest_tile = location->get();
+		Tile* new_dest_tile = nullptr;
+
+		if (g_settings.getInteger(Config::MERGE_MOVE) || !tile->ground) {
+			// Merge items into whatever is already there
+			if (old_dest_tile) {
+				new_dest_tile = old_dest_tile->deepCopy(map);
+			} else {
+				new_dest_tile = map.allocator(location);
+			}
+			new_dest_tile->merge(tile);
+			delete tile;
+		} else {
+			// Replace the tile instead of merging
+			tile->setLocation(location);
+			new_dest_tile = tile;
+		}
+
+		destination_positions.push_back(new_pos);
+		action->addChange(newd Change(new_dest_tile));
+	}
+	batchAction->addAndCommitAction(action);
+
+	// Walls pick their piece from the walls around them, so re-connect the transformed
+	// tiles and everything bordering them - that settles corners, ends and T-junctions
+	// both inside the area and where it now meets the rest of the map
+	if (g_settings.getInteger(Config::USE_AUTOMAGIC)) {
+		action = actionQueue->createAction(batchAction);
+		TileList wall_tiles;
+		for (const Position& pos : destination_positions) {
+			for (int dy = -1; dy <= 1; ++dy) {
+				for (int dx = -1; dx <= 1; ++dx) {
+					Tile* tile = map.getTile(pos.x + dx, pos.y + dy, pos.z);
+					if (tile && tile->hasWall()) {
+						wall_tiles.push_back(tile);
+					}
+				}
+			}
+		}
+
+		// Remove duplicates
+		wall_tiles.sort();
+		wall_tiles.unique();
+
+		for (Tile* tile : wall_tiles) {
+			Tile* new_tile = tile->deepCopy(map);
+			if (reconnectTileWalls(&map, new_tile)) {
+				action->addChange(newd Change(new_tile));
+			} else {
+				delete new_tile;
+			}
+		}
+		batchAction->addAndCommitAction(action);
+	}
+
+	// Store the action for undo
+	addBatch(batchAction);
+	selection.updateSelectionCount();
+
+	if (discarded_tiles > 0) {
+		g_gui.SetStatusText(wxString::Format("%d tile(s) fell outside the map and were discarded.", int(discarded_tiles)));
+	}
+}
+
 void Editor::destroySelection() {
 	if (selection.size() == 0) {
 		g_gui.SetStatusText("No selected items to delete.");

@@ -64,6 +64,11 @@
 		<item name="Move Selection Up" hotkey="Ctrl+Shift+Up" action="MOVE_SELECTION_UP" help="Moves the selected area up one floor." />
 		<item name="Move Selection Down" hotkey="Ctrl+Shift+Down" action="MOVE_SELECTION_DOWN" help="Moves the selected area down one floor." />
 		<separator />
+		<item name="Rotate Selection Clockwise" hotkey="Ctrl+R" action="ROTATE_SELECTION_CW" help="Rotates the selected area 90 degrees clockwise." />
+		<item name="Rotate Selection Counter-Clockwise" hotkey="Ctrl+Alt+R" action="ROTATE_SELECTION_CCW" help="Rotates the selected area 90 degrees counter-clockwise." />
+		<item name="Flip Selection Horizontally" hotkey="Ctrl+Shift+H" action="FLIP_SELECTION_HORIZONTAL" help="Mirrors the selected area along its vertical axis." />
+		<item name="Flip Selection Vertically" hotkey="Ctrl+Shift+V" action="FLIP_SELECTION_VERTICAL" help="Mirrors the selected area along its horizontal axis." />
+		<separator />
 		<item name="Replace Items..." hotkey="Ctrl+Shift+F" action="REPLACE_ITEMS" help="Replaces all occurrences of one item with another." />
 		<separator />
 		<menu name="Borders">

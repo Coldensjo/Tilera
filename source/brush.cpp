@@ -61,6 +61,9 @@ void Brushes::clear() {
 		delete borderEntry.second;
 	}
 	borders.clear();
+
+	// The cached item -> autoborder lookup points into the borders we just deleted
+	resetBorderItemLookup();
 }
 
 void Brushes::init() {
@@ -776,4 +779,428 @@ PaletteSeparatorBrush::~PaletteSeparatorBrush() {
 
 std::string PaletteSeparatorBrush::getName() const {
 	return "Separator";
+}
+
+//=============================================================================
+// Orientation remapping for rotated/mirrored areas
+
+namespace {
+
+// Which BorderType an edge becomes after a clockwise quarter turn
+const BorderType border_clockwise[14] = {
+	BORDER_NONE, // BORDER_NONE
+	EAST_HORIZONTAL, // NORTH_HORIZONTAL
+	SOUTH_HORIZONTAL, // EAST_HORIZONTAL
+	WEST_HORIZONTAL, // SOUTH_HORIZONTAL
+	NORTH_HORIZONTAL, // WEST_HORIZONTAL
+	NORTHEAST_CORNER, // NORTHWEST_CORNER
+	SOUTHEAST_CORNER, // NORTHEAST_CORNER
+	NORTHWEST_CORNER, // SOUTHWEST_CORNER
+	SOUTHWEST_CORNER, // SOUTHEAST_CORNER
+	NORTHEAST_DIAGONAL, // NORTHWEST_DIAGONAL
+	SOUTHEAST_DIAGONAL, // NORTHEAST_DIAGONAL
+	SOUTHWEST_DIAGONAL, // SOUTHEAST_DIAGONAL
+	NORTHWEST_DIAGONAL, // SOUTHWEST_DIAGONAL
+	CARPET_CENTER, // CARPET_CENTER
+};
+
+// ...and after mirroring along the vertical axis (west <-> east)
+const BorderType border_flip_horizontal[14] = {
+	BORDER_NONE,
+	NORTH_HORIZONTAL,
+	WEST_HORIZONTAL,
+	SOUTH_HORIZONTAL,
+	EAST_HORIZONTAL,
+	NORTHEAST_CORNER,
+	NORTHWEST_CORNER,
+	SOUTHEAST_CORNER,
+	SOUTHWEST_CORNER,
+	NORTHEAST_DIAGONAL,
+	NORTHWEST_DIAGONAL,
+	SOUTHWEST_DIAGONAL,
+	SOUTHEAST_DIAGONAL,
+	CARPET_CENTER,
+};
+
+// ...and after mirroring along the horizontal axis (north <-> south)
+const BorderType border_flip_vertical[14] = {
+	BORDER_NONE,
+	SOUTH_HORIZONTAL,
+	EAST_HORIZONTAL,
+	NORTH_HORIZONTAL,
+	WEST_HORIZONTAL,
+	SOUTHWEST_CORNER,
+	SOUTHEAST_CORNER,
+	NORTHWEST_CORNER,
+	NORTHEAST_CORNER,
+	SOUTHWEST_DIAGONAL,
+	SOUTHEAST_DIAGONAL,
+	NORTHEAST_DIAGONAL,
+	NORTHWEST_DIAGONAL,
+	CARPET_CENTER,
+};
+
+// Table alignments after a clockwise quarter turn
+const BorderType table_clockwise[7] = {
+	BorderType(TABLE_EAST_END), // TABLE_NORTH_END
+	BorderType(TABLE_WEST_END), // TABLE_SOUTH_END
+	BorderType(TABLE_SOUTH_END), // TABLE_EAST_END
+	BorderType(TABLE_NORTH_END), // TABLE_WEST_END
+	BorderType(TABLE_VERTICAL), // TABLE_HORIZONTAL
+	BorderType(TABLE_HORIZONTAL), // TABLE_VERTICAL
+	BorderType(TABLE_ALONE), // TABLE_ALONE
+};
+
+// The wall alignment is the mask of the sides a wall piece connects to - the same
+// bits WallBrush::full_border_types is indexed by (see brush_tables.cpp). The names
+// in BorderType read the other way round: connecting north only is WALL_SOUTH_END,
+// because that is where the wall ends.
+enum WallConnection {
+	WALL_CONNECT_NORTH = 1,
+	WALL_CONNECT_WEST = 2,
+	WALL_CONNECT_EAST = 4,
+	WALL_CONNECT_SOUTH = 8,
+};
+
+int rotateWallMaskClockwise(int mask) {
+	int rotated = 0;
+	if (mask & WALL_CONNECT_NORTH) {
+		rotated |= WALL_CONNECT_EAST;
+	}
+	if (mask & WALL_CONNECT_EAST) {
+		rotated |= WALL_CONNECT_SOUTH;
+	}
+	if (mask & WALL_CONNECT_SOUTH) {
+		rotated |= WALL_CONNECT_WEST;
+	}
+	if (mask & WALL_CONNECT_WEST) {
+		rotated |= WALL_CONNECT_NORTH;
+	}
+	return rotated;
+}
+
+int mirrorWallMask(int mask, bool horizontal) {
+	const int keep = horizontal ? (WALL_CONNECT_NORTH | WALL_CONNECT_SOUTH) : (WALL_CONNECT_EAST | WALL_CONNECT_WEST);
+	const int swap_a = horizontal ? WALL_CONNECT_EAST : WALL_CONNECT_NORTH;
+	const int swap_b = horizontal ? WALL_CONNECT_WEST : WALL_CONNECT_SOUTH;
+
+	int mirrored = mask & keep;
+	if (mask & swap_a) {
+		mirrored |= swap_b;
+	}
+	if (mask & swap_b) {
+		mirrored |= swap_a;
+	}
+	return mirrored;
+}
+
+// item id -> the autoborder it belongs to, built on first use
+std::map<uint16_t, const AutoBorder*> border_item_lookup;
+bool border_item_lookup_built = false;
+
+const AutoBorder* findAutoBorderForItem(uint16_t item_id) {
+	if (!border_item_lookup_built) {
+		for (uint32_t border_id : g_brushes.getAutoBorderIds()) {
+			const AutoBorder* border = g_brushes.getAutoBorder(border_id);
+			if (!border) {
+				continue;
+			}
+			for (int edge = NORTH_HORIZONTAL; edge < 13; ++edge) {
+				if (border->tiles[edge] != 0) {
+					border_item_lookup.emplace(static_cast<uint16_t>(border->tiles[edge]), border);
+				}
+			}
+		}
+		border_item_lookup_built = true;
+	}
+
+	auto it = border_item_lookup.find(item_id);
+	return it == border_item_lookup.end() ? nullptr : it->second;
+}
+
+bool transformBorderItem(Item* item, MapTransform transform) {
+	const uint16_t item_id = item->getID();
+	const AutoBorder* border = findAutoBorderForItem(item_id);
+	if (!border) {
+		return false;
+	}
+
+	// The edge this item sits on inside its border. An item can be listed under
+	// several edges, the first match is the one we can map back from.
+	int edge = BORDER_NONE;
+	for (int i = NORTH_HORIZONTAL; i < 13; ++i) {
+		if (border->tiles[i] == item_id) {
+			edge = i;
+			break;
+		}
+	}
+
+	if (edge == BORDER_NONE) {
+		return false;
+	}
+
+	const BorderType new_edge = transformBorderAlignment(BorderType(edge), transform);
+	const uint32_t new_id = border->tiles[new_edge];
+	if (new_id == 0 || new_id == item_id) {
+		return false;
+	}
+
+	item->setID(static_cast<uint16_t>(new_id));
+	return true;
+}
+
+bool transformWallItem(Item* item, MapTransform transform) {
+	WallBrush* wall = item->getWallBrush();
+	if (!wall) {
+		return false;
+	}
+
+	const BorderType alignment = item->getBorderAlignment();
+	const BorderType new_alignment = transformWallAlignment(alignment, transform);
+	if (new_alignment == alignment) {
+		return false;
+	}
+
+	uint16_t new_id = 0;
+	if (item->isBrushDoor()) {
+		// Doors and windows stay doors and windows, they just turn with the wall
+		const ::DoorType door_type = wall->getDoorTypeFromID(item->getID());
+		new_id = wall->findMatchingDoorItem(new_alignment, door_type, item->isOpen(), g_items[item->getID()].isLocked);
+	} else {
+		new_id = wall->getWallItemId(new_alignment);
+	}
+
+	if (new_id == 0 || new_id == item->getID()) {
+		return false;
+	}
+
+	item->setID(new_id);
+	return true;
+}
+
+bool transformCarpetItem(Item* item, MapTransform transform) {
+	CarpetBrush* carpet = item->getCarpetBrush();
+	if (!carpet) {
+		return false;
+	}
+
+	const BorderType alignment = carpet->getCarpetAlignment(item->getID());
+	const BorderType new_alignment = transformBorderAlignment(alignment, transform);
+	if (new_alignment == alignment) {
+		return false;
+	}
+
+	const uint16_t new_id = carpet->getCarpetItemId(new_alignment);
+	if (new_id == 0 || new_id == item->getID()) {
+		return false;
+	}
+
+	item->setID(new_id);
+	return true;
+}
+
+bool transformTableItem(Item* item, MapTransform transform) {
+	TableBrush* table = item->getTableBrush();
+	if (!table) {
+		return false;
+	}
+
+	const BorderType alignment = table->getTableAlignment(item->getID());
+	const BorderType new_alignment = transformTableAlignment(alignment, transform);
+	if (new_alignment == alignment) {
+		return false;
+	}
+
+	const uint16_t new_id = table->getTableItemId(new_alignment);
+	if (new_id == 0 || new_id == item->getID()) {
+		return false;
+	}
+
+	item->setID(new_id);
+	return true;
+}
+
+} // namespace
+
+BorderType transformBorderAlignment(BorderType alignment, MapTransform transform) {
+	if (alignment <= BORDER_NONE || alignment > CARPET_CENTER) {
+		return alignment;
+	}
+
+	switch (transform) {
+		case MapTransform::RotateClockwise:
+			return border_clockwise[alignment];
+		case MapTransform::RotateCounterClockwise:
+			// Three quarter turns clockwise
+			return border_clockwise[border_clockwise[border_clockwise[alignment]]];
+		case MapTransform::FlipHorizontal:
+			return border_flip_horizontal[alignment];
+		case MapTransform::FlipVertical:
+			return border_flip_vertical[alignment];
+	}
+	return alignment;
+}
+
+BorderType transformWallAlignment(BorderType alignment, MapTransform transform) {
+	const int mask = static_cast<int>(alignment);
+	if (mask < 0 || mask > WALL_INTERSECTION) {
+		// WALL_UNTOUCHABLE and anything unknown is left alone
+		return alignment;
+	}
+
+	switch (transform) {
+		case MapTransform::RotateClockwise:
+			return BorderType(rotateWallMaskClockwise(mask));
+		case MapTransform::RotateCounterClockwise:
+			return BorderType(rotateWallMaskClockwise(rotateWallMaskClockwise(rotateWallMaskClockwise(mask))));
+		case MapTransform::FlipHorizontal:
+			return BorderType(mirrorWallMask(mask, true));
+		case MapTransform::FlipVertical:
+			return BorderType(mirrorWallMask(mask, false));
+	}
+	return alignment;
+}
+
+BorderType transformTableAlignment(BorderType alignment, MapTransform transform) {
+	const int index = static_cast<int>(alignment);
+	if (index < TABLE_NORTH_END || index > TABLE_ALONE) {
+		return alignment;
+	}
+
+	switch (transform) {
+		case MapTransform::RotateClockwise:
+			return table_clockwise[index];
+		case MapTransform::RotateCounterClockwise:
+			return table_clockwise[table_clockwise[table_clockwise[index]]];
+		case MapTransform::FlipHorizontal:
+			if (index == TABLE_EAST_END) {
+				return BorderType(TABLE_WEST_END);
+			}
+			if (index == TABLE_WEST_END) {
+				return BorderType(TABLE_EAST_END);
+			}
+			return alignment;
+		case MapTransform::FlipVertical:
+			if (index == TABLE_NORTH_END) {
+				return BorderType(TABLE_SOUTH_END);
+			}
+			if (index == TABLE_SOUTH_END) {
+				return BorderType(TABLE_NORTH_END);
+			}
+			return alignment;
+	}
+	return alignment;
+}
+
+bool transformItemOrientation(Item* item, MapTransform transform) {
+	if (!item) {
+		return false;
+	}
+
+	// Border pieces, walls, carpets and tables have a counterpart for every
+	// orientation - swap to the one matching the transformed layout
+	if (item->isBorder() && transformBorderItem(item, transform)) {
+		return true;
+	}
+
+	if (item->isWall() && transformWallItem(item, transform)) {
+		return true;
+	}
+
+	if (item->isCarpet() && transformCarpetItem(item, transform)) {
+		return true;
+	}
+
+	if (item->isTable() && transformTableItem(item, transform)) {
+		return true;
+	}
+
+	// Everything else can only follow a rotation if the item type says it can
+	const int steps = itemRotationSteps(transform);
+	if (steps == 0 || !item->isRoteable()) {
+		return false;
+	}
+
+	for (int i = 0; i < steps; ++i) {
+		item->doRotate();
+	}
+	return true;
+}
+
+bool reconnectTileWalls(BaseMap* map, Tile* tile) {
+	if (!map || !tile) {
+		return false;
+	}
+
+	const Position pos = tile->getPosition();
+	bool changed = false;
+	BorderType last_alignment = BORDER_NONE;
+	bool has_last_alignment = false;
+
+	for (Item* item : tile->items) {
+		if (!item->isWall()) {
+			continue;
+		}
+
+		WallBrush* wall = item->getWallBrush();
+		if (!wall || item->getWallAlignment() == WALL_UNTOUCHABLE) {
+			continue;
+		}
+
+		BorderType alignment;
+		if (wall->isWallDecoration()) {
+			// Decorations sit on top of the wall below them and follow its alignment
+			if (!has_last_alignment) {
+				continue;
+			}
+			alignment = last_alignment;
+		} else {
+			// Which of the four neighbours carry a wall this one connects to
+			int mask = 0;
+			if (WallBrush::tileHasConnectableWall(map->getTile(pos.x, pos.y - 1, pos.z), wall)) {
+				mask |= WALL_CONNECT_NORTH;
+			}
+			if (WallBrush::tileHasConnectableWall(map->getTile(pos.x - 1, pos.y, pos.z), wall)) {
+				mask |= WALL_CONNECT_WEST;
+			}
+			if (WallBrush::tileHasConnectableWall(map->getTile(pos.x + 1, pos.y, pos.z), wall)) {
+				mask |= WALL_CONNECT_EAST;
+			}
+			if (WallBrush::tileHasConnectableWall(map->getTile(pos.x, pos.y + 1, pos.z), wall)) {
+				mask |= WALL_CONNECT_SOUTH;
+			}
+
+			alignment = BorderType(WallBrush::full_border_types[mask]);
+			last_alignment = alignment;
+			has_last_alignment = true;
+		}
+
+		if (item->getWallAlignment() == alignment) {
+			continue;
+		}
+
+		uint16_t new_id = 0;
+		if (item->isBrushDoor()) {
+			const ::DoorType door_type = wall->getDoorTypeFromID(item->getID());
+			new_id = wall->findMatchingDoorItem(alignment, door_type, item->isOpen(), g_items[item->getID()].isLocked);
+		} else {
+			new_id = wall->getWallItemId(alignment);
+		}
+
+		// No piece for this shape (many wall sets only define one corner) - the piece
+		// that is already there is the closest thing the brush has, so keep it
+		if (new_id == 0 || new_id == item->getID()) {
+			continue;
+		}
+
+		item->setID(new_id);
+		changed = true;
+	}
+
+	return changed;
+}
+
+void resetBorderItemLookup() {
+	border_item_lookup.clear();
+	border_item_lookup_built = false;
 }

@@ -131,6 +131,30 @@ void TableBrush::undraw(BaseMap* map, Tile* t) {
 	}
 }
 
+BorderType TableBrush::getTableAlignment(uint16_t id) const {
+	for (int32_t alignment = 0; alignment < 7; ++alignment) {
+		for (const TableType& tableType : table_items[alignment].items) {
+			if (tableType.item_id == id) {
+				return static_cast<BorderType>(alignment);
+			}
+		}
+	}
+	return static_cast<BorderType>(TABLE_ALONE);
+}
+
+uint16_t TableBrush::getTableItemId(BorderType alignment) const {
+	const int32_t index = static_cast<int32_t>(alignment);
+	if (index < 0 || index >= 7) {
+		return 0;
+	}
+
+	const TableNode& node = table_items[index];
+	if (node.items.empty()) {
+		return 0;
+	}
+	return node.items.front().item_id;
+}
+
 void TableBrush::draw(BaseMap* map, Tile* tile, void* parameter) {
 	undraw(map, tile); // Remove old
 

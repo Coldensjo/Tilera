@@ -341,6 +341,8 @@ public:
 	bool IsPasting() const {
 		return pasting;
 	}
+	// Rotates/mirrors the pending paste preview. Returns false when nothing is being pasted.
+	bool TransformPaste(MapTransform transform);
 
 	bool CanUndo();
 	bool CanRedo();

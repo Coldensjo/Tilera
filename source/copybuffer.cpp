@@ -21,6 +21,7 @@
 #include "editor.h"
 #include "gui.h"
 #include "creature.h"
+#include "brush.h"
 
 CopyBuffer::CopyBuffer() :
 	tiles(newd BaseMap()) {
@@ -338,6 +339,70 @@ void CopyBuffer::paste(Editor& editor, const Position& toPosition) {
 	}
 
 	editor.addBatch(batchAction);
+}
+
+bool CopyBuffer::transform(MapTransform transform) {
+	if (!canPaste()) {
+		return false;
+	}
+
+	// Bounding box of the buffered area
+	Position min_pos(0x10000, 0x10000, 0);
+	Position max_pos(0, 0, 0);
+	for (MapIterator it = tiles->begin(); it != tiles->end(); ++it) {
+		if (!(*it)->get()) {
+			continue;
+		}
+		const Position pos = (*it)->getPosition();
+		if (pos.x < min_pos.x) {
+			min_pos.x = pos.x;
+		}
+		if (pos.y < min_pos.y) {
+			min_pos.y = pos.y;
+		}
+		if (pos.x > max_pos.x) {
+			max_pos.x = pos.x;
+		}
+		if (pos.y > max_pos.y) {
+			max_pos.y = pos.y;
+		}
+	}
+
+	// Rebuild the buffer with every tile moved onto its transformed position
+	BaseMap* transformed = newd BaseMap();
+	for (MapIterator it = tiles->begin(); it != tiles->end(); ++it) {
+		Tile* buffer_tile = (*it)->get();
+		if (!buffer_tile) {
+			continue;
+		}
+
+		const Position new_pos = transformPosition(buffer_tile->getPosition(), transform, min_pos, max_pos);
+		TileLocation* location = transformed->createTileL(new_pos);
+		Tile* new_tile = buffer_tile->deepCopy(*transformed);
+		new_tile->setLocation(location);
+
+		// Borders, walls, carpets and tables follow the new orientation
+		if (new_tile->ground) {
+			transformItemOrientation(new_tile->ground, transform);
+		}
+		for (Item* item : new_tile->items) {
+			transformItemOrientation(item, transform);
+		}
+
+		transformed->setTile(new_tile);
+	}
+
+	// No wall re-connect pass here on purpose: a rigid rotation of a consistent wall
+	// network stays consistent, and the buffer has no neighbours outside itself to
+	// derive from - walls along its edge would collapse into ends and poles.
+
+	delete tiles;
+	tiles = transformed;
+
+	// The upper-left corner of the area is anchored by the transformation
+	copyPos.x = min_pos.x;
+	copyPos.y = min_pos.y;
+	return true;
 }
 
 bool CopyBuffer::canPaste() const {

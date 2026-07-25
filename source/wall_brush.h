@@ -60,6 +60,8 @@ public:
 	bool hasWall(Item* item);
 	::DoorType getDoorTypeFromID(uint16_t id);
 	uint16_t findMatchingDoorItem(BorderType alignment, ::DoorType doorType, bool open, bool prefLocked) const;
+	// First item registered for this alignment, or 0 when the wall has none
+	uint16_t getWallItemId(BorderType alignment) const;
 
 	virtual bool canSmear() const {
 		return false;

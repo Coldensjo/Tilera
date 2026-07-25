@@ -885,6 +885,29 @@ void WallDecorationBrush::draw(BaseMap* map, Tile* tile, void* parameter) {
 	}
 }
 
+uint16_t WallBrush::getWallItemId(BorderType alignment) const {
+	const int index = static_cast<int>(alignment);
+	if (index < 0 || index >= 17) {
+		return 0;
+	}
+
+	const WallNode& node = wall_items[index];
+	if (node.items.empty()) {
+		return 0;
+	}
+
+	// Chances are cumulative, so the first entry that raises the running total is the
+	// first item that can actually be drawn - wall sets list legacy ids at chance 0
+	int previous_chance = 0;
+	for (const WallType& wallType : node.items) {
+		if (wallType.chance > previous_chance) {
+			return wallType.id;
+		}
+		previous_chance = wallType.chance;
+	}
+	return node.items.front().id;
+}
+
 void WallBrush::replaceWallItems(int alignment, const std::vector<std::pair<uint16_t, int>>& items) {
 	if (alignment < 0 || alignment >= 17) {
 		return;

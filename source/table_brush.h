@@ -61,6 +61,10 @@ public:
 		return true;
 	}
 
+	// The alignment an item is registered under, and the first item of an alignment
+	BorderType getTableAlignment(uint16_t id) const;
+	uint16_t getTableItemId(BorderType alignment) const;
+
 protected:
 	struct TableType {
 		TableType() : chance(0), item_id(0) { }

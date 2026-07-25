@@ -64,6 +64,10 @@ public:
 		name = newName;
 	}
 
+	// The alignment an item is registered under, and the first item of an alignment
+	BorderType getCarpetAlignment(uint16_t id) const;
+	uint16_t getCarpetItemId(BorderType alignment) const;
+
 	bool hasFriendGround(const Tile* tile) const;
 	bool hasMatchingNeighbour(BaseMap* map, uint32_t x, uint32_t y, uint32_t z) const;
 

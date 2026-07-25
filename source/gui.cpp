@@ -2081,13 +2081,27 @@ void GUI::StartPasting() {
 	if (GetCurrentEditor() && GetCurrentEditor()->IsClipboardAllowed()) {
 		pasting = true;
 		secondary_map = &copybuffer.getBufferMap();
+		// The transformation menu items apply to the pending paste while it is held
+		UpdateMenus();
 	}
+}
+
+bool GUI::TransformPaste(MapTransform transform) {
+	if (!pasting || !copybuffer.transform(transform)) {
+		return false;
+	}
+
+	// The copybuffer rebuilds its map when transformed, re-point the preview at it
+	secondary_map = &copybuffer.getBufferMap();
+	RefreshView();
+	return true;
 }
 
 void GUI::EndPasting() {
 	if (pasting) {
 		pasting = false;
 		secondary_map = nullptr;
+		UpdateMenus();
 	}
 }
 

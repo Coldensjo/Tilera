@@ -134,6 +134,8 @@ public: // Functions
 	// Some simple actions that work on the map (these will work through the undo queue)
 	// Moves the selected area by the offset
 	void moveSelection(Position offset);
+	// Rotates/mirrors the selected area inside its own bounding box
+	void transformSelection(MapTransform transform);
 	// Deletes all selected items
 	void destroySelection();
 	void protectItemProperties(Item* item);

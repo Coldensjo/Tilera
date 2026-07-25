@@ -113,6 +113,11 @@ public:
 	void OnBrowseTile(wxCommandEvent& event);
 	void OnPaste(wxCommandEvent& event);
 	void OnDelete(wxCommandEvent& event);
+	void ApplyTransform(MapTransform transform);
+	void OnRotateSelectionClockwise(wxCommandEvent& event);
+	void OnRotateSelectionCounterClockwise(wxCommandEvent& event);
+	void OnFlipSelectionHorizontal(wxCommandEvent& event);
+	void OnFlipSelectionVertical(wxCommandEvent& event);
 	void OnAddComment(wxCommandEvent& event);
 	void OnRemoveComment(wxCommandEvent& event);
 	void OnPingHere(wxCommandEvent& event);

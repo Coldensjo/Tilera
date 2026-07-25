@@ -321,6 +321,30 @@ void CarpetBrush::doCarpets(BaseMap* map, Tile* tile) {
 	}
 }
 
+BorderType CarpetBrush::getCarpetAlignment(uint16_t id) const {
+	for (int32_t alignment = 0; alignment < 14; ++alignment) {
+		for (const CarpetType& carpetType : carpet_items[alignment].items) {
+			if (carpetType.id == id) {
+				return static_cast<BorderType>(alignment);
+			}
+		}
+	}
+	return BORDER_NONE;
+}
+
+uint16_t CarpetBrush::getCarpetItemId(BorderType alignment) const {
+	const int32_t index = static_cast<int32_t>(alignment);
+	if (index < 0 || index >= 14) {
+		return 0;
+	}
+
+	const CarpetNode& node = carpet_items[index];
+	if (node.items.empty()) {
+		return 0;
+	}
+	return node.items.front().id;
+}
+
 uint16_t CarpetBrush::getRandomCarpet(BorderType alignment) {
 	static const auto findRandomCarpet = [](const CarpetNode& node) -> uint16_t {
 		int32_t chance = random(1, node.total_chance);

@@ -498,4 +498,29 @@ public:
 	bool ground;
 };
 
+//=============================================================================
+// Orientation remapping, used when an area of the map is rotated or mirrored
+
+class Item;
+
+// Border/carpet edge (BorderType), wall connection mask and table alignment as
+// they end up after the given transformation
+BorderType transformBorderAlignment(BorderType alignment, MapTransform transform);
+BorderType transformWallAlignment(BorderType alignment, MapTransform transform);
+BorderType transformTableAlignment(BorderType alignment, MapTransform transform);
+
+// Reorients a single item so it still fits its surroundings after the area it sits
+// on was rotated/mirrored - border pieces, walls (and wall doors), carpets and
+// tables swap to their counterpart, other rotatable items step their orientation.
+// Returns true when the item changed.
+bool transformItemOrientation(Item* item, MapTransform transform);
+
+// Re-picks the wall pieces on this tile from the walls actually around it, changing
+// only item ids - doors stay doors and item attributes are kept, unlike Tile::wallize
+// which recreates the items from scratch. Returns true when something changed.
+bool reconnectTileWalls(BaseMap* map, Tile* tile);
+
+// Drops the cached item -> autoborder lookup (materials were reloaded)
+void resetBorderItemLookup();
+
 #endif

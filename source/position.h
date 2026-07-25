@@ -129,6 +129,49 @@ inline Position abs(const Position& position) {
 	);
 }
 
+// Geometric transformations that can be applied to a rectangular area of the map
+// (the selection, or the pending paste in the copybuffer)
+enum class MapTransform {
+	RotateClockwise,
+	RotateCounterClockwise,
+	FlipHorizontal,
+	FlipVertical,
+};
+
+// Maps a position inside the [min_pos, max_pos] bounding box onto its transformed
+// position. The upper-left corner stays anchored; rotations swap width and height.
+inline Position transformPosition(const Position& pos, MapTransform transform, const Position& min_pos, const Position& max_pos) {
+	const int span_x = max_pos.x - min_pos.x;
+	const int span_y = max_pos.y - min_pos.y;
+	const int rx = pos.x - min_pos.x;
+	const int ry = pos.y - min_pos.y;
+
+	switch (transform) {
+		case MapTransform::RotateClockwise:
+			return Position(min_pos.x + (span_y - ry), min_pos.y + rx, pos.z);
+		case MapTransform::RotateCounterClockwise:
+			return Position(min_pos.x + ry, min_pos.y + (span_x - rx), pos.z);
+		case MapTransform::FlipHorizontal:
+			return Position(min_pos.x + (span_x - rx), pos.y, pos.z);
+		case MapTransform::FlipVertical:
+			return Position(pos.x, min_pos.y + (span_y - ry), pos.z);
+	}
+	return pos;
+}
+
+// How many clockwise orientation steps rotatable items (chairs, statues, ...) take
+// so that they turn along with the area. Flips leave item orientation untouched.
+inline int itemRotationSteps(MapTransform transform) {
+	switch (transform) {
+		case MapTransform::RotateClockwise:
+			return 1;
+		case MapTransform::RotateCounterClockwise:
+			return 3;
+		default:
+			return 0;
+	}
+}
+
 typedef std::vector<Position> PositionVector;
 typedef std::list<Position> PositionList;
 

@@ -504,6 +504,10 @@ EVT_MENU(MAP_POPUP_MENU_COPY_RAID_AREA, MapCanvas::OnCopyRaidArea)
 EVT_MENU(MAP_POPUP_MENU_EXPORT_SPRITESHEET, MapCanvas::OnExportSpritesheet)
 EVT_MENU(MAP_POPUP_MENU_PASTE, MapCanvas::OnPaste)
 EVT_MENU(MAP_POPUP_MENU_DELETE, MapCanvas::OnDelete)
+EVT_MENU(MAP_POPUP_MENU_ROTATE_SELECTION_CW, MapCanvas::OnRotateSelectionClockwise)
+EVT_MENU(MAP_POPUP_MENU_ROTATE_SELECTION_CCW, MapCanvas::OnRotateSelectionCounterClockwise)
+EVT_MENU(MAP_POPUP_MENU_FLIP_SELECTION_HORIZONTAL, MapCanvas::OnFlipSelectionHorizontal)
+EVT_MENU(MAP_POPUP_MENU_FLIP_SELECTION_VERTICAL, MapCanvas::OnFlipSelectionVertical)
 EVT_MENU(MAP_POPUP_MENU_ADD_COMMENT, MapCanvas::OnAddComment)
 EVT_MENU(MAP_POPUP_MENU_REMOVE_COMMENT, MapCanvas::OnRemoveComment)
 EVT_MENU(MAP_POPUP_MENU_PING_HERE, MapCanvas::OnPingHere)
@@ -2405,6 +2409,9 @@ void MapCanvas::OnKeyDown(wxKeyEvent& event) {
 				event.Skip();
 				break;
 			}
+			if (g_gui.TransformPaste(MapTransform::RotateCounterClockwise)) {
+				break;
+			}
 			if (Brush* brush = g_gui.GetCurrentBrush()) {
 				if (brush->isDoodad()) {
 					const int old_variation = g_gui.GetBrushVariation();
@@ -2426,6 +2433,9 @@ void MapCanvas::OnKeyDown(wxKeyEvent& event) {
 			if (event.ControlDown() || event.AltDown()) {
 				// Ctrl+X is the Cut accelerator - don't eat it.
 				event.Skip();
+				break;
+			}
+			if (g_gui.TransformPaste(MapTransform::RotateClockwise)) {
 				break;
 			}
 			if (Brush* brush = g_gui.GetCurrentBrush()) {
@@ -3087,6 +3097,32 @@ void MapCanvas::OnBrowseTile(wxCommandEvent& WXUNUSED(event)) {
 	w->Destroy();
 }
 
+void MapCanvas::ApplyTransform(MapTransform transform) {
+	// A pending paste takes precedence, so it can be oriented before being placed
+	if (g_gui.TransformPaste(transform)) {
+		return;
+	}
+
+	editor.transformSelection(transform);
+	g_gui.RefreshView();
+}
+
+void MapCanvas::OnRotateSelectionClockwise(wxCommandEvent& WXUNUSED(event)) {
+	ApplyTransform(MapTransform::RotateClockwise);
+}
+
+void MapCanvas::OnRotateSelectionCounterClockwise(wxCommandEvent& WXUNUSED(event)) {
+	ApplyTransform(MapTransform::RotateCounterClockwise);
+}
+
+void MapCanvas::OnFlipSelectionHorizontal(wxCommandEvent& WXUNUSED(event)) {
+	ApplyTransform(MapTransform::FlipHorizontal);
+}
+
+void MapCanvas::OnFlipSelectionVertical(wxCommandEvent& WXUNUSED(event)) {
+	ApplyTransform(MapTransform::FlipVertical);
+}
+
 void MapCanvas::OnRotateItem(wxCommandEvent& WXUNUSED(event)) {
 	Tile* tile = editor.selection.getSelectedTile();
 
@@ -3611,6 +3647,15 @@ void MapPopupMenu::Update(const Position& cursorTile) {
 
 	wxMenuItem* deleteItem = Append(MAP_POPUP_MENU_DELETE, "&Delete\tDEL", "Removes all seleceted items");
 	deleteItem->Enable(anything_selected);
+
+	if (anything_selected) {
+		wxMenu* transformMenu = newd wxMenu;
+		transformMenu->Append(MAP_POPUP_MENU_ROTATE_SELECTION_CW, "Rotate &Clockwise\tCTRL+R", "Rotate the selected area 90 degrees clockwise");
+		transformMenu->Append(MAP_POPUP_MENU_ROTATE_SELECTION_CCW, "Rotate Counter-Clock&wise\tCTRL+ALT+R", "Rotate the selected area 90 degrees counter-clockwise");
+		transformMenu->Append(MAP_POPUP_MENU_FLIP_SELECTION_HORIZONTAL, "Flip &Horizontally\tCTRL+SHIFT+H", "Mirror the selected area along its vertical axis");
+		transformMenu->Append(MAP_POPUP_MENU_FLIP_SELECTION_VERTICAL, "Flip &Vertically\tCTRL+SHIFT+V", "Mirror the selected area along its horizontal axis");
+		AppendSubMenu(transformMenu, "&Transform", "Rotate or flip the selected area");
+	}
 
 	const bool has_selected_items = selectionHasSelectedItems(editor.selection);
 	const bool allow_replace = has_selected_items && !editor.IsLiveClient();

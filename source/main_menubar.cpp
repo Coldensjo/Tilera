@@ -116,6 +116,10 @@ MainMenuBar::MainMenuBar(MainFrame* frame) : frame(frame) {
 	MAKE_ACTION(RANDOMIZE_MAP, wxITEM_NORMAL, OnRandomizeMap);
 	MAKE_ACTION(MOVE_SELECTION_UP, wxITEM_NORMAL, OnMoveSelectionUp);
 	MAKE_ACTION(MOVE_SELECTION_DOWN, wxITEM_NORMAL, OnMoveSelectionDown);
+	MAKE_ACTION(ROTATE_SELECTION_CW, wxITEM_NORMAL, OnRotateSelectionClockwise);
+	MAKE_ACTION(ROTATE_SELECTION_CCW, wxITEM_NORMAL, OnRotateSelectionCounterClockwise);
+	MAKE_ACTION(FLIP_SELECTION_HORIZONTAL, wxITEM_NORMAL, OnFlipSelectionHorizontal);
+	MAKE_ACTION(FLIP_SELECTION_VERTICAL, wxITEM_NORMAL, OnFlipSelectionVertical);
 	MAKE_ACTION(GOTO_PREVIOUS_POSITION, wxITEM_NORMAL, OnGotoPreviousPosition);
 	MAKE_ACTION(GOTO_POSITION, wxITEM_NORMAL, OnGotoPosition);
 	MAKE_ACTION(JUMP_TO_BRUSH, wxITEM_NORMAL, OnJumpToBrush);
@@ -480,6 +484,12 @@ void MainMenuBar::Update() {
 	EnableItem(RANDOMIZE_MAP, is_local);
 	EnableItem(MOVE_SELECTION_UP, has_map && has_selection);
 	EnableItem(MOVE_SELECTION_DOWN, has_map && has_selection);
+	// Transformations work on the selection, or on a pending paste while one is held
+	const bool can_transform = has_map && (has_selection || g_gui.IsPasting());
+	EnableItem(ROTATE_SELECTION_CW, can_transform);
+	EnableItem(ROTATE_SELECTION_CCW, can_transform);
+	EnableItem(FLIP_SELECTION_HORIZONTAL, can_transform);
+	EnableItem(FLIP_SELECTION_VERTICAL, can_transform);
 
 	EnableItem(GOTO_PREVIOUS_POSITION, has_map);
 	EnableItem(GOTO_POSITION, has_map);
@@ -1808,6 +1818,37 @@ void MainMenuBar::OnMoveSelectionDown(wxCommandEvent& WXUNUSED(event)) {
 
 	g_gui.GetCurrentEditor()->moveSelection(Position(0, 0, -1));
 	g_gui.RefreshView();
+}
+
+// While a paste is pending the transformation applies to the paste preview,
+// otherwise it applies to the selected area on the map.
+static void ApplyMapTransform(MapTransform transform) {
+	if (!g_gui.IsEditorOpen()) {
+		return;
+	}
+
+	if (g_gui.TransformPaste(transform)) {
+		return;
+	}
+
+	g_gui.GetCurrentEditor()->transformSelection(transform);
+	g_gui.RefreshView();
+}
+
+void MainMenuBar::OnRotateSelectionClockwise(wxCommandEvent& WXUNUSED(event)) {
+	ApplyMapTransform(MapTransform::RotateClockwise);
+}
+
+void MainMenuBar::OnRotateSelectionCounterClockwise(wxCommandEvent& WXUNUSED(event)) {
+	ApplyMapTransform(MapTransform::RotateCounterClockwise);
+}
+
+void MainMenuBar::OnFlipSelectionHorizontal(wxCommandEvent& WXUNUSED(event)) {
+	ApplyMapTransform(MapTransform::FlipHorizontal);
+}
+
+void MainMenuBar::OnFlipSelectionVertical(wxCommandEvent& WXUNUSED(event)) {
+	ApplyMapTransform(MapTransform::FlipVertical);
 }
 
 void MainMenuBar::OnJumpToBrush(wxCommandEvent& WXUNUSED(event)) {
