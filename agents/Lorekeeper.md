@@ -191,7 +191,8 @@ Before finishing, build the solution (Windows-only, **Release | x64**) and confi
 $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
   -latest -requires Microsoft.Component.MSBuild `
   -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
-& $msbuild "vcproj\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+& $msbuild "vcproj\Editor\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+& $msbuild "vcproj\MapServer\MapServer.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
 ```
 
 - [ ] Build succeeds with no errors (`Editor_x64.exe` refreshed in repo root)

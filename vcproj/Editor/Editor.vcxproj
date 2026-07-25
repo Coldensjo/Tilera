@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -11,11 +11,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</ProjectGuid>
-    <RootNamespace>MapServer</RootNamespace>
+    <ProjectGuid>{7AA6C5AC-C8C4-40EF-A0B3-3569B9819163}</ProjectGuid>
+    <RootNamespace>Editor</RootNamespace>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>MapServer</ProjectName>
+    <ProjectName>Editor</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -51,14 +51,14 @@
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <TargetName>MapServer_x64</TargetName>
+    <TargetName>$(ProjectName)_x64</TargetName>
     <OutDir>$(MSBuildThisFileDirectory)..\..\</OutDir>
-    <IntDir>$(Platform)\$(Configuration)\MapServer\</IntDir>
+    <IntDir>$(Platform)\$(Configuration)\Editor\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <TargetName>MapServer_x64</TargetName>
+    <TargetName>$(ProjectName)_x64</TargetName>
     <OutDir>$(MSBuildThisFileDirectory)..\..\</OutDir>
-    <IntDir>$(Platform)\$(Configuration)\MapServer\</IntDir>
+    <IntDir>$(Platform)\$(Configuration)\Editor\</IntDir>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
@@ -75,7 +75,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEBUG;__DEBUG__;__LIVE_SERVER__;FREEGLUT_STATIC;LIBARCHIVE_STATIC;wxMSVC_VERSION_AUTO;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;__DEBUG__;FREEGLUT_STATIC;LIBARCHIVE_STATIC;wxMSVC_VERSION_AUTO;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -93,11 +93,11 @@
     <Link>
       <AdditionalDependencies>comctl32.lib;WS2_32.lib;opengl32.lib;glu32.lib;winmm.lib;crypt32.lib;rpcrt4.lib;xmllite.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <LargeAddressAware>true</LargeAddressAware>
       <OptimizeReferences>false</OptimizeReferences>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\dependencies\vs\lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(MSBuildThisFileDirectory)..\..\dependencies\vs\lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -107,7 +107,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;__RELEASE__;__LIVE_SERVER__;FREEGLUT_STATIC;LIBARCHIVE_STATIC;wxMSVC_VERSION_AUTO;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;__RELEASE__;FREEGLUT_STATIC;LIBARCHIVE_STATIC;wxMSVC_VERSION_AUTO;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -124,11 +124,11 @@
     <Link>
       <AdditionalDependencies>comctl32.lib;WS2_32.lib;opengl32.lib;glu32.lib;winmm.lib;crypt32.lib;rpcrt4.lib;xmllite.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <LargeAddressAware>true</LargeAddressAware>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\dependencies\vs\lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(MSBuildThisFileDirectory)..\..\dependencies\vs\lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -136,8 +136,8 @@
     <ClCompile Include="..\..\source\edit_brush_window.cpp" />
     <ClCompile Include="..\..\source\edit_tileset_window.cpp" />
     <ClCompile Include="..\..\source\add_item_window.cpp" />
-    <ClCompile Include="..\..\source\add_to_tileset_window.cpp" />
     <ClCompile Include="..\..\source\add_tileset_window.cpp" />
+    <ClCompile Include="..\..\source\add_to_tileset_window.cpp" />
     <ClCompile Include="..\..\source\wall_creator_window.cpp" />
     <ClCompile Include="..\..\source\replace_wall_window.cpp" />
     <ClCompile Include="..\..\source\replace_ground_window.cpp" />
@@ -154,8 +154,8 @@
     <ClInclude Include="..\..\source\edit_brush_window.h" />
     <ClInclude Include="..\..\source\edit_tileset_window.h" />
     <ClInclude Include="..\..\source\add_item_window.h" />
-    <ClInclude Include="..\..\source\add_to_tileset_window.h" />
     <ClInclude Include="..\..\source\add_tileset_window.h" />
+    <ClInclude Include="..\..\source\add_to_tileset_window.h" />
     <ClInclude Include="..\..\source\wall_creator_window.h" />
     <ClInclude Include="..\..\source\replace_wall_window.h" />
     <ClInclude Include="..\..\source\replace_ground_window.h" />
@@ -364,7 +364,6 @@
     <ClInclude Include="..\..\source\live_item_blocklist.h" />
     <ClInclude Include="..\..\source\live_map_backup.h" />
     <ClInclude Include="..\..\source\live_tab.h" />
-    <ClCompile Include="..\..\source\live_server_main.cpp" />
     <ClInclude Include="..\..\source\net_connection.h" />
   </ItemGroup>
   <ItemGroup>
@@ -390,6 +389,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ResourceCompile Include="Editor.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

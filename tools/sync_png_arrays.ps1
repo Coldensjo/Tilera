@@ -119,4 +119,5 @@ Set-Content $cppPath -Value $cpp -Encoding UTF8 -NoNewline
 Set-Content $hdrPath -Value $hdr -Encoding UTF8 -NoNewline
 ""
 "Rebuild for the change to reach the executable:"
-"  msbuild vcproj\Editor.sln /p:Configuration=Release /p:Platform=x64 /m"
+"  msbuild vcproj\Editor\Editor.sln /p:Configuration=Release /p:Platform=x64 /m"
+"  msbuild vcproj\MapServer\MapServer.sln /p:Configuration=Release /p:Platform=x64 /m"

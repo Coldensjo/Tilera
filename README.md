@@ -13,10 +13,19 @@ Remere's Map Editor fork with a standalone **MapServer** for live collaborative 
 
 **Steps**
 
+The two programs have independent solutions and can be built separately:
+
+| Program | Solution | Output |
+|---------|----------|--------|
+| Map editor (GUI) | `vcproj/Editor/Editor.sln` | `Editor_x64.exe` |
+| Live server (console) | `vcproj/MapServer/MapServer.sln` | `MapServer_x64.exe` |
+
 1. Clone this repo.
-2. Open `vcproj/Editor.sln` in Visual Studio.
+2. Open `vcproj/Editor/Editor.sln` (or `vcproj/MapServer/MapServer.sln`) in Visual Studio.
 3. Select **Release | x64**.
-4. Build the solution (builds both `Editor_x64.exe` and `MapServer_x64.exe`).
+4. Build the solution. The `.exe` lands in the repo root.
+
+Build both by opening each solution in turn (they share `source/` but nothing else).
 
 ### Linux
 

@@ -59,7 +59,7 @@ Apply the refactoring:
 - **Moving to an existing class**: Add methods, move code, update callers
 - **Creating a new file**: Create `.h`/`.cpp` under `source/`, move the concern code, create a clean interface
 - **Splitting data from behavior**: Extract a data struct, convert methods to free functions
-- **Always**: Keep behavior EXACTLY the same, modernize to C++17, and add new/moved files to the Visual Studio projects under `vcproj/Project/` (`Editor` and `MapServer` share most of `source/`)
+- **Always**: Keep behavior EXACTLY the same, modernize to C++17, and add new/moved files to BOTH Visual Studio projects — `vcproj/Editor/Editor.vcxproj` and `vcproj/MapServer/MapServer.vcxproj` (separate solutions, shared `source/`)
 
 ### 5. VERIFY
 
@@ -69,7 +69,8 @@ Build the solution with MSBuild (Windows-only, **Release | x64**):
 $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
   -latest -requires Microsoft.Component.MSBuild `
   -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
-& $msbuild "vcproj\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+& $msbuild "vcproj\Editor\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+& $msbuild "vcproj\MapServer\MapServer.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
 ```
 
 Exit code 0, zero errors, zero new warnings, behavior unchanged, `Editor_x64.exe` refreshed in the repo root. Bump `__RME_SUBVERSION__` in `source/definitions.h`.
@@ -94,7 +95,7 @@ Create PR titled `🔧 Cleaver: [Your Description]`.
 - **NEVER** leave work incomplete
 - **NEVER** change logic while refactoring (refactor ≠ rewrite)
 - **NEVER** introduce new pointer indirection where value types suffice
-- **ALWAYS** update the `vcproj/Project/` `.vcxproj` files when moving/creating files
+- **ALWAYS** update both `vcproj/Editor/Editor.vcxproj` and `vcproj/MapServer/MapServer.vcxproj` when moving/creating files
 - **ALWAYS** use forward declarations in headers (`rme_forward_declarations.h`)
 - **ALWAYS** modernize code to C++17 during the move
 - **ALWAYS** keep functions focused and reasonably small

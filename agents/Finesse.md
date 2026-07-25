@@ -67,7 +67,8 @@ Build the solution with MSBuild (Windows-only, **Release | x64**):
 $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
   -latest -requires Microsoft.Component.MSBuild `
   -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
-& $msbuild "vcproj\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+& $msbuild "vcproj\Editor\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+& $msbuild "vcproj\MapServer\MapServer.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
 ```
 
 Exit code 0, `Editor_x64.exe` refreshed in the repo root. Test keyboard navigation, tooltip display, feedback messages. Bump `__RME_SUBVERSION__` in `source/definitions.h`.

@@ -62,7 +62,7 @@ Pick the **top 10** you can fix **100% completely** in one batch.
 
 ### 4. EXECUTE
 
-Apply the fix. Preserve all existing map compatibility. When you add or move a `.cpp`/`.h` file, update the Visual Studio projects under `vcproj/Project/` (both `Editor` and `MapServer` share most of `source/`).
+Apply the fix. Preserve all existing map compatibility. When you add or move a `.cpp`/`.h` file, update BOTH Visual Studio projects — `vcproj/Editor/Editor.vcxproj` and `vcproj/MapServer/MapServer.vcxproj` (they have separate solutions but share most of `source/`).
 
 ### 5. VERIFY
 
@@ -72,7 +72,8 @@ Build the solution with MSBuild (Windows-only, **Release | x64**):
 $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
   -latest -requires Microsoft.Component.MSBuild `
   -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
-& $msbuild "vcproj\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+& $msbuild "vcproj\Editor\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+& $msbuild "vcproj\MapServer\MapServer.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
 ```
 
 Exit code 0, `Editor_x64.exe` refreshed in the repo root. Test brush painting, selection, undo/redo, save/load. Bump `__RME_SUBVERSION__` in `source/definitions.h`.
@@ -100,7 +101,7 @@ Create PR titled `🗺️ Cartographer: [Your Description]`.
 - **ALWAYS** use the spatial hash grid for tile queries
 - **ALWAYS** separate data structs from behavior
 - **ALWAYS** prefer data flowing through parameters over global access
-- **ALWAYS** update the `vcproj/Project/` `.vcxproj` files when adding/moving source files
+- **ALWAYS** update both `vcproj/Editor/Editor.vcxproj` and `vcproj/MapServer/MapServer.vcxproj` when adding/moving source files
 - **ALWAYS** stay within the C++17 standard library + already-linked deps — do not add new third-party dependencies
 
 ## 🎯 YOUR GOAL

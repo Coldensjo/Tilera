@@ -43,15 +43,21 @@ vcproj/Beta Release/
 vcproj/Debug/
 vcproj/Release/
 vcproj/x64/
-vcproj/Project/Beta Release/
-vcproj/Project/Debug/
-vcproj/Project/Release/
-vcproj/Project/x64/
-vcproj/Project/Editor/
+vcproj/Project/
+vcproj/Editor/Beta Release/
+vcproj/Editor/Debug/
+vcproj/Editor/Release/
+vcproj/Editor/x64/
+vcproj/MapServer/Beta Release/
+vcproj/MapServer/Debug/
+vcproj/MapServer/Release/
+vcproj/MapServer/x64/
 vcproj/Installer/Beta Release/
 vcproj/Installer/Debug/
 vcproj/Installer/Release/
-vcproj/.vs/Editor/*
+vcproj/.vs/
+vcproj/Editor/.vs/
+vcproj/MapServer/.vs/
 .vscode/
 .vs/
 

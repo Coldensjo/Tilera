@@ -1,6 +1,6 @@
 # AI agent instructions — building Tilera
 
-The canonical build is the Visual Studio solution under `vcproj/` (Windows, MSVC v143). A community/experimental Linux build also exists via `CMakeLists.txt` at the repo root (system packages instead of vcpkg; see `README.md` → Build → Linux). The Linux CMake build is not the primary target — treat `vcproj/Editor.sln` as authoritative for Editor version bumps, project-file changes, and Windows-specific behavior. When editing `source/`, keep changes portable (the codebase is a Remere's Map Editor fork and is largely cross-platform already); prefer `wxCHECK_VERSION(...)` guards over unconditionally using APIs only present in newer wxWidgets, since the Linux build currently targets wxWidgets 3.2.
+The canonical build is the pair of standalone Visual Studio solutions under `vcproj/` (Windows, MSVC v143): `vcproj/Editor/Editor.sln` and `vcproj/MapServer/MapServer.sln`. A community/experimental Linux build also exists via `CMakeLists.txt` at the repo root (system packages instead of vcpkg; see `README.md` → Build → Linux). The Linux CMake build is not the primary target — treat those two solutions as authoritative for Editor version bumps, project-file changes, and Windows-specific behavior. When editing `source/`, keep changes portable (the codebase is a Remere's Map Editor fork and is largely cross-platform already); prefer `wxCHECK_VERSION(...)` guards over unconditionally using APIs only present in newer wxWidgets, since the Linux build currently targets wxWidgets 3.2.
 
 ## Become a specialized agent
 
@@ -32,7 +32,7 @@ Rules for personas:
 
 | Item | Value |
 |------|-------|
-| Solution | `vcproj/Editor.sln` |
+| Solutions | `vcproj/Editor/Editor.sln` and `vcproj/MapServer/MapServer.sln` — **independent**, one project each |
 | Projects | `Editor` (GUI), `MapServer` (console) |
 | Platform | **x64 only** (Win32 solution configs map to x64) |
 | Preferred config | **Release \| x64** |
@@ -42,7 +42,8 @@ Rules for personas:
 | Triplet | `x64-windows-static-v143` (overlay in `triplets/`) |
 | Linkage | **Fully static** — static CRT (`/MT`) and static deps; no DLLs shipped |
 | Outputs | `Editor_x64.exe`, `MapServer_x64.exe` in **repo root** |
-| Intermediate files | `vcproj/Project/x64/{Debug\|Release}/{Editor\|MapServer}/` |
+| Intermediate files | `vcproj/Editor/x64/{Debug\|Release}/Editor/` and `vcproj/MapServer/x64/{Debug\|Release}/MapServer/` |
+| Shared between them | only `source/`, `vcpkg.json`, and `triplets/` — no shared build files |
 
 ## Prerequisites
 
@@ -72,20 +73,21 @@ Declared in `vcpkg.json`: wxwidgets, freeglut, asio, nlohmann-json, fmt, libarch
 
 ## Build — Visual Studio IDE
 
-1. Open `vcproj/Editor.sln`.
-2. Set configuration to **Release** and platform to **x64**.
-3. Build Solution (`Ctrl+Shift+B`) — builds both `Editor` and `MapServer`.
-4. Confirm outputs exist in the repo root:
-   - `Editor_x64.exe`
-   - `MapServer_x64.exe`
+Each program has its own solution — open whichever one you need:
 
-To build a single target: right-click **Editor** or **MapServer** → **Build**.
+1. Open `vcproj/Editor/Editor.sln` (map editor) **or** `vcproj/MapServer/MapServer.sln` (live server).
+2. Set configuration to **Release** and platform to **x64**.
+3. Build Solution (`Ctrl+Shift+B`).
+4. Confirm the output exists in the repo root — `Editor_x64.exe` or `MapServer_x64.exe`.
+
+Building one does **not** build the other; they no longer share a solution. Open both
+solutions (or run both command lines below) when you need both executables.
 
 ## Build — command line (preferred for agents)
 
-**Prefer building through `vcproj\Editor.sln`** (it builds both projects at once). `OutDir` is anchored to `$(MSBuildThisFileDirectory)..\..\`, so outputs always land in the **repo root** — never in `vcproj\` — no matter how the build is invoked (solution, single `.vcxproj`, or IDE).
+`OutDir` is anchored to `$(MSBuildThisFileDirectory)..\..\`, so outputs always land in the **repo root** — never under `vcproj\` — no matter how the build is invoked (solution, single `.vcxproj`, or IDE).
 
-From the **repo root**, find MSBuild with `vswhere`, then build the solution:
+From the **repo root**, find MSBuild with `vswhere`, then build whichever solution you need:
 
 ```powershell
 cd C:\path\to\Tilera   # repo root — required
@@ -94,8 +96,15 @@ $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere
   -latest -requires Microsoft.Component.MSBuild `
   -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
 
-& $msbuild "vcproj\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+# map editor
+& $msbuild "vcproj\Editor\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+
+# live server
+& $msbuild "vcproj\MapServer\MapServer.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
 ```
+
+The two builds are fully independent — separate intermediate directories, separate
+PCHs — so they can also be run concurrently.
 
 A successful build ends with lines like (paths must be under the **repo root**, not `vcproj\`):
 
@@ -147,19 +156,11 @@ change them:
 Changing the triplet or toolset invalidates the vcpkg ABI and rebuilds all ~89
 packages from source (slow — tens of minutes).
 
-### Build one project only
-
-Still use the solution file; pass `/t:` to limit the build target:
-
-```powershell
-& $msbuild "vcproj\Editor.sln" /t:Editor /p:Configuration=Release /p:Platform=x64 /m /v:minimal
-& $msbuild "vcproj\Editor.sln" /t:MapServer /p:Configuration=Release /p:Platform=x64 /m /v:minimal
-```
-
 ### Debug build
 
 ```powershell
-& $msbuild "vcproj\Editor.sln" /p:Configuration=Debug /p:Platform=x64 /m /v:minimal
+& $msbuild "vcproj\Editor\Editor.sln" /p:Configuration=Debug /p:Platform=x64 /m /v:minimal
+& $msbuild "vcproj\MapServer\MapServer.sln" /p:Configuration=Debug /p:Platform=x64 /m /v:minimal
 ```
 
 Debug links against `freeglutd.lib` and uses vcpkg Debug libraries.
@@ -167,18 +168,29 @@ Debug links against `freeglutd.lib` and uses vcpkg Debug libraries.
 ### Clean rebuild
 
 ```powershell
-& $msbuild "vcproj\Editor.sln" /t:Clean /p:Configuration=Release /p:Platform=x64
-& $msbuild "vcproj\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+& $msbuild "vcproj\Editor\Editor.sln" /t:Clean /p:Configuration=Release /p:Platform=x64
+& $msbuild "vcproj\Editor\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
 ```
+
+Cleaning one solution does not touch the other's intermediate files.
 
 ## Source layout (for compile context)
 
-- `source/` — all C++ sources and headers
-- `vcproj/Project/*.vcxproj` — MSBuild project files (reference `source/` via relative paths)
+- `source/` — all C++ sources and headers, shared by both programs
+- `vcproj/Editor/` — `Editor.sln`, `Editor.vcxproj` (+ `.filters`), `Editor.rc`, `editor_icon.ico`
+- `vcproj/MapServer/` — `MapServer.sln`, `MapServer.vcxproj` (+ `.filters`)
 - `data/` — editor metadata (tilesets, brushes, etc.); must stay next to the executables at runtime
-- `vcpkg.json` — dependency manifest (repo root)
+- `vcpkg.json` — dependency manifest (repo root), shared by both projects
 
-Both projects share most of `source/`. `MapServer` is a console app (`SubSystem=Console`); `Editor` is a Windows GUI app (`SubSystem=Windows`, wxWidgets).
+The two products have **no build files in common** — separate solutions, project files,
+and intermediate directories. Both `.vcxproj` reference `source/` via `..\..\source\`
+relative paths and compile nearly the same file list. `MapServer` is a console app
+(`SubSystem=Console`) that additionally compiles `live_server_main.cpp` and defines
+`__LIVE_SERVER__`; `Editor` is a Windows GUI app (`SubSystem=Windows`) that additionally
+compiles `Editor.rc`.
+
+**When you add, move, or remove a file under `source/`, update BOTH `.vcxproj` files**
+(and their `.filters`) unless the file is genuinely specific to one program.
 
 Precompiled header: `main.h` (included as `PrecompiledHeaderFile` in both projects).
 
@@ -221,7 +233,8 @@ For verbose errors:
 & $msbuild "vcproj\Editor.sln" /p:Configuration=Release /p:Platform=x64 /m /v:normal
 ```
 
-Build logs are also written under `vcproj/Project/x64/{Configuration}/{Editor|MapServer}/`.
+Build logs are also written under `vcproj/Editor/x64/{Configuration}/Editor/` and
+`vcproj/MapServer/x64/{Configuration}/MapServer/`.
 
 ## Troubleshooting
 
@@ -241,7 +254,7 @@ Hard-coded fallback library paths in `.vcxproj` (e.g. `C:\vcpkg\...`) are develo
 
 - Attempt to build on macOS (unsupported; only Windows and Linux have build systems).
 - Add further build systems beyond `vcproj/` (Windows) and `CMakeLists.txt` (Linux) unless explicitly requested.
-- Commit build artifacts: `*.exe`, `*.pdb`, `*.obj`, `vcproj/Project/x64/`, `.vs/`, `build/`, `Editor`, `MapServer`.
+- Commit build artifacts: `*.exe`, `*.pdb`, `*.obj`, `vcproj/*/x64/`, `.vs/`, `build/`, `Editor`, `MapServer`.
 - Expect `data/` alone to provide Tibia client sprites; runtime needs separate client asset paths (see `README.md`).
 
 ## More documentation
