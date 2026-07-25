@@ -127,10 +127,18 @@ runtime**, so neither folder ships with the binary. Those folders hold the
 regenerated:
 
 ```powershell
-.\tools\sync_png_arrays.ps1                        # report drift, write nothing
-.\tools\sync_png_arrays.ps1 brushes\door_locked.png # sync one file
-.\tools\sync_png_arrays.ps1 -All                    # sync everything drifted
+.\tools\sync_all_png_arrays.ps1                     # re-embed everything drifted (the usual one)
+.\tools\sync_all_png_arrays.ps1 -DryRun             # ...or just show what would change
+
+.\tools\sync_png_arrays.ps1                         # report drift, write nothing
+.\tools\sync_png_arrays.ps1 brushes\door_locked.png # sync a single file
+.\tools\sync_png_arrays.ps1 -All                    # same as sync_all_png_arrays.ps1
 ```
+
+`sync_all_png_arrays.ps1` is the pre-build step; `sync_png_arrays.ps1` reports by
+default and never writes unless given a file or `-All`. Pass a full relative path
+when a file name exists in both folders (`brushes\pvp_zone.png` and
+`icons\pvp_zone.png` are different artwork).
 
 Then rebuild. Use `PNG_BITMAP(name)` (from `pngfiles.h`) to turn an array into a
 `wxBitmap`. Images under `icons/` are embedded with an `icon_` prefix
