@@ -50,6 +50,7 @@
 #include "replace_wall_window.h"
 #include "replace_ground_window.h"
 #include "find_item_window.h"
+#include "main_menubar.h"
 
 #include "doodad_brush.h"
 #include "house_exit_brush.h"
@@ -508,6 +509,7 @@ EVT_MENU(MAP_POPUP_MENU_ROTATE_SELECTION_CW, MapCanvas::OnRotateSelectionClockwi
 EVT_MENU(MAP_POPUP_MENU_ROTATE_SELECTION_CCW, MapCanvas::OnRotateSelectionCounterClockwise)
 EVT_MENU(MAP_POPUP_MENU_FLIP_SELECTION_HORIZONTAL, MapCanvas::OnFlipSelectionHorizontal)
 EVT_MENU(MAP_POPUP_MENU_FLIP_SELECTION_VERTICAL, MapCanvas::OnFlipSelectionVertical)
+EVT_MENU(MAP_POPUP_MENU_CONTENT_AWARE_FILL, MapCanvas::OnContentAwareFill)
 EVT_MENU(MAP_POPUP_MENU_ADD_COMMENT, MapCanvas::OnAddComment)
 EVT_MENU(MAP_POPUP_MENU_REMOVE_COMMENT, MapCanvas::OnRemoveComment)
 EVT_MENU(MAP_POPUP_MENU_PING_HERE, MapCanvas::OnPingHere)
@@ -3123,6 +3125,13 @@ void MapCanvas::OnFlipSelectionVertical(wxCommandEvent& WXUNUSED(event)) {
 	ApplyTransform(MapTransform::FlipVertical);
 }
 
+void MapCanvas::OnContentAwareFill(wxCommandEvent& WXUNUSED(event)) {
+	// Route through the menubar action so the options dialog and the fill
+	// behavior live in one place
+	wxCommandEvent menu_event(wxEVT_COMMAND_MENU_SELECTED, MAIN_FRAME_MENU + MenuBar::CONTENT_AWARE_FILL_SELECTION);
+	g_gui.root->GetEventHandler()->AddPendingEvent(menu_event);
+}
+
 void MapCanvas::OnRotateItem(wxCommandEvent& WXUNUSED(event)) {
 	Tile* tile = editor.selection.getSelectedTile();
 
@@ -3655,6 +3664,8 @@ void MapPopupMenu::Update(const Position& cursorTile) {
 		transformMenu->Append(MAP_POPUP_MENU_FLIP_SELECTION_HORIZONTAL, "Flip &Horizontally\tCTRL+SHIFT+H", "Mirror the selected area along its vertical axis");
 		transformMenu->Append(MAP_POPUP_MENU_FLIP_SELECTION_VERTICAL, "Flip &Vertically\tCTRL+SHIFT+V", "Mirror the selected area along its horizontal axis");
 		AppendSubMenu(transformMenu, "&Transform", "Rotate or flip the selected area");
+
+		Append(MAP_POPUP_MENU_CONTENT_AWARE_FILL, "Content-Aware &Fill...\tCTRL+SHIFT+B", "Replace the selected area with content sampled from its surroundings");
 	}
 
 	const bool has_selected_items = selectionHasSelectedItems(editor.selection);

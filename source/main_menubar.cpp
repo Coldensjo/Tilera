@@ -114,6 +114,7 @@ MainMenuBar::MainMenuBar(MainFrame* frame) : frame(frame) {
 	MAKE_ACTION(BORDERIZE_MAP, wxITEM_NORMAL, OnBorderizeMap);
 	MAKE_ACTION(RANDOMIZE_SELECTION, wxITEM_NORMAL, OnRandomizeSelection);
 	MAKE_ACTION(RANDOMIZE_MAP, wxITEM_NORMAL, OnRandomizeMap);
+	MAKE_ACTION(CONTENT_AWARE_FILL_SELECTION, wxITEM_NORMAL, OnContentAwareFillSelection);
 	MAKE_ACTION(MOVE_SELECTION_UP, wxITEM_NORMAL, OnMoveSelectionUp);
 	MAKE_ACTION(MOVE_SELECTION_DOWN, wxITEM_NORMAL, OnMoveSelectionDown);
 	MAKE_ACTION(ROTATE_SELECTION_CW, wxITEM_NORMAL, OnRotateSelectionClockwise);
@@ -482,6 +483,7 @@ void MainMenuBar::Update() {
 	EnableItem(BORDERIZE_MAP, is_local);
 	EnableItem(RANDOMIZE_SELECTION, has_map && has_selection);
 	EnableItem(RANDOMIZE_MAP, is_local);
+	EnableItem(CONTENT_AWARE_FILL_SELECTION, has_map && has_selection);
 	EnableItem(MOVE_SELECTION_UP, has_map && has_selection);
 	EnableItem(MOVE_SELECTION_DOWN, has_map && has_selection);
 	// Transformations work on the selection, or on a pending paste while one is held
@@ -1799,6 +1801,47 @@ void MainMenuBar::OnRandomizeMap(wxCommandEvent& WXUNUSED(event)) {
 		g_gui.GetCurrentEditor()->randomizeMap(true);
 	}
 
+	g_gui.RefreshView();
+}
+
+void MainMenuBar::OnContentAwareFillSelection(wxCommandEvent& WXUNUSED(event)) {
+	if (!g_gui.IsEditorOpen()) {
+		return;
+	}
+
+	wxDialog* dg = newd wxDialog(frame, wxID_ANY, "Content-Aware Fill", wxDefaultPosition, wxDefaultSize, wxCAPTION | wxCLOSE_BOX);
+	wxSizer* topsizer = newd wxBoxSizer(wxVERTICAL);
+
+	wxCheckBox* ignore_borders_box = newd wxCheckBox(dg, wxID_ANY, "Ignore borders");
+	ignore_borders_box->SetValue(g_settings.getInteger(Config::CONTENT_AWARE_FILL_IGNORE_BORDERS) != 0);
+	ignore_borders_box->SetToolTip("Leave all existing borders exactly as they are - the fill won't remove, place or rebuild any borders.");
+	topsizer->Add(ignore_borders_box, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, 10));
+
+	wxCheckBox* ignore_ground_box = newd wxCheckBox(dg, wxID_ANY, "Ignore ground tiles");
+	ignore_ground_box->SetValue(g_settings.getInteger(Config::CONTENT_AWARE_FILL_IGNORE_GROUND) != 0);
+	ignore_ground_box->SetToolTip("Leave the existing ground exactly as it is - the fill only replaces the items on top of it.");
+	topsizer->Add(ignore_ground_box, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, 10));
+
+	wxSizer* choicesizer = newd wxBoxSizer(wxHORIZONTAL);
+	choicesizer->Add(newd wxButton(dg, wxID_OK, "Fill"), wxSizerFlags(1).Center().Border(wxALL, 5));
+	choicesizer->Add(newd wxButton(dg, wxID_CANCEL, "Cancel"), wxSizerFlags(1).Center().Border(wxALL, 5));
+	topsizer->Add(choicesizer, wxSizerFlags(0).Center().Border(wxALL, 5));
+	dg->SetSizerAndFit(topsizer);
+	dg->Centre(wxBOTH);
+
+	const int ret = dg->ShowModal();
+	const bool ignore_borders = ignore_borders_box->GetValue();
+	const bool ignore_ground = ignore_ground_box->GetValue();
+	dg->Destroy();
+
+	if (ret != wxID_OK) {
+		return;
+	}
+
+	g_settings.setInteger(Config::CONTENT_AWARE_FILL_IGNORE_BORDERS, ignore_borders ? 1 : 0);
+	g_settings.setInteger(Config::CONTENT_AWARE_FILL_IGNORE_GROUND, ignore_ground ? 1 : 0);
+
+	g_gui.GetCurrentEditor()->contentAwareFillSelection(ignore_borders, ignore_ground);
 	g_gui.RefreshView();
 }
 

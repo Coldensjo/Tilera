@@ -145,6 +145,12 @@ public: // Functions
 	void borderizeSelection();
 	// Randomizes the ground in the selected region
 	void randomizeSelection();
+	// Replaces the selected region with content sampled from its surroundings.
+	// ignore_borders: existing borders are left untouched - none are removed,
+	// copied in or re-bordered.
+	// ignore_ground: the existing ground is left untouched, only the items on
+	// top are filled.
+	void contentAwareFillSelection(bool ignore_borders, bool ignore_ground);
 
 	// Same as above although it applies to the entire map
 	// action queue is flushed when these functions are called

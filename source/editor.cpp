@@ -19,6 +19,9 @@
 
 #include <algorithm>
 #include <set>
+#include <map>
+#include <deque>
+#include <limits>
 #include <functional>
 #include <fstream>
 
@@ -1314,6 +1317,243 @@ void Editor::randomizeSelection() {
 		}
 	}
 	addAction(action);
+}
+
+namespace {
+
+// What a tile "looks like" to the content-aware fill matcher. Tiles sharing a
+// ground brush count as the same material regardless of which variation or
+// borders they carry; brushless grounds match on the raw item id.
+uint32_t contentFillSignature(Tile* tile) {
+	if (!tile) {
+		return 0; // void
+	}
+	if (GroundBrush* brush = tile->getGroundBrush()) {
+		return 0x80000000 | brush->getID();
+	}
+	if (tile->ground) {
+		return 0x40000000 | tile->ground->getID();
+	}
+	return tile->items.empty() ? 0 : 0x20000000;
+}
+
+} // namespace
+
+void Editor::contentAwareFillSelection(bool ignore_borders, bool ignore_ground) {
+	if (selection.size() == 0) {
+		g_gui.SetStatusText("No items selected. Can't fill.");
+		return;
+	}
+
+	// The area being replaced
+	std::set<Position> targets;
+	for (Tile* tile : selection) {
+		targets.insert(tile->getPosition());
+	}
+
+	// Everything around the area is the palette we sample from (per floor,
+	// since positions carry their own z). Void positions count too - if the
+	// surroundings are empty, the fill should continue that emptiness.
+	constexpr int SAMPLE_RADIUS = 4;
+	constexpr size_t MAX_SAMPLES = 1024;
+
+	std::set<Position> sample_set;
+	for (const Position& pos : targets) {
+		for (int dy = -SAMPLE_RADIUS; dy <= SAMPLE_RADIUS; ++dy) {
+			for (int dx = -SAMPLE_RADIUS; dx <= SAMPLE_RADIUS; ++dx) {
+				Position sample(pos.x + dx, pos.y + dy, pos.z);
+				if (sample.x < 0 || sample.x >= map.getWidth() || sample.y < 0 || sample.y >= map.getHeight()) {
+					continue;
+				}
+				if (targets.count(sample) == 0) {
+					sample_set.insert(sample);
+				}
+			}
+		}
+	}
+
+	if (sample_set.empty()) {
+		g_gui.SetStatusText("Nothing around the selection to sample from.");
+		return;
+	}
+
+	std::vector<Position> samples(sample_set.begin(), sample_set.end());
+	if (samples.size() > MAX_SAMPLES) {
+		// Partial Fisher-Yates: keep a random subset to bound the matching cost
+		for (size_t i = 0; i < MAX_SAMPLES; ++i) {
+			std::swap(samples[i], samples[i + random(int(samples.size() - i - 1))]);
+		}
+		samples.resize(MAX_SAMPLES);
+	}
+
+	// Content already decided for filled tiles; the map itself is untouched
+	// until the action commits, so signature lookups go through here first
+	std::map<Position, uint32_t> placed;
+
+	// Returns false while the content at pos is still undecided
+	auto knownSignature = [&](const Position& pos, uint32_t& sig) {
+		auto it = placed.find(pos);
+		if (it != placed.end()) {
+			sig = it->second;
+			return true;
+		}
+		if (targets.count(pos)) {
+			return false;
+		}
+		sig = contentFillSignature(map.getTile(pos));
+		return true;
+	};
+
+	// Peel the selection like an onion: start at tiles touching the outside
+	// and grow inward, so every tile is matched against settled neighbors
+	std::deque<Position> frontier;
+	std::set<Position> visited;
+	for (const Position& pos : targets) {
+		bool touches_outside = false;
+		for (int dy = -1; dy <= 1 && !touches_outside; ++dy) {
+			for (int dx = -1; dx <= 1 && !touches_outside; ++dx) {
+				touches_outside = targets.count(Position(pos.x + dx, pos.y + dy, pos.z)) == 0;
+			}
+		}
+		if (touches_outside) {
+			frontier.push_back(pos);
+			visited.insert(pos);
+		}
+	}
+
+	std::map<Position, Position> fill; // target -> sample it copies
+	std::vector<size_t> best;
+	while (!frontier.empty()) {
+		const Position pos = frontier.front();
+		frontier.pop_front();
+
+		// Pick the sample whose surroundings best match this tile's surroundings
+		int best_score = std::numeric_limits<int>::min();
+		best.clear();
+		for (size_t i = 0; i < samples.size(); ++i) {
+			const Position& sample = samples[i];
+			int score = 0;
+			for (int dy = -1; dy <= 1; ++dy) {
+				for (int dx = -1; dx <= 1; ++dx) {
+					if (dx == 0 && dy == 0) {
+						continue;
+					}
+					uint32_t want, have;
+					if (!knownSignature(Position(pos.x + dx, pos.y + dy, pos.z), want) || !knownSignature(Position(sample.x + dx, sample.y + dy, sample.z), have)) {
+						continue;
+					}
+					const int weight = (dx == 0 || dy == 0) ? 2 : 1;
+					score += want == have ? weight : -weight;
+				}
+			}
+			if (score > best_score) {
+				best_score = score;
+				best.clear();
+			}
+			if (score == best_score) {
+				best.push_back(i);
+			}
+		}
+
+		const Position& sample = samples[best[random(int(best.size()) - 1)]];
+		fill[pos] = sample;
+		placed[pos] = contentFillSignature(map.getTile(sample));
+
+		for (int dy = -1; dy <= 1; ++dy) {
+			for (int dx = -1; dx <= 1; ++dx) {
+				Position next(pos.x + dx, pos.y + dy, pos.z);
+				if (targets.count(next) && visited.count(next) == 0) {
+					visited.insert(next);
+					frontier.push_back(next);
+				}
+			}
+		}
+	}
+
+	BatchAction* batch = actionQueue->createBatch(ACTION_CONTENT_AWARE_FILL);
+	Action* action = actionQueue->createAction(batch);
+	for (const auto& [pos, sample] : fill) {
+		Tile* sample_tile = map.getTile(sample);
+		TileLocation* location = map.createTileL(pos);
+		Tile* new_tile = map.allocator(location);
+
+		// The spot keeps its house/zone status; only the content is replaced.
+		// Ignored categories are carried over from the old tile untouched.
+		if (Tile* old_tile = location->get()) {
+			new_tile->house_id = old_tile->house_id;
+			new_tile->setMapFlags(old_tile->getMapFlags());
+			if (ignore_ground && old_tile->ground) {
+				new_tile->addItem(old_tile->ground->deepCopy());
+			}
+			if (ignore_borders) {
+				for (Item* item : old_tile->items) {
+					if (item->isBorder()) {
+						new_tile->addItem(item->deepCopy());
+					}
+				}
+			}
+		}
+
+		if (sample_tile) {
+			if (!ignore_ground && sample_tile->ground) {
+				new_tile->addItem(sample_tile->ground->deepCopy());
+			}
+			for (Item* item : sample_tile->items) {
+				if (ignore_borders && item->isBorder()) {
+					continue;
+				}
+				Item* copy = item->deepCopy();
+				// Unique ids must not be duplicated across the map
+				copy->eraseAttribute("uid");
+				new_tile->addItem(copy);
+			}
+			// Creatures, spawns and house exits are deliberately not copied
+		}
+
+		new_tile->select();
+		action->addChange(newd Change(new_tile));
+	}
+	batch->addAndCommitAction(action);
+
+	// Settle the seams: reborder the filled area and the ring around it
+	// (unless borders are ignored), and reconnect any walls that were
+	// stamped down next to existing ones
+	if (g_settings.getInteger(Config::USE_AUTOMAGIC)) {
+		action = actionQueue->createAction(batch);
+		std::set<Position> seams;
+		for (const auto& [pos, sample] : fill) {
+			for (int dy = -1; dy <= 1; ++dy) {
+				for (int dx = -1; dx <= 1; ++dx) {
+					seams.insert(Position(pos.x + dx, pos.y + dy, pos.z));
+				}
+			}
+		}
+		for (const Position& pos : seams) {
+			Tile* tile = map.getTile(pos);
+			if (!tile) {
+				continue;
+			}
+			if (ignore_borders && !tile->hasWall()) {
+				continue;
+			}
+			Tile* new_tile = tile->deepCopy(map);
+			if (!ignore_borders) {
+				new_tile->borderize(&map);
+			}
+			if (new_tile->hasWall()) {
+				reconnectTileWalls(&map, new_tile);
+			}
+			if (fill.count(pos)) {
+				new_tile->select();
+			}
+			action->addChange(newd Change(new_tile));
+		}
+		batch->addAndCommitAction(action);
+	}
+
+	addBatch(batch);
+	selection.updateSelectionCount();
+	g_gui.SetStatusText(wxString::Format("Content-aware fill replaced %d tile(s).", int(fill.size())));
 }
 
 void Editor::randomizeMap(bool showdialog) {

@@ -118,6 +118,7 @@ public:
 	void OnRotateSelectionCounterClockwise(wxCommandEvent& event);
 	void OnFlipSelectionHorizontal(wxCommandEvent& event);
 	void OnFlipSelectionVertical(wxCommandEvent& event);
+	void OnContentAwareFill(wxCommandEvent& event);
 	void OnAddComment(wxCommandEvent& event);
 	void OnRemoveComment(wxCommandEvent& event);
 	void OnPingHere(wxCommandEvent& event);
