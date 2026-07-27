@@ -140,7 +140,6 @@ typedef wxFileName FileName;
 
 #include "con_vector.h"
 #include "common.h"
-#include "threads.h"
 
 #include "rme_forward_declarations.h"
 

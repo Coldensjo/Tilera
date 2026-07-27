@@ -39,19 +39,8 @@ int32_t uniform_random(int32_t maxNumber);
 // Function-like convertions between float, int and doubles
 std::string i2s(int i);
 std::string f2s(double i);
-int s2i(std::string s);
-double s2f(std::string s);
 wxString i2ws(int i);
-wxString f2ws(double i);
-int ws2i(wxString s);
-double ws2f(wxString s);
-double frand();
 
-// replaces all instances of sought in str with replacement
-void replaceString(std::string& str, const std::string& sought, const std::string& replacement);
-// Removes all characters in t from source (from either start or beginning of the string)
-void trim_right(std::string& source, const std::string& t);
-void trim_left(std::string& source, const std::string& t);
 // Converts the argument to lower/uppercase
 void to_lower_str(std::string& source);
 void to_upper_str(std::string& source);

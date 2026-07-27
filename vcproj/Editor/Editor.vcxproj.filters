@@ -255,9 +255,6 @@
     <ClInclude Include="..\..\source\sprites.h">
       <Filter>gui\graphics</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\source\threads.h">
-      <Filter>common</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\source\tile.h">
       <Filter>objects</Filter>
     </ClInclude>

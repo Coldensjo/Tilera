@@ -18,7 +18,6 @@
 #include "main.h"
 
 static inline unsigned long int mt_get(void* vstate);
-static double mt_get_double(void* vstate);
 static void mt_set(void* state, unsigned long int s);
 
 #define N 624 /* Period parameters */
@@ -78,11 +77,6 @@ mt_get(void* vstate) {
 	return k;
 }
 
-static double
-mt_get_double(void* vstate) {
-	return mt_get(vstate) / 4294967296.0;
-}
-
 static void
 mt_set(void* vstate, unsigned long int s) {
 	mt_state_t* state = (mt_state_t*)vstate;
@@ -114,8 +108,4 @@ void mt_seed(unsigned long s) {
 
 unsigned long mt_randi() {
 	return mt_get(&mt_state);
-}
-
-double mt_randd() {
-	return mt_get_double(&mt_state);
 }
