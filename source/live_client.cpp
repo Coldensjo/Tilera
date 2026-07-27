@@ -236,6 +236,42 @@ void LiveClient::onProbeFailure(uint32_t generation, const wxString& reason) {
 	}
 	++probeGeneration;
 
+	// The first refusal is the moment we learn the server is not our build. Get the
+	// user's consent before announcing a version that is not ours -- deferred so the
+	// modal opens after the parsePacket loop that got us here has unwound.
+	if (!versionMismatchPrompted) {
+		wxTheApp->CallAfter([this, reason]() {
+			if (versionProbeSettled) {
+				return;
+			}
+			versionMismatchPrompted = true;
+			if (!confirmVersionMismatch()) {
+				versionProbeSettled = true;
+				abortAfterRefusal(reason);
+				return;
+			}
+			advanceProbe(reason);
+		});
+		return;
+	}
+
+	advanceProbe(reason);
+}
+
+bool LiveClient::confirmVersionMismatch() {
+	const long answer = g_gui.PopupDialog(
+		"Editor Version Mismatch",
+		"This server is not running editor version " + __W_RME_VERSION__ + ".\n\n"
+		"The editor can announce an older version to get in, but the two builds will "
+		"not agree on everything. Map data, brushes, or live edits may not work "
+		"correctly, and in the worst case you could corrupt the map you are editing.\n\n"
+		"Search for a version this server accepts and connect anyway?",
+		wxYES | wxNO | wxICON_EXCLAMATION
+	);
+	return answer == wxID_YES;
+}
+
+void LiveClient::advanceProbe(const wxString& reason) {
 	const uint32_t nextVersionId = previousEditorVersionId(probeVersionId, probeMaxSubversion);
 	if (probeAttempt + 1 >= probeLimit || nextVersionId == 0) {
 		versionProbeSettled = true;
@@ -243,24 +279,32 @@ void LiveClient::onProbeFailure(uint32_t generation, const wxString& reason) {
 		const wxString firstTried = formatEditorVersionId(probeStartVersionId);
 		const wxString lastTried = formatEditorVersionId(probeVersionId);
 
-		wxString message = reason.empty() ? wxString("The server refused the connection.") : reason;
-		message << "\n\nTried editor versions " << firstTried << " down to " << lastTried
-				<< " without success. If you know which version the server runs, enter it "
-				   "under \"Report version\" in the connect dialog.";
-
 		logMessage("Gave up after " + wxString::Format("%u", probeAttempt + 1) + " version(s), " + firstTried + " down to " + lastTried + ".");
 
-		stopped = true;
-		wxTheApp->CallAfter([this, message]() {
-			g_gui.PopupDialog("Disconnected", message, wxOK);
-			closeAndTeardown();
-		});
+		abortAfterRefusal(
+			(reason.empty() ? wxString("The server refused the connection.") : reason)
+			+ "\n\nTried editor versions " + firstTried + " down to " + lastTried
+			+ " without success. If you know which version the server runs, enter it "
+			  "under \"Report version\" in the connect dialog."
+		);
 		return;
 	}
 
 	++probeAttempt;
 	probeVersionId = nextVersionId;
 	scheduleNextProbe();
+}
+
+void LiveClient::abortAfterRefusal(const wxString& reason) {
+	if (stopped) {
+		return;
+	}
+	stopped = true;
+
+	wxTheApp->CallAfter([this, reason]() {
+		g_gui.PopupDialog("Disconnected", reason, wxOK);
+		closeAndTeardown();
+	});
 }
 
 void LiveClient::scheduleNextProbe() {
@@ -312,7 +356,8 @@ void LiveClient::settleVersionProbe(bool accepted) {
 		return;
 	}
 
-	logMessage("Server accepted editor version " + formatEditorVersionId(probeVersionId) + "; remembering it for this host.");
+	logMessage("Server accepted editor version " + formatEditorVersionId(probeVersionId) + ", but this editor is " + __W_RME_VERSION__ + ".");
+	logMessage("Build mismatch: some edits may not behave correctly. Save a backup before making large changes.");
 	// Persist the winner so the next connect to this host skips the search.
 	g_settings.setString(Config::LIVE_SPOOF_VERSION, nstr(formatEditorVersionId(probeVersionId)));
 }
@@ -985,9 +1030,10 @@ void LiveClient::parseKick(NetworkMessage& message) {
 	stopped = true;
 	wxString reason = wxstr(kickMessage);
 	if (wrongVersion) {
-		reason << "\n\nThis server only accepts one editor version. Ask the host which "
-				  "version it runs and enter it under \"Report version\" in the connect "
-				  "dialog to join anyway.";
+		reason << "\n\nThis server runs a different editor build and only accepts its own "
+				  "version. Tick \"If refused, try earlier editor versions\" in the connect "
+				  "dialog to search for one it accepts, or enter the host's version under "
+				  "\"Report version\" if you know it.";
 	}
 
 	wxTheApp->CallAfter([this, reason]() {

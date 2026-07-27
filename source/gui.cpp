@@ -1016,10 +1016,33 @@ bool GUI::ConnectToLiveServer() {
 	g_settings.setInteger(Config::LIVE_CURSOR_BLUE, cursorColor.Blue());
 	g_settings.setInteger(Config::LIVE_CURSOR_ALPHA, cursorColor.Alpha());
 
+	// A pinned version that is not ours means the user is knowingly connecting to a
+	// different build, so confirm before anything is sent. The probe asks the same
+	// question if it discovers the mismatch itself; telling the client we already
+	// asked keeps it from asking twice.
+	bool versionMismatchAccepted = false;
+	uint32_t pinnedVersionId = 0;
+	if (parseEditorVersionId(dialog.GetSpoofVersion(), pinnedVersionId) && pinnedVersionId != __RME_VERSION_ID__) {
+		const long answer = PopupDialog(
+			"Editor Version Mismatch",
+			"You are connecting as editor version " + formatEditorVersionId(pinnedVersionId)
+				+ ", but this editor is " + __W_RME_VERSION__ + ".\n\n"
+				  "\n\nConnect anyway?",
+			wxYES | wxNO | wxICON_EXCLAMATION
+		);
+		if (answer != wxID_YES) {
+			return false;
+		}
+		versionMismatchAccepted = true;
+	}
+
 	auto* client = newd LiveClient();
 	client->setName(dialog.GetUsername());
 	client->setPassword(dialog.GetPassword());
 	client->setCursorColor(dialog.GetCursorColor());
+	if (versionMismatchAccepted) {
+		client->setVersionMismatchAccepted();
+	}
 
 	client->createLogWindow(tabbook);
 
