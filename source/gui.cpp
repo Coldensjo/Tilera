@@ -342,9 +342,9 @@ wxString ResolveConfiguredDirectory(const FileName& mapFileName, const wxString&
 	resolvedPath.AssignDir(value);
 	if (!resolvedPath.IsAbsolute()) {
 		const wxString mapDirectory = mapFileName.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR);
-		resolvedPath.Normalize(wxPATH_NORM_ALL, mapDirectory);
+		resolvedPath.Normalize(RME_PATH_NORM_FLAGS, mapDirectory);
 	} else {
-		resolvedPath.Normalize(wxPATH_NORM_ALL);
+		resolvedPath.Normalize(RME_PATH_NORM_FLAGS);
 	}
 
 	return resolvedPath.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR);

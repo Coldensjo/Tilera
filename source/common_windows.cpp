@@ -555,7 +555,7 @@ void ExportMiniMapWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 				for (int floor = 0; floor < MAP_LAYERS; ++floor) {
 					g_gui.SetLoadScale(int(floor * (100.f / 16.f)), int((floor + 1) * (100.f / 16.f)));
 					FileName file(file_name_text_field->GetValue() + "_" + i2ws(floor) + ".png");
-					file.Normalize(wxPATH_NORM_ALL, directory.GetFullPath());
+					file.Normalize(RME_PATH_NORM_FLAGS, directory.GetFullPath());
 					editor.exportMiniMap(file, floor, true);
 				}
 				break;
@@ -563,7 +563,7 @@ void ExportMiniMapWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 
 			case 1: { // Ground floor
 				FileName file(file_name_text_field->GetValue() + "_" + i2ws(GROUND_LAYER) + ".png");
-				file.Normalize(wxPATH_NORM_ALL, directory.GetFullPath());
+				file.Normalize(RME_PATH_NORM_FLAGS, directory.GetFullPath());
 				editor.exportMiniMap(file, GROUND_LAYER, true);
 				break;
 			}
@@ -571,7 +571,7 @@ void ExportMiniMapWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 			case 2: { // Specific floors
 				int floor = floor_number->GetValue();
 				FileName file(file_name_text_field->GetValue() + "_" + i2ws(floor) + ".png");
-				file.Normalize(wxPATH_NORM_ALL, directory.GetFullPath());
+				file.Normalize(RME_PATH_NORM_FLAGS, directory.GetFullPath());
 				editor.exportMiniMap(file, floor, true);
 				break;
 			}
@@ -704,7 +704,7 @@ void ExportTilesetsWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 		g_settings.setString(Config::TILESET_EXPORT_DIR, directory_text_field->GetValue().ToStdString());
 
 		FileName file(file_name_text_field->GetValue() + ".xml");
-		file.Normalize(wxPATH_NORM_ALL, directory.GetFullPath());
+		file.Normalize(RME_PATH_NORM_FLAGS, directory.GetFullPath());
 
 		pugi::xml_document doc;
 		pugi::xml_node node = doc.append_child("materials");

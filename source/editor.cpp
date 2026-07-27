@@ -915,7 +915,7 @@ bool Editor::exportSelectionAsMiniMap(FileName directory, wxString fileName) {
 		}
 
 		FileName file(fileName + "_" + i2ws(z) + ".png");
-		file.Normalize(wxPATH_NORM_ALL, directory.GetFullPath());
+		file.Normalize(RME_PATH_NORM_FLAGS, directory.GetFullPath());
 		wxImage* image = newd wxImage(minimap_width, minimap_height, pixels, true);
 		image->SaveFile(file.GetFullPath(), wxBITMAP_TYPE_PNG);
 		image->Destroy();

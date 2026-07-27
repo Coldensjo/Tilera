@@ -113,7 +113,7 @@ bool collectUpdateFiles(const std::vector<wxString>& paths, std::vector<LiveUpda
 		}
 
 		wxFileName sourcePath(trimmed);
-		sourcePath.Normalize(wxPATH_NORM_ALL, wxEmptyString);
+		sourcePath.Normalize(RME_PATH_NORM_FLAGS, wxEmptyString);
 		if (!sourcePath.FileExists()) {
 			error = "Update file not found: " + trimmed;
 			files.clear();
