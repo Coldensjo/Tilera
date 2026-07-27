@@ -36,6 +36,10 @@
 #include <wx/timer.h>
 
 namespace {
+	// Pause between editor-version probe attempts, so walking a long candidate list
+	// stays a polite trickle of connections rather than a burst.
+	constexpr int LIVE_VERSION_PROBE_DELAY_MS = 150;
+
 	// GUI-thread timer that drives node-request retries independently of repaints.
 	class NodeRetryTimer : public wxTimer {
 	public:
@@ -67,7 +71,23 @@ LiveClient::LiveClient() :
 	updateReceiveState(), updateBytesExpected(0), updateBytesReceived(0),
 	updateProgressReported(0), receivingUpdate(false),
 	connectionAddress(), connectionPort(0) {
-	//
+	initVersionProbe();
+}
+
+void LiveClient::initVersionProbe() {
+	// A pinned version is the starting point rather than an override of the probe,
+	// so a user who knows roughly which build the server runs can seed the search
+	// instead of waiting for it to walk all the way down from ours.
+	probeVersionId = __RME_VERSION_ID__;
+	const wxString pinnedVersion = wxstr(g_settings.getString(Config::LIVE_SPOOF_VERSION));
+	if (!pinnedVersion.empty() && !parseEditorVersionId(pinnedVersion, probeVersionId)) {
+		probeVersionId = __RME_VERSION_ID__;
+	}
+
+	probeStartVersionId = probeVersionId;
+	versionProbeEnabled = g_settings.getInteger(Config::LIVE_AUTO_VERSION_PROBE) != 0;
+	probeLimit = static_cast<uint32_t>(std::max(1, g_settings.getInteger(Config::LIVE_VERSION_PROBE_LIMIT)));
+	probeMaxSubversion = static_cast<uint32_t>(std::max(0, g_settings.getInteger(Config::LIVE_VERSION_PROBE_MAX_SUBVERSION)));
 }
 
 LiveClient::~LiveClient() {
@@ -146,6 +166,13 @@ void LiveClient::close() {
 		nodeRetryTimer->Stop();
 	}
 
+	// Stop the version search before the socket goes: a probe retry firing after
+	// teardown has begun would reconnect a client that is about to be deleted.
+	versionProbeSettled = true;
+	if (probeTimer) {
+		probeTimer->cancel();
+	}
+
 	if (resolver) {
 		resolver->cancel();
 	}
@@ -200,7 +227,108 @@ bool LiveClient::handleError(const net_error_code& error) {
 	return false;
 }
 
+void LiveClient::onProbeFailure(uint32_t generation, const wxString& reason) {
+	// Both the kick packet and the socket EOF report the same refusal, and either
+	// can arrive first. The generation makes whichever lands first the one that
+	// advances, and turns the other into a no-op.
+	if (versionProbeSettled || generation != probeGeneration) {
+		return;
+	}
+	++probeGeneration;
+
+	const uint32_t nextVersionId = previousEditorVersionId(probeVersionId, probeMaxSubversion);
+	if (probeAttempt + 1 >= probeLimit || nextVersionId == 0) {
+		versionProbeSettled = true;
+
+		const wxString firstTried = formatEditorVersionId(probeStartVersionId);
+		const wxString lastTried = formatEditorVersionId(probeVersionId);
+
+		wxString message = reason.empty() ? wxString("The server refused the connection.") : reason;
+		message << "\n\nTried editor versions " << firstTried << " down to " << lastTried
+				<< " without success. If you know which version the server runs, enter it "
+				   "under \"Report version\" in the connect dialog.";
+
+		logMessage("Gave up after " + wxString::Format("%u", probeAttempt + 1) + " version(s), " + firstTried + " down to " + lastTried + ".");
+
+		stopped = true;
+		wxTheApp->CallAfter([this, message]() {
+			g_gui.PopupDialog("Disconnected", message, wxOK);
+			closeAndTeardown();
+		});
+		return;
+	}
+
+	++probeAttempt;
+	probeVersionId = nextVersionId;
+	scheduleNextProbe();
+}
+
+void LiveClient::scheduleNextProbe() {
+	logMessage("Refused; retrying as editor version " + formatEditorVersionId(probeVersionId) + "...");
+
+	// Hop to the network thread before touching the socket: the read handlers for
+	// the attempt we are abandoning may still be in flight there, and replacing the
+	// socket from the GUI thread would race them.
+	NetworkConnection::getInstance().post([this]() {
+		if (versionProbeSettled) {
+			return;
+		}
+
+		if (socket) {
+			net_error_code closeError;
+			socket->close(closeError);
+		}
+		// The abandoned attempt may have left a queued or in-flight write behind;
+		// clear it so the new connection starts with an empty pipe.
+		writeQueue.clear();
+		writing = false;
+		helloSent = false;
+
+		if (!probeTimer) {
+			probeTimer = std::make_shared<asio::steady_timer>(NetworkConnection::getInstance().get_service());
+		}
+		// Space the attempts out so a deep search does not look like a flood to the
+		// server (or to anything sitting in front of it).
+		probeTimer->expires_after(std::chrono::milliseconds(LIVE_VERSION_PROBE_DELAY_MS));
+		probeTimer->async_wait([this](const net_error_code& error) {
+			if (error || versionProbeSettled) {
+				return;
+			}
+			if (!connect(connectionAddress, connectionPort)) {
+				versionProbeSettled = true;
+				disconnectFromServer("Could not reconnect: " + getLastError());
+			}
+		});
+	});
+}
+
+void LiveClient::settleVersionProbe(bool accepted) {
+	if (versionProbeSettled) {
+		return;
+	}
+	versionProbeSettled = true;
+
+	if (!accepted || probeVersionId == __RME_VERSION_ID__) {
+		return;
+	}
+
+	logMessage("Server accepted editor version " + formatEditorVersionId(probeVersionId) + "; remembering it for this host.");
+	// Persist the winner so the next connect to this host skips the search.
+	g_settings.setString(Config::LIVE_SPOOF_VERSION, nstr(formatEditorVersionId(probeVersionId)));
+}
+
 void LiveClient::disconnectFromServer(const wxString& reason) {
+	if (versionProbeEnabled && !versionProbeSettled && helloSent) {
+		// The server hung up on our hello. That is the version refusal -- its kick
+		// packet may still be queued for the GUI thread -- so hand this to the probe
+		// instead of tearing the session down.
+		const uint32_t generation = probeGeneration;
+		wxTheApp->CallAfter([this, generation, reason]() {
+			onProbeFailure(generation, reason);
+		});
+		return;
+	}
+
 	if (!reason.empty()) {
 		logMessage(reason);
 	}
@@ -384,9 +512,15 @@ MapTab* LiveClient::createEditorWindow() {
 }
 
 void LiveClient::sendHello() {
+	// Only the editor version can differ from this build's own -- the live protocol
+	// version below governs packet layout and is always reported truthfully.
+	if (probeVersionId != __RME_VERSION_ID__) {
+		logMessage("Announcing editor version " + formatEditorVersionId(probeVersionId) + " instead of " + __W_RME_VERSION__ + ".");
+	}
+
 	NetworkMessage message;
 	message.write<uint8_t>(PACKET_HELLO_FROM_CLIENT);
-	message.write<uint32_t>(__RME_VERSION_ID__);
+	message.write<uint32_t>(probeVersionId);
 	message.write<uint32_t>(__LIVE_NET_VERSION__);
 	message.write<uint32_t>(g_gui.GetCurrentVersionID());
 	message.write<std::string>(nstr(name));
@@ -397,6 +531,9 @@ void LiveClient::sendHello() {
 	message.write<uint8_t>(ownClientColor.Alpha());
 
 	send(message, [this]() {
+		// From here on a dropped connection means the server judged our hello, so a
+		// failure is a version candidate being rejected rather than an unreachable host.
+		helloSent = true;
 		logMessage("Hello sent, waiting for server response...");
 		NetworkConnection::getInstance().post([this]() {
 			receiveHeader();
@@ -648,6 +785,13 @@ void LiveClient::parsePacket(NetworkMessage message) {
 	uint8_t packetType;
 	while (message.position < message.buffer.size()) {
 		packetType = message.read<uint8_t>();
+
+		// Anything other than a kick means the server got past the version check,
+		// so the version we announced is the one it wants.
+		if (packetType != PACKET_KICK) {
+			settleVersionProbe(true);
+		}
+
 		switch (packetType) {
 			case PACKET_HELLO_FROM_SERVER:
 				parseHello(message);
@@ -817,6 +961,20 @@ void LiveClient::parseHello(NetworkMessage& message) {
 
 void LiveClient::parseKick(NetworkMessage& message) {
 	const std::string kickMessage = message.read<std::string>();
+	const bool wrongVersion = (kickMessage == "Wrong editor version.");
+
+	if (versionProbeEnabled && !versionProbeSettled) {
+		if (wrongVersion) {
+			// Checked before the `stopped` guard below: the socket EOF that follows
+			// this kick may already have set it, and losing the refusal here would
+			// strand the probe.
+			onProbeFailure(probeGeneration, wxstr(kickMessage));
+			return;
+		}
+		// Wrong password, wrong protocol version, failed asset sync -- none of these
+		// get better on an older editor version, so stop searching and report it.
+		settleVersionProbe(false);
+	}
 
 	// Defer teardown: this runs inside the parsePacket loop, and CloseLiveEditors
 	// deletes this client. Setting stopped first makes it idempotent and stops the
@@ -825,8 +983,15 @@ void LiveClient::parseKick(NetworkMessage& message) {
 		return;
 	}
 	stopped = true;
-	wxTheApp->CallAfter([this, kickMessage]() {
-		g_gui.PopupDialog("Disconnected", wxstr(kickMessage), wxOK);
+	wxString reason = wxstr(kickMessage);
+	if (wrongVersion) {
+		reason << "\n\nThis server only accepts one editor version. Ask the host which "
+				  "version it runs and enter it under \"Report version\" in the connect "
+				  "dialog to join anyway.";
+	}
+
+	wxTheApp->CallAfter([this, reason]() {
+		g_gui.PopupDialog("Disconnected", reason, wxOK);
 		closeAndTeardown();
 	});
 }

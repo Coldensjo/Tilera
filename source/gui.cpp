@@ -1002,20 +1002,24 @@ bool GUI::ConnectToLiveServer() {
 		return false;
 	}
 
-	auto* client = newd LiveClient();
-	client->setName(dialog.GetUsername());
-	client->setPassword(dialog.GetPassword());
-	client->setCursorColor(dialog.GetCursorColor());
-
+	// Store the dialog's choices before constructing the client -- LiveClient reads
+	// the live settings (cursor colour, version probing) in its constructor.
 	g_settings.setString(Config::LIVE_HOST, nstr(dialog.GetHost()));
 	g_settings.setInteger(Config::LIVE_PORT, dialog.GetPort());
 	g_settings.setString(Config::LIVE_USERNAME, nstr(dialog.GetUsername()));
 	g_settings.setString(Config::LIVE_PASSWORD, nstr(dialog.GetPassword()));
+	g_settings.setString(Config::LIVE_SPOOF_VERSION, nstr(dialog.GetSpoofVersion()));
+	g_settings.setInteger(Config::LIVE_AUTO_VERSION_PROBE, dialog.GetAutoVersionProbe() ? 1 : 0);
 	const wxColor cursorColor = dialog.GetCursorColor();
 	g_settings.setInteger(Config::LIVE_CURSOR_RED, cursorColor.Red());
 	g_settings.setInteger(Config::LIVE_CURSOR_GREEN, cursorColor.Green());
 	g_settings.setInteger(Config::LIVE_CURSOR_BLUE, cursorColor.Blue());
 	g_settings.setInteger(Config::LIVE_CURSOR_ALPHA, cursorColor.Alpha());
+
+	auto* client = newd LiveClient();
+	client->setName(dialog.GetUsername());
+	client->setPassword(dialog.GetPassword());
+	client->setCursorColor(dialog.GetCursorColor());
 
 	client->createLogWindow(tabbook);
 

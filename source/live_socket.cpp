@@ -29,6 +29,8 @@
 #include "spawn.h"
 #include "settings.h"
 
+#include <wx/tokenzr.h>
+
 #include <iostream>
 #include <algorithm>
 
@@ -36,6 +38,74 @@ bool isLiveMarkerVisibleOnFloor(int viewerFloor, int markerFloor) {
 	const bool viewerUnderground = viewerFloor > GROUND_LAYER;
 	const bool markerUnderground = markerFloor > GROUND_LAYER;
 	return viewerUnderground == markerUnderground;
+}
+
+bool parseEditorVersionId(const wxString& text, uint32_t& versionId) {
+	const wxString trimmed = wxString(text).Trim(true).Trim(false);
+	if (trimmed.empty()) {
+		return false;
+	}
+
+	// A bare number large enough to be an ID is taken verbatim, so a server
+	// operator can hand out the exact value their build reports.
+	unsigned long single = 0;
+	if (trimmed.ToULong(&single) && single >= 100000) {
+		versionId = static_cast<uint32_t>(single);
+		return true;
+	}
+
+	unsigned long parts[3] = { 0, 0, 0 };
+	size_t partIndex = 0;
+	wxStringTokenizer tokenizer(trimmed, ".");
+	while (tokenizer.HasMoreTokens()) {
+		if (partIndex >= 3) {
+			return false; // more components than major.minor.subversion
+		}
+
+		const wxString token = tokenizer.GetNextToken().Trim(true).Trim(false);
+		if (token.empty() || !token.ToULong(&parts[partIndex]) || parts[partIndex] > 99) {
+			return false;
+		}
+		++partIndex;
+	}
+
+	if (partIndex == 0) {
+		return false;
+	}
+
+	versionId = MAKE_VERSION_ID(
+		static_cast<uint32_t>(parts[0]),
+		static_cast<uint32_t>(parts[1]),
+		static_cast<uint32_t>(parts[2])
+	);
+	return true;
+}
+
+wxString formatEditorVersionId(uint32_t versionId) {
+	const uint32_t major = versionId / 10000000;
+	const uint32_t minor = (versionId / 100000) % 100;
+	const uint32_t subversion = (versionId / 1000) % 100;
+	return wxString() << major << "." << minor << "." << subversion;
+}
+
+uint32_t previousEditorVersionId(uint32_t versionId, uint32_t maxSubversion) {
+	if (versionId < 1000) {
+		return 0;
+	}
+
+	const uint32_t subversion = (versionId / 1000) % 100;
+	if (subversion > 0) {
+		// Coming down from a subversion above the ceiling (the user pinned one, or
+		// it is our own build's) lands on the ceiling rather than stepping by one.
+		const uint32_t next = std::min(subversion - 1, std::min(maxSubversion, 99u));
+		return versionId - (subversion - next) * 1000;
+	}
+
+	// Subversion 0 reached -- drop into the previous minor at the ceiling.
+	if (versionId < 100000) {
+		return 0;
+	}
+	return versionId - 100000 + std::min(maxSubversion, 99u) * 1000;
 }
 
 namespace {

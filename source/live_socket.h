@@ -44,6 +44,23 @@ class Tile;
 // Above-ground and underground are isolated; any floor within the same realm is visible.
 bool isLiveMarkerVisibleOnFloor(int viewerFloor, int markerFloor);
 
+// Parse a user-supplied editor version into the ID sent in the live hello packet.
+// Accepts "major.minor.subversion" (missing trailing parts default to 0) or a raw
+// numeric ID as produced by MAKE_VERSION_ID. Returns false if the text cannot be
+// parsed; an empty/whitespace-only string is not a valid version.
+bool parseEditorVersionId(const wxString& text, uint32_t& versionId);
+
+// Render a version ID back as "major.minor.subversion" for logs and dialogs.
+wxString formatEditorVersionId(uint32_t versionId);
+
+// The next lower version ID below the given one, or 0 when there is none.
+// Steps down one subversion at a time, rolling into the previous minor at
+// maxSubversion once subversion 0 is passed. The subversion field can encode up to
+// 99, but releases never climb anywhere near that before the minor is bumped, so
+// the ceiling keeps a downward search from burning its budget on versions that
+// cannot exist.
+uint32_t previousEditorVersionId(uint32_t versionId, uint32_t maxSubversion);
+
 struct LiveCursor {
 	uint32_t id;
 	wxColor color;
