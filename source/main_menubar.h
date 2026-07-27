@@ -191,6 +191,8 @@ namespace MenuBar {
 		LIVE_DISCONNECT,
 
 		SELECT_EXIT_BUTTON,
+
+		HOTKEY_MANAGER,
 	};
 }
 
@@ -218,6 +220,17 @@ public:
 	void CheckItem(MenuBar::ActionID id, bool enable);
 	bool IsItemChecked(MenuBar::ActionID id) const;
 
+	// Re-applies the (possibly user-overridden) hotkey of every menu item
+	// to its label/accelerator. Called by the Hotkey Manager dialog after
+	// a binding changes.
+	void ApplyHotkeyOverrides();
+
+#ifdef __WXGTK__
+	// Rebuilds the frame-level accelerator table from the accelerators
+	// currently attached to the menu items.
+	void RebuildGtkAcceleratorTable();
+#endif
+
 #ifdef __WXGTK__
 	// wxGTK fires accelerator-table hotkeys as a synthetic wxEVT_MENU sent
 	// straight to the handler, without going through the real wxMenuItem
@@ -239,6 +252,7 @@ public:
 	void OnSaveAs(wxCommandEvent& event);
 	void OnClose(wxCommandEvent& event);
 	void OnPreferences(wxCommandEvent& event);
+	void OnHotkeyManager(wxCommandEvent& event);
 	void OnQuit(wxCommandEvent& event);
 
 	// Import Menu
@@ -356,8 +370,9 @@ public:
 	void OnAbout(wxCommandEvent& event);
 
 protected:
-	// Load and returns a menu item, also sets accelerator
-	wxObject* LoadItem(pugi::xml_node node, wxMenu* parent, wxArrayString& warnings, wxString& error);
+	// Load and returns a menu item, also sets accelerator; category is the
+	// top-level menu name, used to group actions in the Hotkey Manager
+	wxObject* LoadItem(pugi::xml_node node, wxMenu* parent, wxArrayString& warnings, wxString& error, const wxString& category = wxString());
 	// Checks the items in the menus according to the settings (in config)
 	void LoadValues();
 	void SearchItems(bool unique, bool action, bool container, bool writable, bool duplicate, bool keyhole, bool doorLevel, bool doorQuestNumber, bool doorQuestValue, bool onSelection = false);

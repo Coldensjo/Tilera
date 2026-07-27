@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -214,7 +214,6 @@
     <ClInclude Include="..\..\source\spawn_brush.h" />
     <ClCompile Include="..\..\source\spawn_brush.cpp" />
     <ClInclude Include="..\..\source\table_brush.h" />
-    <ClInclude Include="..\..\source\threads.h" />
     <ClInclude Include="..\..\source\graphics.h" />
     <ClCompile Include="..\..\source\graphics.cpp" />
     <ClInclude Include="..\..\source\pngfiles.h" />
@@ -226,6 +225,10 @@
     <ClInclude Include="..\..\source\editor_tabs.h" />
     <ClCompile Include="..\..\source\editor_tabs.cpp" />
     <ClInclude Include="..\..\source\gui.h" />
+    <ClInclude Include="..\..\source\hotkey_manager.h" />
+    <ClCompile Include="..\..\source\hotkey_manager.cpp" />
+    <ClInclude Include="..\..\source\hotkey_manager_dialog.h" />
+    <ClCompile Include="..\..\source\hotkey_manager_dialog.cpp" />
     <ClCompile Include="..\..\source\gui.cpp" />
     <ClInclude Include="..\..\source\gui_ids.h" />
     <ClInclude Include="..\..\source\main_menubar.h" />

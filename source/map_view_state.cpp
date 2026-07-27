@@ -23,7 +23,7 @@ std::string normalizeMapPath(const std::string& filename) {
 	}
 
 	wxFileName file(wxstr(filename));
-	file.Normalize(wxPATH_NORM_ALL);
+	file.Normalize(RME_PATH_NORM_FLAGS);
 	return nstr(file.GetFullPath());
 }
 

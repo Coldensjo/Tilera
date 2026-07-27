@@ -28,6 +28,7 @@
 #include "about_window.h"
 #include "main_menubar.h"
 #include "artprovider.h"
+#include "hotkey_manager.h"
 #include "theme.h"
 
 #include "materials.h"
@@ -201,6 +202,7 @@ bool Application::OnInit() {
 	g_gui.SetSpawnTime(g_settings.getInteger(Config::DEFAULT_SPAWNTIME));
 	FixVersionDiscrapencies();
 	g_gui.LoadHotkeys();
+	g_hotkeys.load();
 	ClientVersion::loadVersions();
 
 #ifdef _USE_PROCESS_COM
@@ -529,7 +531,7 @@ void MainFrame::OnIdle(wxIdleEvent& event) {
 }
 
 void MainFrame::OnCharHook(wxKeyEvent& event) {
-	if (event.GetKeyCode() == WXK_F12 && event.ControlDown() && !event.ShiftDown() && !event.AltDown()) {
+	if (g_hotkeys.matches("global:toggle_script_menu", event)) {
 		const bool enabled = !g_settings.getBoolean(Config::SHOW_MAKE_SCRIPT_MENU);
 		g_settings.setInteger(Config::SHOW_MAKE_SCRIPT_MENU, enabled ? 1 : 0);
 		g_settings.save();

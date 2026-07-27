@@ -20,6 +20,5 @@
 
 void mt_seed(unsigned long s);
 unsigned long mt_randi();
-double mt_randd();
 
 #endif

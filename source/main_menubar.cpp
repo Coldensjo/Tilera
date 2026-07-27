@@ -19,6 +19,8 @@
 
 #include "main_menubar.h"
 #include "application.h"
+#include "hotkey_manager.h"
+#include "hotkey_manager_dialog.h"
 #include "preferences.h"
 #include "about_window.h"
 #include "minimap_window.h"
@@ -238,6 +240,8 @@ MainMenuBar::MainMenuBar(MainFrame* frame) : frame(frame) {
 
 	MAKE_ACTION(SELECT_EXIT_BUTTON, wxITEM_NORMAL, OnSelectExitButton);
 
+	MAKE_ACTION(HOTKEY_MANAGER, wxITEM_NORMAL, OnHotkeyManager);
+
 	// A deleter, this way the frame does not need
 	// to bother deleting us.
 	class CustomMenuBar : public wxMenuBar {
@@ -356,6 +360,54 @@ bool MainMenuBar::IsItemChecked(MenuBar::ActionID id) const {
 
 	return false;
 }
+
+void MainMenuBar::ApplyHotkeyOverrides() {
+	for (const auto& pair : actions) {
+		auto fi = items.find(MenuBar::ActionID(pair.second->id));
+		if (fi == items.end()) {
+			continue;
+		}
+
+		const wxString hotkey = g_hotkeys.getMenuHotkeyString(pair.first);
+		for (wxMenuItem* item : fi->second) {
+			wxString label = item->GetItemLabel().BeforeFirst('\t');
+			if (!hotkey.empty()) {
+				label << '\t' << hotkey;
+			}
+			// Updating the label also updates the accelerator on wxMSW.
+			item->SetItemLabel(label);
+		}
+	}
+
+#ifdef __WXGTK__
+	RebuildGtkAcceleratorTable();
+#endif
+}
+
+#ifdef __WXGTK__
+void MainMenuBar::RebuildGtkAcceleratorTable() {
+	gtk_hotkey_entries.clear();
+	for (const auto& pair : items) {
+		if (pair.second.empty()) {
+			continue;
+		}
+		wxAcceleratorEntry* accel = pair.second.front()->GetAccel();
+		if (!accel) {
+			continue;
+		}
+		gtk_hotkey_entries.emplace_back(accel->GetFlags(), accel->GetKeyCode(), MAIN_FRAME_MENU + pair.first);
+		// "Ctrl++" must also react to the unshifted '=' key, since that is
+		// the key code GTK reports for the =/+ key.
+		if (accel->GetKeyCode() == '+') {
+			gtk_hotkey_entries.emplace_back(accel->GetFlags(), (int)'=', MAIN_FRAME_MENU + pair.first);
+		}
+		delete accel;
+	}
+
+	wxAcceleratorTable accelerator(static_cast<int>(gtk_hotkey_entries.size()), gtk_hotkey_entries.data());
+	frame->SetAcceleratorTable(accelerator);
+}
+#endif
 
 #ifdef __WXGTK__
 void MainMenuBar::PreToggleGtkCheckHotkey(const wxKeyEvent& event) {
@@ -684,8 +736,12 @@ bool MainMenuBar::Load(const FileName& path, wxArrayString& warnings, wxString& 
 
 	// Load succeded
 	for (pugi::xml_node menuNode = node.first_child(); menuNode; menuNode = menuNode.next_sibling()) {
-		// For each child node, load it
-		wxObject* i = LoadItem(menuNode, nullptr, warnings, error);
+		// For each child node, load it; the top-level menu name doubles as
+		// the hotkey manager category for everything inside it
+		wxString category = wxString::FromUTF8(menuNode.attribute("name").as_string());
+		category.Replace("$", "");
+		category.Replace("&", "");
+		wxObject* i = LoadItem(menuNode, nullptr, warnings, error, category);
 		wxMenu* m = dynamic_cast<wxMenu*>(i);
 		if (m) {
 			menubar->Append(m, m->GetTitle());
@@ -701,62 +757,7 @@ bool MainMenuBar::Load(const FileName& path, wxArrayString& warnings, wxString& 
 	}
 
 #ifdef __WXGTK__
-	gtk_hotkey_entries.clear();
-	// Edit
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'Z', MAIN_FRAME_MENU + MenuBar::UNDO);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL | wxACCEL_SHIFT, (int)'Z', MAIN_FRAME_MENU + MenuBar::REDO);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'F', MAIN_FRAME_MENU + MenuBar::FIND_ITEM);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL | wxACCEL_SHIFT, (int)'C', MAIN_FRAME_MENU + MenuBar::FIND_CREATURE);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL | wxACCEL_SHIFT, (int)'F', MAIN_FRAME_MENU + MenuBar::REPLACE_ITEMS);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'A', MAIN_FRAME_MENU + MenuBar::AUTOMAGIC);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'B', MAIN_FRAME_MENU + MenuBar::BORDERIZE_SELECTION);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'P', MAIN_FRAME_MENU + MenuBar::GOTO_PREVIOUS_POSITION);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'G', MAIN_FRAME_MENU + MenuBar::GOTO_POSITION);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'J', MAIN_FRAME_MENU + MenuBar::JUMP_TO_BRUSH);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'X', MAIN_FRAME_MENU + MenuBar::CUT);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'C', MAIN_FRAME_MENU + MenuBar::COPY);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'V', MAIN_FRAME_MENU + MenuBar::PASTE);
-	// View
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'=', MAIN_FRAME_MENU + MenuBar::ZOOM_IN);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'-', MAIN_FRAME_MENU + MenuBar::ZOOM_OUT);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'0', MAIN_FRAME_MENU + MenuBar::ZOOM_NORMAL);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'Q', MAIN_FRAME_MENU + MenuBar::SHOW_SHADE);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'W', MAIN_FRAME_MENU + MenuBar::SHOW_ALL_FLOORS);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'Q', MAIN_FRAME_MENU + MenuBar::GHOST_ITEMS);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'L', MAIN_FRAME_MENU + MenuBar::GHOST_HIGHER_FLOORS);
-	gtk_hotkey_entries.emplace_back(wxACCEL_SHIFT, (int)'I', MAIN_FRAME_MENU + MenuBar::SHOW_INGAME_BOX);
-	gtk_hotkey_entries.emplace_back(wxACCEL_SHIFT, (int)'L', MAIN_FRAME_MENU + MenuBar::SHOW_LIGHTS);
-	gtk_hotkey_entries.emplace_back(wxACCEL_SHIFT, (int)'G', MAIN_FRAME_MENU + MenuBar::SHOW_GRID);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'V', MAIN_FRAME_MENU + MenuBar::HIGHLIGHT_ITEMS);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'X', MAIN_FRAME_MENU + MenuBar::HIGHLIGHT_LOCKED_DOORS);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'F', MAIN_FRAME_MENU + MenuBar::SHOW_CREATURES);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'S', MAIN_FRAME_MENU + MenuBar::SHOW_SPAWNS);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'E', MAIN_FRAME_MENU + MenuBar::SHOW_SPECIAL);
-	gtk_hotkey_entries.emplace_back(wxACCEL_SHIFT, (int)'E', MAIN_FRAME_MENU + MenuBar::SHOW_AS_MINIMAP);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'E', MAIN_FRAME_MENU + MenuBar::SHOW_ONLY_COLORS);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'M', MAIN_FRAME_MENU + MenuBar::SHOW_ONLY_MODIFIED);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL, (int)'H', MAIN_FRAME_MENU + MenuBar::SHOW_HOUSES);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'O', MAIN_FRAME_MENU + MenuBar::SHOW_PATHING);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'Y', MAIN_FRAME_MENU + MenuBar::SHOW_TOOLTIPS);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'L', MAIN_FRAME_MENU + MenuBar::SHOW_PREVIEW);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'K', MAIN_FRAME_MENU + MenuBar::SHOW_WALL_HOOKS);
-
-	// Window
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'M', MAIN_FRAME_MENU + MenuBar::WIN_MINIMAP);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'T', MAIN_FRAME_MENU + MenuBar::SELECT_TERRAIN);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'D', MAIN_FRAME_MENU + MenuBar::SELECT_DOODAD);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'I', MAIN_FRAME_MENU + MenuBar::SELECT_ITEM);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'H', MAIN_FRAME_MENU + MenuBar::SELECT_HOUSE);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'C', MAIN_FRAME_MENU + MenuBar::SELECT_CREATURE);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'R', MAIN_FRAME_MENU + MenuBar::SELECT_RAW);
-	gtk_hotkey_entries.emplace_back(wxACCEL_NORMAL, (int)'Z', MAIN_FRAME_MENU + MenuBar::SELECT_EXIT_BUTTON);
-
-	// Edit (selection floor movement)
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL | wxACCEL_SHIFT, WXK_UP, MAIN_FRAME_MENU + MenuBar::MOVE_SELECTION_UP);
-	gtk_hotkey_entries.emplace_back(wxACCEL_CTRL | wxACCEL_SHIFT, WXK_DOWN, MAIN_FRAME_MENU + MenuBar::MOVE_SELECTION_DOWN);
-
-	wxAcceleratorTable accelerator(static_cast<int>(gtk_hotkey_entries.size()), gtk_hotkey_entries.data());
-	frame->SetAcceleratorTable(accelerator);
+	RebuildGtkAcceleratorTable();
 #endif
 
 	/*
@@ -773,7 +774,7 @@ bool MainMenuBar::Load(const FileName& path, wxArrayString& warnings, wxString& 
 	return true;
 }
 
-wxObject* MainMenuBar::LoadItem(pugi::xml_node node, wxMenu* parent, wxArrayString& warnings, wxString& error) {
+wxObject* MainMenuBar::LoadItem(pugi::xml_node node, wxMenu* parent, wxArrayString& warnings, wxString& error, const wxString& category) {
 	pugi::xml_attribute attribute;
 
 	const std::string& nodeName = as_lower_str(node.name());
@@ -791,7 +792,7 @@ wxObject* MainMenuBar::LoadItem(pugi::xml_node node, wxMenu* parent, wxArrayStri
 		} else {
 			for (pugi::xml_node menuNode = node.first_child(); menuNode; menuNode = menuNode.next_sibling()) {
 				// Load an add each item in order
-				LoadItem(menuNode, menu, warnings, error);
+				LoadItem(menuNode, menu, warnings, error, category);
 			}
 		}
 
@@ -819,13 +820,8 @@ wxObject* MainMenuBar::LoadItem(pugi::xml_node node, wxMenu* parent, wxArrayStri
 		}
 
 		const std::string& action = attribute.as_string();
-		std::string hotkey = node.attribute("hotkey").as_string();
-		if (!hotkey.empty()) {
-			hotkey = '\t' + hotkey;
-		}
-
+		const std::string default_hotkey = node.attribute("hotkey").as_string();
 		const std::string& help = node.attribute("help").as_string();
-		name += hotkey;
 
 		auto it = actions.find(action);
 		if (it == actions.end()) {
@@ -833,12 +829,22 @@ wxObject* MainMenuBar::LoadItem(pugi::xml_node node, wxMenu* parent, wxArrayStri
 			return nullptr;
 		}
 
+		// Register with the hotkey manager; the effective hotkey may differ
+		// from the menubar.xml default if the user overrode it.
+		g_hotkeys.registerMenuAction(action, wxstr(name), category, wxstr(help), wxstr(default_hotkey));
+		const wxString hotkey = g_hotkeys.getMenuHotkeyString(action);
+		if (!hotkey.empty()) {
+			name += '\t' + nstr(hotkey);
+		}
+
 		const MenuBar::Action& act = *it->second;
-		wxAcceleratorEntry* entry = wxAcceleratorEntry::Create(wxstr(hotkey));
-		if (entry) {
-			delete entry; // accelerators.push_back(entry);
-		} else {
-			warnings.push_back("Invalid hotkey.");
+		if (!default_hotkey.empty()) {
+			wxAcceleratorEntry* entry = wxAcceleratorEntry::Create('\t' + wxstr(default_hotkey));
+			if (entry) {
+				delete entry; // accelerators.push_back(entry);
+			} else {
+				warnings.push_back("Invalid hotkey.");
+			}
 		}
 
 		wxMenuItem* tmp = parent->Append(
@@ -891,6 +897,11 @@ void MainMenuBar::OnOpenRecent(wxCommandEvent& event) {
 
 void MainMenuBar::OnOpen(wxCommandEvent& WXUNUSED(event)) {
 	g_gui.OpenMap();
+}
+
+void MainMenuBar::OnHotkeyManager(wxCommandEvent& WXUNUSED(event)) {
+	HotkeyManagerDialog dialog(frame);
+	dialog.ShowModal();
 }
 
 void MainMenuBar::OnClose(wxCommandEvent& WXUNUSED(event)) {

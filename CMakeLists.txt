@@ -68,6 +68,8 @@ set(RME_COMMON_SOURCES
 	source/graphics.cpp
 	source/ground_brush.cpp
 	source/gui.cpp
+	source/hotkey_manager.cpp
+	source/hotkey_manager_dialog.cpp
 	source/house_brush.cpp
 	source/house.cpp
 	source/house_exit_brush.cpp

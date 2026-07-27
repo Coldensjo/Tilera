@@ -31,15 +31,26 @@ Build both by opening each solution in turn (they share `source/` but nothing el
 
 Built via CMake (`CMakeLists.txt` at repo root) against system packages instead of vcpkg.
 
-**Requirements** (Ubuntu/Debian package names)
+**Requirements — Ubuntu/Debian**
 
-```
+```sh
 sudo apt-get install -y build-essential cmake libwxgtk3.2-dev libwxgtk-media3.2-dev \
   freeglut3-dev libgl-dev libboost-dev libboost-thread-dev nlohmann-json3-dev \
   libasio-dev libtomlplusplus-dev libarchive-dev libfmt-dev
 ```
 
-**Steps**
+**Requirements — Arch Linux**
+
+```sh
+sudo pacman -S --needed base-devel cmake pkgconf wxwidgets-gtk3 freeglut glu mesa \
+  boost nlohmann-json asio tomlplusplus libarchive fmt
+```
+
+`wxwidgets-gtk3` covers both the core and media libraries (Debian splits these into
+two `-dev` packages). `base-devel` provides the compiler and `pkgconf`, which CMake
+needs to locate `glut`, `libarchive`, `tomlplusplus`, and `fmt`.
+
+**Steps** (all distributions)
 
 ```sh
 cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -47,6 +58,11 @@ cmake --build build -j"$(nproc)"
 ```
 
 Outputs `Editor` and `MapServer` in the repo root, alongside `data/`.
+
+The Linux build is community/experimental — the canonical build is the pair of
+Visual Studio solutions above. Arch tracks upstream closely, so its wxWidgets,
+Boost, and fmt are usually newer than what the Windows build pins through vcpkg;
+expect to hit new-compiler warnings there first.
 
 ### Start the server
 

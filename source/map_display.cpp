@@ -31,6 +31,7 @@
 
 #include "gui.h"
 #include "editor.h"
+#include "hotkey_manager.h"
 #include "live_client.h"
 #include "live_session_bounds.h"
 #include "brush.h"
@@ -478,7 +479,7 @@ bool GetLassoTiles(const PositionVector& trace, PositionVector& tiles) {
 
 BEGIN_EVENT_TABLE(MapCanvas, wxGLCanvas)
 EVT_KEY_DOWN(MapCanvas::OnKeyDown)
-EVT_KEY_DOWN(MapCanvas::OnKeyUp)
+EVT_KEY_UP(MapCanvas::OnKeyUp)
 
 // Mouse events
 EVT_MOTION(MapCanvas::OnMouseMove)
@@ -2239,20 +2240,19 @@ void MapCanvas::OnGainMouse(wxMouseEvent& event) {
 }
 
 void MapCanvas::OnKeyDown(wxKeyEvent& event) {
-	// char keycode = event.GetKeyCode();
-	//  std::cout << "Keycode " << keycode << std::endl;
-	switch (event.GetKeyCode()) {
-		case WXK_NUMPAD_ADD:
-		case WXK_PAGEUP: {
+	// Every canvas hotkey is routed through the hotkey manager, so the user
+	// can rebind them in File > Hotkey Manager.
+	bool fast_scroll = false;
+	switch (g_hotkeys.matchCanvas(event, fast_scroll)) {
+		case CanvasHotkey::FloorUp: {
 			g_gui.ChangeFloor(floor - 1);
 			break;
 		}
-		case WXK_NUMPAD_SUBTRACT:
-		case WXK_PAGEDOWN: {
+		case CanvasHotkey::FloorDown: {
 			g_gui.ChangeFloor(floor + 1);
 			break;
 		}
-		case WXK_NUMPAD_MULTIPLY: {
+		case CanvasHotkey::ZoomIn: {
 			double diff = -0.3;
 
 			double oldzoom = zoom;
@@ -2277,7 +2277,7 @@ void MapCanvas::OnKeyDown(wxKeyEvent& event) {
 			Refresh();
 			break;
 		}
-		case WXK_NUMPAD_DIVIDE: {
+		case CanvasHotkey::ZoomOut: {
 			double diff = 0.3;
 			double oldzoom = zoom;
 			zoom += diff;
@@ -2301,26 +2301,22 @@ void MapCanvas::OnKeyDown(wxKeyEvent& event) {
 			Refresh();
 			break;
 		}
-		// This will work like crap with non-us layouts, well, sucks for them until there is another solution.
-		case '[':
-		case '+': {
+		case CanvasHotkey::BrushSizeIncrease: {
 			g_gui.IncreaseBrushSize();
 			Refresh();
 			break;
 		}
-		case ']':
-		case '-': {
+		case CanvasHotkey::BrushSizeDecrease: {
 			g_gui.DecreaseBrushSize();
 			Refresh();
 			break;
 		}
-		case WXK_NUMPAD_UP:
-		case WXK_UP: {
+		case CanvasHotkey::ScrollNorth: {
 			int start_x, start_y;
 			static_cast<MapWindow*>(GetParent())->GetViewStart(&start_x, &start_y);
 
 			int tiles = 3;
-			if (event.ControlDown()) {
+			if (fast_scroll) {
 				tiles = 10;
 			} else if (zoom == 1.0) {
 				tiles = 1;
@@ -2331,13 +2327,12 @@ void MapCanvas::OnKeyDown(wxKeyEvent& event) {
 			Refresh();
 			break;
 		}
-		case WXK_NUMPAD_DOWN:
-		case WXK_DOWN: {
+		case CanvasHotkey::ScrollSouth: {
 			int start_x, start_y;
 			static_cast<MapWindow*>(GetParent())->GetViewStart(&start_x, &start_y);
 
 			int tiles = 3;
-			if (event.ControlDown()) {
+			if (fast_scroll) {
 				tiles = 10;
 			} else if (zoom == 1.0) {
 				tiles = 1;
@@ -2348,13 +2343,12 @@ void MapCanvas::OnKeyDown(wxKeyEvent& event) {
 			Refresh();
 			break;
 		}
-		case WXK_NUMPAD_LEFT:
-		case WXK_LEFT: {
+		case CanvasHotkey::ScrollWest: {
 			int start_x, start_y;
 			static_cast<MapWindow*>(GetParent())->GetViewStart(&start_x, &start_y);
 
 			int tiles = 3;
-			if (event.ControlDown()) {
+			if (fast_scroll) {
 				tiles = 10;
 			} else if (zoom == 1.0) {
 				tiles = 1;
@@ -2365,13 +2359,12 @@ void MapCanvas::OnKeyDown(wxKeyEvent& event) {
 			Refresh();
 			break;
 		}
-		case WXK_NUMPAD_RIGHT:
-		case WXK_RIGHT: {
+		case CanvasHotkey::ScrollEast: {
 			int start_x, start_y;
 			static_cast<MapWindow*>(GetParent())->GetViewStart(&start_x, &start_y);
 
 			int tiles = 3;
-			if (event.ControlDown()) {
+			if (fast_scroll) {
 				tiles = 10;
 			} else if (zoom == 1.0) {
 				tiles = 1;
@@ -2382,35 +2375,29 @@ void MapCanvas::OnKeyDown(wxKeyEvent& event) {
 			Refresh();
 			break;
 		}
-		case WXK_SPACE: { // Utility keys
-			if (event.ControlDown()) {
-				g_gui.FillDoodadPreviewBuffer();
-				g_gui.RefreshView();
-			} else {
-				g_gui.SwitchMode();
-			}
+		case CanvasHotkey::RefreshDoodadPreview: {
+			g_gui.FillDoodadPreviewBuffer();
+			g_gui.RefreshView();
 			break;
 		}
-		case WXK_TAB: { // Tab switch
-			if (event.ShiftDown()) {
-				g_gui.CycleTab(false);
-			} else {
-				g_gui.CycleTab(true);
-			}
+		case CanvasHotkey::SwitchMode: {
+			g_gui.SwitchMode();
 			break;
 		}
-		case WXK_DELETE: { // Delete
+		case CanvasHotkey::NextTab: {
+			g_gui.CycleTab(true);
+			break;
+		}
+		case CanvasHotkey::PreviousTab: {
+			g_gui.CycleTab(false);
+			break;
+		}
+		case CanvasHotkey::DeleteSelection: {
 			editor.destroySelection();
 			g_gui.RefreshView();
 			break;
 		}
-		case 'z':
-		case 'Z': { // Rotate counterclockwise (actually shift variaton, but whatever... :P)
-			if (event.ControlDown() || event.AltDown()) {
-				// Ctrl+Z / Ctrl+Shift+Z are Undo/Redo accelerators - don't eat them.
-				event.Skip();
-				break;
-			}
+		case CanvasHotkey::RotateBrushCCW: { // Rotate counterclockwise (actually shift variaton, but whatever... :P)
 			if (g_gui.TransformPaste(MapTransform::RotateCounterClockwise)) {
 				break;
 			}
@@ -2430,13 +2417,7 @@ void MapCanvas::OnKeyDown(wxKeyEvent& event) {
 			g_gui.RefreshView();
 			break;
 		}
-		case 'x':
-		case 'X': { // Rotate clockwise (actually shift variaton, but whatever... :P)
-			if (event.ControlDown() || event.AltDown()) {
-				// Ctrl+X is the Cut accelerator - don't eat it.
-				event.Skip();
-				break;
-			}
+		case CanvasHotkey::RotateBrushCW: { // Rotate clockwise (actually shift variaton, but whatever... :P)
 			if (g_gui.TransformPaste(MapTransform::RotateClockwise)) {
 				break;
 			}
@@ -2456,103 +2437,88 @@ void MapCanvas::OnKeyDown(wxKeyEvent& event) {
 			g_gui.RefreshView();
 			break;
 		}
-		case 'q':
-		case 'Q': { // Select previous brush
+		case CanvasHotkey::PreviousBrush: { // Select previous brush
 			g_gui.SelectPreviousBrush();
 			break;
 		}
-		// Hotkeys
-		case '0':
-		case '1':
-		case '2':
-		case '3':
-		case '4':
-		case '5':
-		case '6':
-		case '7':
-		case '8':
-		case '9': {
+		// Quick slots
+		case CanvasHotkey::QuickSlotAssign: {
+			// The fixed bindings are Ctrl+0..Ctrl+9; the digit selects the slot
 			int index = event.GetKeyCode() - '0';
-			if (event.ControlDown()) {
-				Hotkey hk;
-				if (g_gui.IsSelectionMode()) {
-					int view_start_x, view_start_y;
-					static_cast<MapWindow*>(GetParent())->GetViewStart(&view_start_x, &view_start_y);
-					int view_start_map_x = view_start_x / TileSize, view_start_map_y = view_start_y / TileSize;
+			Hotkey hk;
+			if (g_gui.IsSelectionMode()) {
+				int view_start_x, view_start_y;
+				static_cast<MapWindow*>(GetParent())->GetViewStart(&view_start_x, &view_start_y);
+				int view_start_map_x = view_start_x / TileSize, view_start_map_y = view_start_y / TileSize;
 
-					int view_screensize_x, view_screensize_y;
-					static_cast<MapWindow*>(GetParent())->GetViewSize(&view_screensize_x, &view_screensize_y);
+				int view_screensize_x, view_screensize_y;
+				static_cast<MapWindow*>(GetParent())->GetViewSize(&view_screensize_x, &view_screensize_y);
 
-					int map_x = int(view_start_map_x + (view_screensize_x * zoom) / TileSize / 2);
-					int map_y = int(view_start_map_y + (view_screensize_y * zoom) / TileSize / 2);
+				int map_x = int(view_start_map_x + (view_screensize_x * zoom) / TileSize / 2);
+				int map_y = int(view_start_map_y + (view_screensize_y * zoom) / TileSize / 2);
 
-					hk = Hotkey(Position(map_x, map_y, floor));
-				} else if (g_gui.GetCurrentBrush()) {
-					// Drawing mode
-					hk = Hotkey(g_gui.GetCurrentBrush());
-				} else {
-					break;
-				}
-				g_gui.SetHotkey(index, hk);
+				hk = Hotkey(Position(map_x, map_y, floor));
+			} else if (g_gui.GetCurrentBrush()) {
+				// Drawing mode
+				hk = Hotkey(g_gui.GetCurrentBrush());
 			} else {
-				// Click hotkey
-				Hotkey hk = g_gui.GetHotkey(index);
-				if (hk.IsPosition()) {
-					g_gui.SetSelectionMode();
+				break;
+			}
+			g_gui.SetHotkey(index, hk);
+			break;
+		}
+		case CanvasHotkey::QuickSlotUse: {
+			// The fixed bindings are 0..9; the digit selects the slot
+			int index = event.GetKeyCode() - '0';
+			Hotkey hk = g_gui.GetHotkey(index);
+			if (hk.IsPosition()) {
+				g_gui.SetSelectionMode();
 
-					int map_x = hk.GetPosition().x;
-					int map_y = hk.GetPosition().y;
-					int map_z = hk.GetPosition().z;
+				int map_x = hk.GetPosition().x;
+				int map_y = hk.GetPosition().y;
+				int map_z = hk.GetPosition().z;
 
-					static_cast<MapWindow*>(GetParent())->Scroll(TileSize * map_x, TileSize * map_y, true);
-					floor = map_z;
+				static_cast<MapWindow*>(GetParent())->Scroll(TileSize * map_x, TileSize * map_y, true);
+				floor = map_z;
 
-					g_gui.SetStatusText("Used hotkey " + i2ws(index));
-					g_gui.RefreshView();
-				} else if (hk.IsBrush()) {
-					g_gui.SetDrawingMode();
+				g_gui.SetStatusText("Used hotkey " + i2ws(index));
+				g_gui.RefreshView();
+			} else if (hk.IsBrush()) {
+				g_gui.SetDrawingMode();
 
-					std::string name = hk.GetBrushname();
-					Brush* brush = g_brushes.getBrush(name);
-					if (brush == nullptr) {
-						g_gui.SetStatusText("Brush \"" + wxstr(name) + "\" not found");
-						return;
-					}
-
-					if (!g_gui.SelectBrush(brush)) {
-						g_gui.SetStatusText("Brush \"" + wxstr(name) + "\" is not in any palette");
-						return;
-					}
-
-					g_gui.SetStatusText("Used hotkey " + i2ws(index));
-					g_gui.RefreshView();
-				} else {
-					g_gui.SetStatusText("Unassigned hotkey " + i2ws(index));
+				std::string name = hk.GetBrushname();
+				Brush* brush = g_brushes.getBrush(name);
+				if (brush == nullptr) {
+					g_gui.SetStatusText("Brush \"" + wxstr(name) + "\" not found");
+					return;
 				}
+
+				if (!g_gui.SelectBrush(brush)) {
+					g_gui.SetStatusText("Brush \"" + wxstr(name) + "\" is not in any palette");
+					return;
+				}
+
+				g_gui.SetStatusText("Used hotkey " + i2ws(index));
+				g_gui.RefreshView();
+			} else {
+				g_gui.SetStatusText("Unassigned hotkey " + i2ws(index));
 			}
 			break;
 		}
-		case 'd':
-		case 'D': {
+		case CanvasHotkey::FillKeyHold: {
 			keyCode = WXK_CONTROL_D;
 			break;
 		}
-		case 'm':
-		case 'M': {
-			if (event.ControlDown() && event.ShiftDown()) {
-				int mouse_map_x, mouse_map_y;
-				MouseToMap(&mouse_map_x, &mouse_map_y);
-				if (liveEditAllowed(editor, mouse_map_x, mouse_map_y)) {
-					editor.promptAddMapComment(Position(mouse_map_x, mouse_map_y, floor));
-				}
-				break;
+		case CanvasHotkey::AddMapComment: {
+			int mouse_map_x, mouse_map_y;
+			MouseToMap(&mouse_map_x, &mouse_map_y);
+			if (liveEditAllowed(editor, mouse_map_x, mouse_map_y)) {
+				editor.promptAddMapComment(Position(mouse_map_x, mouse_map_y, floor));
 			}
-			event.Skip();
 			break;
 		}
-		case 'p':
-		case 'P': {
-			if (event.ControlDown() && event.ShiftDown() && editor.IsLive()) {
+		case CanvasHotkey::LivePing: {
+			if (editor.IsLive()) {
 				int mouse_map_x, mouse_map_y;
 				MouseToMap(&mouse_map_x, &mouse_map_y);
 				if (liveEditAllowed(editor, mouse_map_x, mouse_map_y)) {
@@ -2565,7 +2531,144 @@ void MapCanvas::OnKeyDown(wxKeyEvent& event) {
 			event.Skip();
 			break;
 		}
+		case CanvasHotkey::FitViewToMap: {
+			g_gui.FitViewToMap();
+			break;
+		}
+		// Brush shape and size presets (same as the Sizes toolbar)
+		case CanvasHotkey::ToggleBrushShape: {
+			const bool square = g_gui.GetBrushShape() == BRUSHSHAPE_SQUARE;
+			g_gui.SetBrushShape(square ? BRUSHSHAPE_CIRCLE : BRUSHSHAPE_SQUARE);
+			g_gui.SetStatusText(square ? "Circular brush" : "Rectangular brush");
+			break;
+		}
+		case CanvasHotkey::BrushSize1: {
+			g_gui.SetBrushSize(0);
+			break;
+		}
+		case CanvasHotkey::BrushSize2x2: {
+			g_gui.SetBrushSize(GUI::BRUSH_SIZE_2X2);
+			break;
+		}
+		case CanvasHotkey::BrushSize3: {
+			g_gui.SetBrushSize(1);
+			break;
+		}
+		case CanvasHotkey::BrushSize4: {
+			g_gui.SetBrushSize(2);
+			break;
+		}
+		case CanvasHotkey::BrushSize5: {
+			g_gui.SetBrushSize(4);
+			break;
+		}
+		case CanvasHotkey::BrushSize6: {
+			g_gui.SetBrushSize(6);
+			break;
+		}
+		case CanvasHotkey::BrushSize7: {
+			g_gui.SetBrushSize(8);
+			break;
+		}
+		case CanvasHotkey::BrushSize8: {
+			g_gui.SetBrushSize(11);
+			break;
+		}
+		// Tool brushes (same as the Brushes toolbar)
+		case CanvasHotkey::SelectOptionalBorder: {
+			if (g_gui.optional_brush) {
+				g_gui.SelectBrush(g_gui.optional_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectEraser: {
+			if (g_gui.eraser) {
+				g_gui.SelectBrush(g_gui.eraser);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectPzBrush: {
+			if (g_gui.pz_brush) {
+				g_gui.SelectBrush(g_gui.pz_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectNoPvpBrush: {
+			if (g_gui.rook_brush) {
+				g_gui.SelectBrush(g_gui.rook_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectNoLogoutBrush: {
+			if (g_gui.nolog_brush) {
+				g_gui.SelectBrush(g_gui.nolog_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectPvpBrush: {
+			if (g_gui.pvp_brush) {
+				g_gui.SelectBrush(g_gui.pvp_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectRefreshBrush: {
+			if (g_gui.refresh_brush) {
+				g_gui.SelectBrush(g_gui.refresh_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectNormalDoor: {
+			if (g_gui.normal_door_brush) {
+				g_gui.SelectBrush(g_gui.normal_door_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectLockedDoor: {
+			if (g_gui.locked_door_brush) {
+				g_gui.SelectBrush(g_gui.locked_door_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectMagicDoor: {
+			if (g_gui.magic_door_brush) {
+				g_gui.SelectBrush(g_gui.magic_door_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectQuestDoor: {
+			if (g_gui.quest_door_brush) {
+				g_gui.SelectBrush(g_gui.quest_door_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectNormalAltDoor: {
+			if (g_gui.normal_door_alt_brush) {
+				g_gui.SelectBrush(g_gui.normal_door_alt_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectArchwayDoor: {
+			if (g_gui.archway_door_brush) {
+				g_gui.SelectBrush(g_gui.archway_door_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectHatchWindow: {
+			if (g_gui.hatch_door_brush) {
+				g_gui.SelectBrush(g_gui.hatch_door_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::SelectWindow: {
+			if (g_gui.window_door_brush) {
+				g_gui.SelectBrush(g_gui.window_door_brush);
+			}
+			break;
+		}
+		case CanvasHotkey::None:
 		default: {
+			// Unbound chords fall through so the frame accelerators
+			// (menu hotkeys like Ctrl+Z or plain letters) still work.
 			event.Skip();
 			break;
 		}
@@ -2574,6 +2677,7 @@ void MapCanvas::OnKeyDown(wxKeyEvent& event) {
 
 void MapCanvas::OnKeyUp(wxKeyEvent& event) {
 	keyCode = WXK_NONE;
+	event.Skip();
 }
 
 void MapCanvas::OnCopy(wxCommandEvent& WXUNUSED(event)) {

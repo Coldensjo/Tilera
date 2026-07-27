@@ -50,6 +50,7 @@
 		<separator />
 		<menu name="Recent Files" special="RECENT_FILES" />
 		<item name="Preferences" action="PREFERENCES" help="Configure the map editor." />
+		<item name="Hotkey Manager..." action="HOTKEY_MANAGER" help="View and customize all keyboard shortcuts, including the ones not shown in the menus." />
 		<item name="Exit" action="EXIT" help="Close the editor." />
 	</menu>
 

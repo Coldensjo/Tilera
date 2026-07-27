@@ -384,6 +384,10 @@ void Settings::IO(IOMode mode) {
 	Int(LIVE_PORT, 31313);
 	String(LIVE_USERNAME, "User");
 	String(LIVE_PASSWORD, "");
+	String(LIVE_SPOOF_VERSION, "");
+	Int(LIVE_AUTO_VERSION_PROBE, 1);
+	Int(LIVE_VERSION_PROBE_LIMIT, 150);
+	Int(LIVE_VERSION_PROBE_MAX_SUBVERSION, 40);
 	Int(LIVE_ALLOW_CLIPBOARD, 1);
 	Int(LIVE_CURSOR_RED, 0);
 	Int(LIVE_CURSOR_GREEN, 166);
@@ -401,6 +405,7 @@ void Settings::IO(IOMode mode) {
 
 	section("Hotkeys");
 	String(NUMERICAL_HOTKEYS, "none:{}\nnone:{}\nnone:{}\nnone:{}\nnone:{}\nnone:{}\nnone:{}\nnone:{}\nnone:{}\nnone:{}\n");
+	String(CUSTOM_HOTKEYS, "");
 
 	Int(SHOW_TOOLBAR_STANDARD, 1);
 	Int(SHOW_TOOLBAR_BRUSHES, 0);

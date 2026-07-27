@@ -62,63 +62,10 @@ std::string f2s(const double _d) {
 	return ss.str();
 }
 
-int s2i(const std::string s) {
-	return atoi(s.c_str());
-}
-
-double s2f(const std::string s) {
-	return atof(s.c_str());
-}
-
 wxString i2ws(const int _i) {
 	wxString str;
 	str << _i;
 	return str;
-}
-
-wxString f2ws(const double _d) {
-	wxString str;
-	str << _d;
-	return str;
-}
-
-int ws2i(const wxString s) {
-	long _i;
-	if (s.ToLong(&_i)) {
-		return int(_i);
-	}
-	return 0;
-}
-
-double ws2f(const wxString s) {
-	double _d;
-	if (s.ToDouble(&_d)) {
-		return _d;
-	}
-	return 0.0;
-}
-
-void replaceString(std::string& str, const std::string& sought, const std::string& replacement) {
-	if (sought.empty()) {
-		return;
-	}
-
-	size_t pos = 0;
-	const size_t soughtLen = sought.length();
-	const size_t replaceLen = replacement.length();
-
-	while ((pos = str.find(sought, pos)) != std::string::npos) {
-		str.replace(pos, soughtLen, replacement);
-		pos += replaceLen;
-	}
-}
-
-void trim_right(std::string& source, const std::string& t) {
-	source.erase(source.find_last_not_of(t) + 1);
-}
-
-void trim_left(std::string& source, const std::string& t) {
-	source.erase(0, source.find_first_not_of(t));
 }
 
 void to_lower_str(std::string& source) {

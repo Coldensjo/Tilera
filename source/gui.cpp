@@ -342,9 +342,9 @@ wxString ResolveConfiguredDirectory(const FileName& mapFileName, const wxString&
 	resolvedPath.AssignDir(value);
 	if (!resolvedPath.IsAbsolute()) {
 		const wxString mapDirectory = mapFileName.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR);
-		resolvedPath.Normalize(wxPATH_NORM_ALL, mapDirectory);
+		resolvedPath.Normalize(RME_PATH_NORM_FLAGS, mapDirectory);
 	} else {
-		resolvedPath.Normalize(wxPATH_NORM_ALL);
+		resolvedPath.Normalize(RME_PATH_NORM_FLAGS);
 	}
 
 	return resolvedPath.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR);
@@ -1002,20 +1002,47 @@ bool GUI::ConnectToLiveServer() {
 		return false;
 	}
 
-	auto* client = newd LiveClient();
-	client->setName(dialog.GetUsername());
-	client->setPassword(dialog.GetPassword());
-	client->setCursorColor(dialog.GetCursorColor());
-
+	// Store the dialog's choices before constructing the client -- LiveClient reads
+	// the live settings (cursor colour, version probing) in its constructor.
 	g_settings.setString(Config::LIVE_HOST, nstr(dialog.GetHost()));
 	g_settings.setInteger(Config::LIVE_PORT, dialog.GetPort());
 	g_settings.setString(Config::LIVE_USERNAME, nstr(dialog.GetUsername()));
 	g_settings.setString(Config::LIVE_PASSWORD, nstr(dialog.GetPassword()));
+	g_settings.setString(Config::LIVE_SPOOF_VERSION, nstr(dialog.GetSpoofVersion()));
+	g_settings.setInteger(Config::LIVE_AUTO_VERSION_PROBE, dialog.GetAutoVersionProbe() ? 1 : 0);
 	const wxColor cursorColor = dialog.GetCursorColor();
 	g_settings.setInteger(Config::LIVE_CURSOR_RED, cursorColor.Red());
 	g_settings.setInteger(Config::LIVE_CURSOR_GREEN, cursorColor.Green());
 	g_settings.setInteger(Config::LIVE_CURSOR_BLUE, cursorColor.Blue());
 	g_settings.setInteger(Config::LIVE_CURSOR_ALPHA, cursorColor.Alpha());
+
+	// A pinned version that is not ours means the user is knowingly connecting to a
+	// different build, so confirm before anything is sent. The probe asks the same
+	// question if it discovers the mismatch itself; telling the client we already
+	// asked keeps it from asking twice.
+	bool versionMismatchAccepted = false;
+	uint32_t pinnedVersionId = 0;
+	if (parseEditorVersionId(dialog.GetSpoofVersion(), pinnedVersionId) && pinnedVersionId != __RME_VERSION_ID__) {
+		const long answer = PopupDialog(
+			"Editor Version Mismatch",
+			"You are connecting as editor version " + formatEditorVersionId(pinnedVersionId)
+				+ ", but this editor is " + __W_RME_VERSION__ + ".\n\n"
+				  "\n\nConnect anyway?",
+			wxYES | wxNO | wxICON_EXCLAMATION
+		);
+		if (answer != wxID_YES) {
+			return false;
+		}
+		versionMismatchAccepted = true;
+	}
+
+	auto* client = newd LiveClient();
+	client->setName(dialog.GetUsername());
+	client->setPassword(dialog.GetPassword());
+	client->setCursorColor(dialog.GetCursorColor());
+	if (versionMismatchAccepted) {
+		client->setVersionMismatchAccepted();
+	}
 
 	client->createLogWindow(tabbook);
 

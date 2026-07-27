@@ -895,6 +895,10 @@ bool ItemDatabase::loadItemFromGameXml(pugi::xml_node itemNode, int id) {
 			if ((attribute = itemAttributesNode.attribute("value"))) {
 				it.weight = attribute.as_int() / 100.f;
 			}
+		} else if (key == "attack") {
+			if ((attribute = itemAttributesNode.attribute("value"))) {
+				it.attack = attribute.as_int();
+			}
 		} else if (key == "armor") {
 			if ((attribute = itemAttributesNode.attribute("value"))) {
 				it.armor = attribute.as_int();

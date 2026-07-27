@@ -140,7 +140,6 @@ typedef wxFileName FileName;
 
 #include "con_vector.h"
 #include "common.h"
-#include "threads.h"
 
 #include "rme_forward_declarations.h"
 
@@ -149,6 +148,13 @@ typedef wxFileName FileName;
 #else
 	#define FROM_DIP(widget, size) size
 #endif
+
+// Replacement for the deprecated wxPATH_NORM_ALL (wxWidgets 3.2 wants the flags
+// spelled out): expand environment variables and a leading "~", collapse "." and
+// "..", and make the path absolute. The long-name/shortcut resolution that
+// wxPATH_NORM_ALL also implied is intentionally left out — it touches the
+// filesystem and none of the callers need it.
+static const int RME_PATH_NORM_FLAGS = wxPATH_NORM_ENV_VARS | wxPATH_NORM_TILDE | wxPATH_NORM_DOTS | wxPATH_NORM_ABSOLUTE;
 
 inline bool isSelectAllShortcut(const wxKeyEvent& event) {
 	if (!(event.ControlDown() || event.CmdDown())) {
