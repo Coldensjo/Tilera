@@ -1,4 +1,4 @@
-﻿//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 // This file is part of Remere's Map Editor
 //////////////////////////////////////////////////////////////////////
 // Remere's Map Editor is free software: you can redistribute it and/or modify
@@ -120,7 +120,7 @@ extern unsigned char door_archway_png[554];
 extern unsigned char door_archway_small_png[627];
 extern unsigned char door_normal_alt_png[1124];
 extern unsigned char door_normal_alt_small_png[845];
-extern unsigned char editor_icon_png[776];
+extern unsigned char editor_icon_png[2499];
 extern unsigned char icon_terrain_png[2499];
 extern unsigned char icon_doodad_png[975];
 extern unsigned char icon_item_png[1713];
