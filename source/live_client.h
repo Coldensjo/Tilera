@@ -102,6 +102,9 @@ public:
 	void sendCommentRemove(uint32_t commentId);
 	void sendCommentEdit(uint32_t commentId, const std::string& text);
 	void sendPing(const Position& pos);
+	// Tiny no-op packet sent on a fixed interval so the connection keeps carrying
+	// traffic even when the user is idle or tabbed out (see startKeepAliveTimer).
+	void sendKeepAlive();
 
 	void warnIfBlockedBrushUse(const Brush* brush);
 	void setBlockedItemIds(std::set<uint16_t> ids);
@@ -114,6 +117,10 @@ public:
 	// loop, so a lost node batch still recovers while the user is idle.
 	void onNodeRetryTick();
 	void startNodeRetryTimer();
+	// Keeps the socket carrying traffic while the user is idle or the editor is
+	// tabbed out, so NAT/firewall idle-connection timeouts don't silently drop
+	// the session (see startKeepAliveTimer).
+	void startKeepAliveTimer();
 	void requestViewportRefresh();
 	bool consumeViewportRefresh();
 	void invalidateViewport(int32_t start_x, int32_t start_y, int32_t end_x, int32_t end_y);
@@ -209,6 +216,7 @@ protected:
 	std::map<uint32_t, std::chrono::steady_clock::time_point> pendingNodeRequests;
 	std::chrono::steady_clock::time_point lastNodeRequestTick {};
 	std::unique_ptr<wxTimer> nodeRetryTimer;
+	std::unique_ptr<wxTimer> keepAliveTimer;
 	// Throttles the "malformed packet" log so a persistently bad stream can't spam.
 	bool warnedMalformedStream = false;
 	bool viewportRefreshPending;

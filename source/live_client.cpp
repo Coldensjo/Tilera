@@ -40,6 +40,12 @@ namespace {
 	// stays a polite trickle of connections rather than a burst.
 	constexpr int LIVE_VERSION_PROBE_DELAY_MS = 150;
 
+	// How often to send a keepalive packet while otherwise idle. Well under the
+	// idle-connection timeouts commonly enforced by NAT gateways and firewalls
+	// (some as low as 60s), and far shorter than the OS's default multi-hour
+	// TCP keepalive probe interval.
+	constexpr int LIVE_KEEPALIVE_INTERVAL_MS = 25000;
+
 	// GUI-thread timer that drives node-request retries independently of repaints.
 	class NodeRetryTimer : public wxTimer {
 	public:
@@ -47,6 +53,20 @@ namespace {
 			client(owner) { }
 		void Notify() override {
 			client->onNodeRetryTick();
+		}
+
+	private:
+		LiveClient* client;
+	};
+
+	// GUI-thread timer that keeps the connection carrying traffic while the user
+	// is idle or the editor window is tabbed out, independent of mouse movement.
+	class KeepAliveTimer : public wxTimer {
+	public:
+		explicit KeepAliveTimer(LiveClient* owner) :
+			client(owner) { }
+		void Notify() override {
+			client->sendKeepAlive();
 		}
 
 	private:
@@ -151,6 +171,11 @@ void LiveClient::tryConnect(asio::ip::tcp::resolver::results_type endpoints) {
 		} else {
 			net_error_code optionError;
 			socket->set_option(asio::ip::tcp::no_delay(true), optionError);
+			// Match the server's keep_alive(true) so the OS also probes this side of
+			// an idle connection (see live_server.cpp's acceptClient for the fuller
+			// rationale). This is a backstop -- the app-level keepalive packet below
+			// is what actually keeps NAT/firewall mappings alive on typical timeouts.
+			socket->set_option(asio::socket_base::keep_alive(true), optionError);
 			if (optionError) {
 				disconnectFromServer("Failed to set socket options: " + optionError.message());
 				return;
@@ -164,6 +189,10 @@ void LiveClient::tryConnect(asio::ip::tcp::resolver::results_type endpoints) {
 void LiveClient::close() {
 	if (nodeRetryTimer) {
 		nodeRetryTimer->Stop();
+	}
+
+	if (keepAliveTimer) {
+		keepAliveTimer->Stop();
 	}
 
 	// Stop the version search before the socket goes: a probe retry firing after
@@ -684,6 +713,12 @@ void LiveClient::sendPing(const Position& pos) {
 	send(message);
 }
 
+void LiveClient::sendKeepAlive() {
+	NetworkMessage message;
+	message.write<uint8_t>(PACKET_CLIENT_KEEPALIVE);
+	send(message);
+}
+
 void LiveClient::sendReady() {
 	NetworkMessage message;
 	message.write<uint8_t>(PACKET_READY_CLIENT);
@@ -733,6 +768,18 @@ void LiveClient::startNodeRetryTimer() {
 	}
 	if (!nodeRetryTimer->IsRunning()) {
 		nodeRetryTimer->Start(500);
+	}
+}
+
+void LiveClient::startKeepAliveTimer() {
+	// Runs on the GUI thread, same as the node-retry timer above, so it keeps
+	// firing whether or not the map canvas is repainting or receiving mouse
+	// input -- including while the editor window is tabbed out.
+	if (!keepAliveTimer) {
+		keepAliveTimer = std::make_unique<KeepAliveTimer>(this);
+	}
+	if (!keepAliveTimer->IsRunning()) {
+		keepAliveTimer->Start(LIVE_KEEPALIVE_INTERVAL_MS);
 	}
 }
 
@@ -993,6 +1040,7 @@ void LiveClient::parseHello(NetworkMessage& message) {
 	}
 
 	startNodeRetryTimer();
+	startKeepAliveTimer();
 
 	// The new tab isn't guaranteed to fire the notebook's page-changed event (it
 	// won't if this is the very first tab), which is the only other place that
