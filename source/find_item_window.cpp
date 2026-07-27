@@ -23,6 +23,23 @@
 #include "brush.h"
 #include "raw_brush.h"
 
+namespace {
+
+// Index 0 of each list is "Any", which switches that filter off; the parallel
+// *_VALUES arrays hold the ItemType value each visible entry matches against.
+const wxString WEAPON_CHOICES[] = { "Any", "Sword", "Club", "Axe", "Shield", "Distance", "Wand", "Ammunition" };
+const uint8_t WEAPON_VALUES[] = { WEAPON_NONE, WEAPON_SWORD, WEAPON_CLUB, WEAPON_AXE, WEAPON_SHIELD, WEAPON_DISTANCE, WEAPON_WAND, WEAPON_AMMO };
+
+// Only the slots items.xml sets explicitly are offered. ItemType::slot_position
+// defaults to SLOTP_HAND for every item in the database, so a "Hand" entry would
+// match everything that never declared a slottype and tell the user nothing.
+const wxString SLOT_CHOICES[] = { "Any", "Head", "Necklace", "Backpack", "Body", "Legs", "Feet", "Ring", "Ammo", "Two-Handed" };
+const uint16_t SLOT_VALUES[] = { 0, SLOTP_HEAD, SLOTP_NECKLACE, SLOTP_BACKPACK, SLOTP_ARMOR, SLOTP_LEGS, SLOTP_FEET, SLOTP_RING, SLOTP_AMMO, SLOTP_TWO_HAND };
+
+const int MAX_STAT_FILTER = 1000;
+
+} // namespace
+
 BEGIN_EVENT_TABLE(FindItemDialog, wxDialog)
 EVT_TIMER(wxID_ANY, FindItemDialog::OnInputTimer)
 EVT_LISTBOX(wxID_ANY, FindItemDialog::OnListItemSelected)
@@ -47,7 +64,8 @@ FindItemDialog::FindItemDialog(wxWindow* parent, const wxString& title, bool onl
 									"Find by Client ID",
 									"Find by Name",
 									"Find by Types",
-									"Find by Properties" };
+									"Find by Properties",
+									"Find by Equipment" };
 
 	int radio_boxNChoices = sizeof(radio_boxChoices) / sizeof(wxString);
 	options_radio_box = newd wxRadioBox(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, radio_boxNChoices, radio_boxChoices, 1, wxRA_SPECIFY_COLS);
@@ -92,6 +110,10 @@ FindItemDialog::FindItemDialog(wxWindow* parent, const wxString& title, bool onl
 
 	// --------------- Types ---------------
 
+	// Types and Equipment share a column: both are narrow, and a fifth column
+	// would not fit the dialog's fixed 800px width.
+	wxBoxSizer* type_column_sizer = newd wxBoxSizer(wxVERTICAL);
+
 	wxStaticBoxSizer* type_box_sizer = newd wxStaticBoxSizer(newd wxStaticBox(this, wxID_ANY, "Types"), wxVERTICAL);
 
 	wxString types_choices[] = { "Depot",
@@ -111,7 +133,45 @@ FindItemDialog::FindItemDialog(wxWindow* parent, const wxString& title, bool onl
 	types_radio_box->Enable(false);
 	type_box_sizer->Add(types_radio_box, 0, wxALL | wxEXPAND, 5);
 
-	box_sizer->Add(type_box_sizer, 1, wxALL | wxEXPAND, 5);
+	type_column_sizer->Add(type_box_sizer, 0, wxALL | wxEXPAND, 5);
+
+	// --------------- Equipment ---------------
+
+	wxStaticBoxSizer* equipment_box_sizer = newd wxStaticBoxSizer(newd wxStaticBox(this, wxID_ANY, "Equipment"), wxVERTICAL);
+	wxStaticBox* equipment_box = equipment_box_sizer->GetStaticBox();
+
+	equipment_box_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Weapon type"), 0, wxLEFT | wxRIGHT | wxTOP, 5);
+	weapon_type_choice = newd wxChoice(equipment_box, wxID_ANY, wxDefaultPosition, wxDefaultSize, sizeof(WEAPON_CHOICES) / sizeof(wxString), WEAPON_CHOICES);
+	weapon_type_choice->SetSelection(0);
+	weapon_type_choice->SetToolTip("Match items declaring this weapontype in items.xml.");
+	equipment_box_sizer->Add(weapon_type_choice, 0, wxALL | wxEXPAND, 5);
+
+	equipment_box_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Slot"), 0, wxLEFT | wxRIGHT | wxTOP, 5);
+	slot_choice = newd wxChoice(equipment_box, wxID_ANY, wxDefaultPosition, wxDefaultSize, sizeof(SLOT_CHOICES) / sizeof(wxString), SLOT_CHOICES);
+	slot_choice->SetSelection(0);
+	slot_choice->SetToolTip("Match items equippable in this slot.");
+	equipment_box_sizer->Add(slot_choice, 0, wxALL | wxEXPAND, 5);
+
+	wxFlexGridSizer* stats_sizer = newd wxFlexGridSizer(3, 2, 0, 0);
+	stats_sizer->AddGrowableCol(1);
+
+	stats_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Min attack"), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
+	min_attack_spin = newd wxSpinCtrl(equipment_box, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, MAX_STAT_FILTER, 0);
+	stats_sizer->Add(min_attack_spin, 0, wxALL | wxEXPAND, 5);
+
+	stats_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Min defense"), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
+	min_defense_spin = newd wxSpinCtrl(equipment_box, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, MAX_STAT_FILTER, 0);
+	stats_sizer->Add(min_defense_spin, 0, wxALL | wxEXPAND, 5);
+
+	stats_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Min armor"), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
+	min_armor_spin = newd wxSpinCtrl(equipment_box, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, MAX_STAT_FILTER, 0);
+	stats_sizer->Add(min_armor_spin, 0, wxALL | wxEXPAND, 5);
+
+	equipment_box_sizer->Add(stats_sizer, 0, wxEXPAND);
+
+	type_column_sizer->Add(equipment_box_sizer, 1, wxALL | wxEXPAND, 5);
+
+	box_sizer->Add(type_column_sizer, 1, wxEXPAND);
 
 	// --------------- Properties ---------------
 
@@ -178,6 +238,7 @@ FindItemDialog::FindItemDialog(wxWindow* parent, const wxString& title, bool onl
 	this->Layout();
 	this->Centre(wxBOTH);
 	this->EnableProperties(false);
+	this->EnableEquipment(false);
 	this->RefreshContentsInternal();
 
 	// Connect Events
@@ -208,6 +269,12 @@ FindItemDialog::FindItemDialog(wxWindow* parent, const wxString& title, bool onl
 	ignore_look->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
 	floor_change->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
 	invalid_item->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
+
+	weapon_type_choice->Connect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
+	slot_choice->Connect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
+	min_attack_spin->Connect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
+	min_defense_spin->Connect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
+	min_armor_spin->Connect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
 }
 
 FindItemDialog::~FindItemDialog() {
@@ -238,6 +305,12 @@ FindItemDialog::~FindItemDialog() {
 	has_elevation->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
 	ignore_look->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
 	floor_change->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
+
+	weapon_type_choice->Disconnect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
+	slot_choice->Disconnect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
+	min_attack_spin->Disconnect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
+	min_defense_spin->Disconnect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
+	min_armor_spin->Disconnect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
 }
 
 FindItemDialog::SearchMode FindItemDialog::getSearchMode() const {
@@ -255,6 +328,7 @@ void FindItemDialog::setSearchMode(FindItemDialog::SearchMode mode) {
 	name_text_input->Enable(mode == SearchMode::Names);
 	types_radio_box->Enable(mode == SearchMode::Types);
 	EnableProperties(mode == SearchMode::Properties);
+	EnableEquipment(mode == SearchMode::Equipment);
 	RefreshContentsInternal();
 
 	if (mode == SearchMode::ServerIDs) {
@@ -284,6 +358,14 @@ void FindItemDialog::EnableProperties(bool enable) {
 	has_elevation->Enable(enable);
 	ignore_look->Enable(enable);
 	floor_change->Enable(enable);
+}
+
+void FindItemDialog::EnableEquipment(bool enable) {
+	weapon_type_choice->Enable(enable);
+	slot_choice->Enable(enable);
+	min_attack_spin->Enable(enable);
+	min_defense_spin->Enable(enable);
+	min_armor_spin->Enable(enable);
 }
 
 void FindItemDialog::RefreshContentsInternal() {
@@ -408,6 +490,50 @@ void FindItemDialog::RefreshContentsInternal() {
 				items_list->AddBrush(raw_brush);
 			}
 		}
+	} else if (selection == SearchMode::Equipment) {
+		const int weapon_index = weapon_type_choice->GetSelection();
+		const int slot_index = slot_choice->GetSelection();
+		const int min_attack = min_attack_spin->GetValue();
+		const int min_defense = min_defense_spin->GetValue();
+		const int min_armor = min_armor_spin->GetValue();
+
+		// Index 0 is "Any" and a zero minimum is no minimum, so with nothing
+		// set every filter passes — match the other modes and list nothing
+		// rather than the whole database.
+		bool has_selected = (weapon_index > 0 || slot_index > 0 || min_attack > 0 || min_defense > 0 || min_armor > 0);
+
+		if (has_selected) {
+			for (int id = 100; id <= g_items.getMaxID(); ++id) {
+				ItemType& item = g_items.getItemType(id);
+				if (item.id == 0) {
+					continue;
+				}
+
+				RAWBrush* raw_brush = item.raw_brush;
+				if (!raw_brush) {
+					continue;
+				}
+
+				if (only_pickupables && !item.pickupable) {
+					continue;
+				}
+
+				if (weapon_index > 0 && item.weapon_type != WEAPON_VALUES[weapon_index]) {
+					continue;
+				}
+
+				if (slot_index > 0 && (item.slot_position & SLOT_VALUES[slot_index]) == 0) {
+					continue;
+				}
+
+				if (item.attack < min_attack || item.defense < min_defense || item.armor < min_armor) {
+					continue;
+				}
+
+				found_search_results = true;
+				items_list->AddBrush(raw_brush);
+			}
+		}
 	}
 
 	if (found_search_results) {
@@ -441,6 +567,10 @@ void FindItemDialog::OnTypeChange(wxCommandEvent& WXUNUSED(event)) {
 }
 
 void FindItemDialog::OnPropertyChange(wxCommandEvent& WXUNUSED(event)) {
+	RefreshContentsInternal();
+}
+
+void FindItemDialog::OnEquipmentChange(wxCommandEvent& WXUNUSED(event)) {
 	RefreshContentsInternal();
 }
 

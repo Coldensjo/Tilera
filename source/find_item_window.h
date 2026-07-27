@@ -22,8 +22,10 @@
 #include <wx/spinctrl.h>
 #include <wx/sizer.h>
 #include <wx/statbox.h>
+#include <wx/stattext.h>
 #include <wx/textctrl.h>
 #include <wx/checkbox.h>
+#include <wx/choice.h>
 #include <wx/button.h>
 #include <wx/dialog.h>
 
@@ -31,12 +33,14 @@ class FindDialogListBox;
 
 class FindItemDialog : public wxDialog {
 public:
+	// Persisted by index in Config::FIND_ITEM_MODE — only ever append.
 	enum SearchMode {
 		ServerIDs = 0,
 		ClientIDs,
 		Names,
 		Types,
 		Properties,
+		Equipment,
 	};
 
 	enum SearchItemType {
@@ -67,6 +71,7 @@ public:
 
 private:
 	void EnableProperties(bool enable);
+	void EnableEquipment(bool enable);
 	void RefreshContentsInternal();
 
 	void OnOptionChange(wxCommandEvent& event);
@@ -75,6 +80,7 @@ private:
 	void OnText(wxCommandEvent& event);
 	void OnTypeChange(wxCommandEvent& event);
 	void OnPropertyChange(wxCommandEvent& event);
+	void OnEquipmentChange(wxCommandEvent& event);
 	void OnInputTimer(wxTimerEvent& event);
 	void OnListItemSelected(wxCommandEvent& event);
 	void OnListItemDoubleClick(wxCommandEvent& event);
@@ -105,6 +111,12 @@ private:
 	wxCheckBox* ignore_look;
 	wxCheckBox* floor_change;
 	wxCheckBox* invalid_item;
+
+	wxChoice* weapon_type_choice;
+	wxChoice* slot_choice;
+	wxSpinCtrl* min_attack_spin;
+	wxSpinCtrl* min_defense_spin;
+	wxSpinCtrl* min_armor_spin;
 
 	FindDialogListBox* items_list;
 	wxStdDialogButtonSizer* buttons_box_sizer;
