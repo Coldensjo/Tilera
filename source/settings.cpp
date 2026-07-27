@@ -405,6 +405,7 @@ void Settings::IO(IOMode mode) {
 
 	section("Hotkeys");
 	String(NUMERICAL_HOTKEYS, "none:{}\nnone:{}\nnone:{}\nnone:{}\nnone:{}\nnone:{}\nnone:{}\nnone:{}\nnone:{}\nnone:{}\n");
+	String(CUSTOM_HOTKEYS, "");
 
 	Int(SHOW_TOOLBAR_STANDARD, 1);
 	Int(SHOW_TOOLBAR_BRUSHES, 0);
