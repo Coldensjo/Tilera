@@ -263,6 +263,11 @@ void LivePeer::parseEditorPacket(NetworkMessage message) {
 			case PACKET_CLIENT_PING:
 				parseClientPing(message);
 				break;
+			case PACKET_CLIENT_KEEPALIVE:
+				// No payload, nothing to do -- receiving it is the point: it's what
+				// keeps the connection carrying traffic while the client is idle or
+				// tabbed out, so NAT/firewall idle timeouts don't drop the session.
+				break;
 			case PACKET_COMMENT_ADD:
 				parseCommentAdd(message);
 				break;
