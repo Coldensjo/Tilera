@@ -1829,9 +1829,8 @@ EVT_BUTTON(wxID_CANCEL, LiveConnectWindow::OnClickCancel)
 END_EVENT_TABLE()
 
 LiveConnectWindow::LiveConnectWindow(wxWindow* parent) :
-	wxDialog(parent, wxID_ANY, "Connect to Live Server", wxDefaultPosition, wxSize(380, 330)),
-	host_ctrl(nullptr), port_ctrl(nullptr), username_ctrl(nullptr), password_ctrl(nullptr), cursor_color_pick(nullptr),
-	spoof_version_ctrl(nullptr), auto_version_probe_ctrl(nullptr) {
+	wxDialog(parent, wxID_ANY, "Connect to Live Server", wxDefaultPosition, wxSize(380, 270)),
+	host_ctrl(nullptr), port_ctrl(nullptr), username_ctrl(nullptr), password_ctrl(nullptr), cursor_color_pick(nullptr) {
 	wxBoxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
 	wxFlexGridSizer* grid = newd wxFlexGridSizer(2, 5, 5);
 	grid->AddGrowableCol(1, 1);
@@ -1865,31 +1864,7 @@ LiveConnectWindow::LiveConnectWindow(wxWindow* parent) :
 	);
 	grid->Add(cursor_color_pick, 1, wxEXPAND);
 
-	grid->Add(newd wxStaticText(this, wxID_ANY, "Report version:"), 0, wxALIGN_CENTER_VERTICAL);
-	spoof_version_ctrl = newd wxTextCtrl(this, wxID_ANY, wxstr(g_settings.getString(Config::LIVE_SPOOF_VERSION)));
-	spoof_version_ctrl->SetHint("blank = " + __W_RME_VERSION__);
-	spoof_version_ctrl->SetToolTip(
-		"Editor version to announce to the server, e.g. \"2.9.0\".\n"
-		"Leave blank to send this build's real version (" + __W_RME_VERSION__ + ").\n\n"
-		"Servers reject clients whose editor version does not match their own. "
-		"Set this to the server's version to connect to an older server anyway.\n"
-		"The live protocol version is always sent unchanged — if that differs too, "
-		"the server will still refuse the connection."
-	);
-	grid->Add(spoof_version_ctrl, 1, wxEXPAND);
-
 	sizer->Add(grid, 1, wxEXPAND | wxALL, 10);
-
-	auto_version_probe_ctrl = newd wxCheckBox(this, wxID_ANY, "If refused, try earlier editor versions");
-	auto_version_probe_ctrl->SetValue(g_settings.getInteger(Config::LIVE_AUTO_VERSION_PROBE) != 0);
-	auto_version_probe_ctrl->SetToolTip(
-		"When the server rejects our editor version, reconnect and announce the next "
-		"lower version, repeating until one is accepted.\n\n"
-		"The search starts at \"Report version\" if set, otherwise at this build's own "
-		"version, and walks downwards one subversion at a time. A version the server "
-		"accepts is saved into \"Report version\" so later connections skip the search."
-	);
-	sizer->Add(auto_version_probe_ctrl, 0, wxLEFT | wxRIGHT | wxBOTTOM, 10);
 
 	wxBoxSizer* buttons = newd wxBoxSizer(wxHORIZONTAL);
 	buttons->Add(newd wxButton(this, wxID_OK, "Connect"), 0, wxALL, 5);
@@ -1921,14 +1896,6 @@ wxColor LiveConnectWindow::GetCursorColor() const {
 	return cursor_color_pick->GetColour();
 }
 
-wxString LiveConnectWindow::GetSpoofVersion() const {
-	return spoof_version_ctrl->GetValue().Trim(true).Trim(false);
-}
-
-bool LiveConnectWindow::GetAutoVersionProbe() const {
-	return auto_version_probe_ctrl->GetValue();
-}
-
 void LiveConnectWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 	if (GetHost().empty()) {
 		wxMessageBox("Please enter a host address.", "Connect to Server", wxOK | wxICON_WARNING, this);
@@ -1936,17 +1903,6 @@ void LiveConnectWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 	}
 	if (GetUsername().empty()) {
 		wxMessageBox("Please enter a display name.", "Connect to Server", wxOK | wxICON_WARNING, this);
-		return;
-	}
-
-	const wxString spoofVersion = GetSpoofVersion();
-	uint32_t spoofVersionId = 0;
-	if (!spoofVersion.empty() && !parseEditorVersionId(spoofVersion, spoofVersionId)) {
-		wxMessageBox(
-			"\"" + spoofVersion + "\" is not a valid editor version.\n"
-			"Use major.minor.subversion (for example 2.9.0), or leave the field blank.",
-			"Connect to Server", wxOK | wxICON_WARNING, this
-		);
 		return;
 	}
 

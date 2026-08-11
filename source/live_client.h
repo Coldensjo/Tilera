@@ -80,11 +80,6 @@ public:
 
 	void setCursorColor(const wxColor& color);
 
-	// Records that the user has already accepted a version mismatch for this session
-	// (asked up front when they pinned a version), so the probe does not ask twice.
-	void setVersionMismatchAccepted() {
-		versionMismatchPrompted = true;
-	}
 	wxColor getOwnCursorColor() const {
 		return ownClientColor;
 	}
@@ -160,44 +155,6 @@ protected:
 	void parseUpdateOperation(NetworkMessage& message);
 	void parseItemBlockList(NetworkMessage& message);
 	void showBlockedItemWarning(uint16_t itemId);
-
-	// --- editor version probing ---
-	// A server refuses any client whose editor version is not byte-for-byte its own,
-	// and its kick packet does not say which version it wants. When the user allows
-	// it we walk versions downwards from ours, reconnecting once per candidate, until
-	// one is accepted. Only the announced editor version changes between attempts --
-	// __LIVE_NET_VERSION__, which is what actually governs packet layout, is always
-	// reported truthfully, so a genuinely incompatible server still refuses us.
-	void initVersionProbe();
-	// Records that this attempt was refused and starts the next one. Reports from a
-	// stale generation (the kick packet and the socket EOF both arrive) are ignored.
-	void onProbeFailure(uint32_t generation, const wxString& reason);
-	// Steps to the next candidate, or gives up if the search is exhausted.
-	void advanceProbe(const wxString& reason);
-	// Tears the session down reporting a refusal the probe could not get past.
-	void abortAfterRefusal(const wxString& reason);
-	// Asks the user to accept a build mismatch before we connect to a server that is
-	// demonstrably not our version. GUI thread only; asked at most once per session.
-	bool confirmVersionMismatch();
-	void scheduleNextProbe();
-	// Stops probing because the server answered -- either it accepted us, or it
-	// refused us for a reason another version cannot fix.
-	void settleVersionProbe(bool accepted);
-
-	bool versionProbeEnabled = false;
-	bool versionProbeSettled = false;
-	bool versionMismatchPrompted = false;
-	// True once a hello reached the wire for the current attempt. Failures before
-	// that (DNS, refused connection) are not version problems and must not consume
-	// a candidate.
-	bool helloSent = false;
-	uint32_t probeVersionId = 0;
-	uint32_t probeStartVersionId = 0;
-	uint32_t probeAttempt = 0;
-	uint32_t probeLimit = 0;
-	uint32_t probeMaxSubversion = 0;
-	uint32_t probeGeneration = 0;
-	std::shared_ptr<asio::steady_timer> probeTimer;
 
 	//
 	NetworkMessage readMessage;

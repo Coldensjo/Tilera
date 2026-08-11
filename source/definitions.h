@@ -25,7 +25,7 @@
 // xxyyzzt (major, minor, subversion)
 #define __RME_VERSION_MAJOR__ 2
 #define __RME_VERSION_MINOR__ 12
-#define __RME_SUBVERSION__ 5
+#define __RME_SUBVERSION__ 6
 
 #define MAKE_VERSION_ID(major, minor, subversion) \
 	((major) * 10000000 + (minor) * 100000 + (subversion) * 1000)
@@ -40,7 +40,9 @@
 
 // Live collaboration protocol version. Bump this whenever the live packet
 // format changes in an incompatible way.
-#define __LIVE_NET_VERSION__ 15
+// 16: server's editor version prepended to the CHANGE_CLIENT_VERSION payload;
+//     servers accept mismatched editor versions (warning instead of kick).
+#define __LIVE_NET_VERSION__ 16
 
 // #define __PRERELEASE__ 1
 

@@ -1003,46 +1003,21 @@ bool GUI::ConnectToLiveServer() {
 	}
 
 	// Store the dialog's choices before constructing the client -- LiveClient reads
-	// the live settings (cursor colour, version probing) in its constructor.
+	// the live settings (cursor colour) in its constructor.
 	g_settings.setString(Config::LIVE_HOST, nstr(dialog.GetHost()));
 	g_settings.setInteger(Config::LIVE_PORT, dialog.GetPort());
 	g_settings.setString(Config::LIVE_USERNAME, nstr(dialog.GetUsername()));
 	g_settings.setString(Config::LIVE_PASSWORD, nstr(dialog.GetPassword()));
-	g_settings.setString(Config::LIVE_SPOOF_VERSION, nstr(dialog.GetSpoofVersion()));
-	g_settings.setInteger(Config::LIVE_AUTO_VERSION_PROBE, dialog.GetAutoVersionProbe() ? 1 : 0);
 	const wxColor cursorColor = dialog.GetCursorColor();
 	g_settings.setInteger(Config::LIVE_CURSOR_RED, cursorColor.Red());
 	g_settings.setInteger(Config::LIVE_CURSOR_GREEN, cursorColor.Green());
 	g_settings.setInteger(Config::LIVE_CURSOR_BLUE, cursorColor.Blue());
 	g_settings.setInteger(Config::LIVE_CURSOR_ALPHA, cursorColor.Alpha());
 
-	// A pinned version that is not ours means the user is knowingly connecting to a
-	// different build, so confirm before anything is sent. The probe asks the same
-	// question if it discovers the mismatch itself; telling the client we already
-	// asked keeps it from asking twice.
-	bool versionMismatchAccepted = false;
-	uint32_t pinnedVersionId = 0;
-	if (parseEditorVersionId(dialog.GetSpoofVersion(), pinnedVersionId) && pinnedVersionId != __RME_VERSION_ID__) {
-		const long answer = PopupDialog(
-			"Editor Version Mismatch",
-			"You are connecting as editor version " + formatEditorVersionId(pinnedVersionId)
-				+ ", but this editor is " + __W_RME_VERSION__ + ".\n\n"
-				  "\n\nConnect anyway?",
-			wxYES | wxNO | wxICON_EXCLAMATION
-		);
-		if (answer != wxID_YES) {
-			return false;
-		}
-		versionMismatchAccepted = true;
-	}
-
 	auto* client = newd LiveClient();
 	client->setName(dialog.GetUsername());
 	client->setPassword(dialog.GetPassword());
 	client->setCursorColor(dialog.GetCursorColor());
-	if (versionMismatchAccepted) {
-		client->setVersionMismatchAccepted();
-	}
 
 	client->createLogWindow(tabbook);
 
@@ -2258,6 +2233,9 @@ void GUI::UpdateTitle() {
 }
 
 void GUI::UpdateMenus() {
+	if (headless || !root) {
+		return;
+	}
 	wxCommandEvent evt(EVT_UPDATE_MENUS);
 	g_gui.root->AddPendingEvent(evt);
 }
@@ -2285,7 +2263,11 @@ void GUI::SetSelectionMode() {
 		secondary_map = nullptr;
 	}
 
-	tabbook->OnSwitchEditorMode(SELECTION_MODE);
+	// No tabbook when running headless - the mode still has to be tracked,
+	// there is just no UI to switch over.
+	if (tabbook) {
+		tabbook->OnSwitchEditorMode(SELECTION_MODE);
+	}
 	mode = SELECTION_MODE;
 }
 
@@ -2294,19 +2276,23 @@ void GUI::SetDrawingMode() {
 		return;
 	}
 
-	std::set<MapTab*> al;
-	for (int idx = 0; idx < tabbook->GetTabCount(); ++idx) {
-		EditorTab* editorTab = tabbook->GetTab(idx);
-		if (auto* mapTab = dynamic_cast<MapTab*>(editorTab)) {
-			if (al.find(mapTab) != al.end()) {
-				continue;
-			}
+	// No tabbook when running headless - there are no open tabs whose
+	// selection needs clearing, and no UI to switch over.
+	if (tabbook) {
+		std::set<MapTab*> al;
+		for (int idx = 0; idx < tabbook->GetTabCount(); ++idx) {
+			EditorTab* editorTab = tabbook->GetTab(idx);
+			if (auto* mapTab = dynamic_cast<MapTab*>(editorTab)) {
+				if (al.find(mapTab) != al.end()) {
+					continue;
+				}
 
-			Editor* editor = mapTab->GetEditor();
-			editor->selection.start();
-			editor->selection.clear();
-			editor->selection.finish();
-			al.insert(mapTab);
+				Editor* editor = mapTab->GetEditor();
+				editor->selection.start();
+				editor->selection.clear();
+				editor->selection.finish();
+				al.insert(mapTab);
+			}
 		}
 	}
 
@@ -2316,7 +2302,9 @@ void GUI::SetDrawingMode() {
 		secondary_map = nullptr;
 	}
 
-	tabbook->OnSwitchEditorMode(DRAWING_MODE);
+	if (tabbook) {
+		tabbook->OnSwitchEditorMode(DRAWING_MODE);
+	}
 	mode = DRAWING_MODE;
 }
 

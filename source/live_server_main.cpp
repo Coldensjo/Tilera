@@ -809,6 +809,8 @@ public:
 			return startupFailed();
 		}
 
+		std::cout << "[live] MapServer version " << __RME_VERSION__
+		          << " (live protocol " << __LIVE_NET_VERSION__ << ")" << std::endl;
 		std::cout << "[live] Hosting '" << g_editor->getMap().getName()
 		          << "' on port " << config.port << std::endl;
 		if (config.sessionBounds.enabled) {

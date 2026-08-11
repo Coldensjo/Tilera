@@ -431,8 +431,6 @@ public:
 	wxString GetUsername() const;
 	wxString GetPassword() const;
 	wxColor GetCursorColor() const;
-	wxString GetSpoofVersion() const;
-	bool GetAutoVersionProbe() const;
 
 	void OnClickOK(wxCommandEvent& event);
 	void OnClickCancel(wxCommandEvent& event);
@@ -443,8 +441,6 @@ protected:
 	wxTextCtrl* username_ctrl;
 	wxTextCtrl* password_ctrl;
 	wxColourPickerCtrl* cursor_color_pick;
-	wxTextCtrl* spoof_version_ctrl;
-	wxCheckBox* auto_version_probe_ctrl;
 
 	DECLARE_EVENT_TABLE()
 };

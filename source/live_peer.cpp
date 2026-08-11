@@ -293,39 +293,46 @@ void LivePeer::parseHello(NetworkMessage& message) {
 	}
 
 	uint32_t rmeVersion = message.read<uint32_t>();
-	if (rmeVersion != __RME_VERSION_ID__) {
-		// If the client is running an older build and the server has an update
-		// package configured, push the newer editor so the client can self-update
-		// and reconnect instead of being turned away.
-		if (rmeVersion < __RME_VERSION_ID__ && server->hasUpdatePackage()) {
-			livePeerLog(log, "Client is outdated; sending editor update.");
-			sendUpdatePackage();
-			return;
-		}
+	uint32_t netVersion = message.read<uint32_t>();
 
+	// The live protocol version governs packet layout, so a mismatch there is a
+	// hard refusal. A different editor version is tolerated (the client is warned
+	// after the handshake) as long as it speaks the same protocol.
+	if (netVersion != __LIVE_NET_VERSION__) {
 		NetworkMessage outMessage;
 		outMessage.write<uint8_t>(PACKET_KICK);
-		outMessage.write<std::string>("Wrong editor version.");
+		wxString kickText;
+		if (netVersion < __LIVE_NET_VERSION__) {
+			livePeerLog(log, "Client tried to connect with an outdated live protocol version, connection refused.");
+			kickText = "Your editor is too old to talk to this server (it runs Tilera "
+				+ __W_RME_VERSION__ + "). Please update to a newer version.";
+		} else {
+			livePeerLog(log, "Client tried to connect with a newer live protocol version, connection refused.");
+			kickText = "Your editor is newer than this server (it runs Tilera "
+				+ __W_RME_VERSION__ + ") and their live protocols are incompatible.";
+		}
+		outMessage.write<std::string>(nstr(kickText));
 
 		send(outMessage);
 		close();
 		return;
 	}
 
-	uint32_t netVersion = message.read<uint32_t>();
-	if (netVersion != __LIVE_NET_VERSION__) {
-		NetworkMessage outMessage;
-		outMessage.write<uint8_t>(PACKET_KICK);
-		if (netVersion < __LIVE_NET_VERSION__) {
-			livePeerLog(log, "Client tried to connect with an outdated live protocol version, connection refused.");
-			outMessage.write<std::string>("Your client is outdated. Please update to the latest version.");
-		} else {
-			outMessage.write<std::string>("Wrong protocol version.");
+	if (rmeVersion != __RME_VERSION_ID__) {
+		// If the client is running an older build and the server has an update
+		// package configured, push the newer editor so the client can self-update
+		// and reconnect instead of connecting with a mismatched build.
+		if (rmeVersion < __RME_VERSION_ID__ && server->hasUpdatePackage()) {
+			livePeerLog(log, "Client is outdated; sending editor update.");
+			sendUpdatePackage();
+			return;
 		}
 
-		send(outMessage);
-		close();
-		return;
+		livePeerLog(
+			log,
+			"Client runs editor version " + formatEditorVersionId(rmeVersion)
+				+ " (this server is " + __W_RME_VERSION__ + "); allowing the connection with a warning."
+		);
 	}
 
 	uint32_t clientVersion = message.read<uint32_t>(); // client-reported version; server assets are authoritative
@@ -353,6 +360,9 @@ void LivePeer::parseHello(NetworkMessage& message) {
 
 	NetworkMessage outMessage;
 	outMessage.write<uint8_t>(PACKET_CHANGE_CLIENT_VERSION);
+	// This server's own editor version, so the client can warn the user (with
+	// both versions) when the two builds differ.
+	outMessage.write<uint32_t>(__RME_VERSION_ID__);
 	outMessage.write<uint32_t>(g_gui.GetCurrentVersionID());
 
 	wxString assetError;
