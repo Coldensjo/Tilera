@@ -285,10 +285,12 @@ void Item::serializeItemAttributes_OTBM(const IOMap& maphandle, NodeFileWriteHan
 			stream.addU16(getSubtype());
 		}
 
-		uint16_t actionId = getActionID();
+		uint32_t actionId = getActionID();
 		if (actionId > 0) {
+			// This legacy attribute is 16-bit on the wire; OTBM >= 4 maps use
+			// the attribute map above, which carries the full 32-bit value.
 			stream.addU8(OTBM_ATTR_ACTION_ID);
-			stream.addU16(actionId);
+			stream.addU16(static_cast<uint16_t>(std::min<uint32_t>(actionId, 0xFFFF)));
 		}
 
 		uint16_t uniqueId = getUniqueID();

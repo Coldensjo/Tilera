@@ -339,8 +339,10 @@ void Item::setUniqueID(unsigned short n) {
 	setAttribute("uid", n);
 }
 
-void Item::setActionID(unsigned short n) {
-	setAttribute("aid", n);
+void Item::setActionID(uint32_t n) {
+	// The attribute store is int32_t, which is also what the OTBM attribute
+	// map serializes; cap at INT32_MAX to keep the value round-trippable.
+	setAttribute("aid", static_cast<int32_t>(std::min<uint32_t>(n, 0x7FFFFFFF)));
 }
 
 void Item::setText(const std::string& str) {

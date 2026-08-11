@@ -87,7 +87,7 @@ wxWindow* PropertiesWindow::createGeneralPanel(wxWindow* parent) {
 	gridsizer->Add(newd wxStaticText(panel, wxID_ANY, "\"" + wxstr(edit_item->getName()) + "\""));
 
 	gridsizer->Add(newd wxStaticText(panel, wxID_ANY, "Action ID"));
-	action_id_field = newd wxSpinCtrl(panel, wxID_ANY, i2ws(edit_item->getActionID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getActionID());
+	action_id_field = newd wxSpinCtrl(panel, wxID_ANY, i2ws(edit_item->getActionID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0x7FFFFFFF, edit_item->getActionID());
 	gridsizer->Add(action_id_field, wxSizerFlags(1).Expand());
 
 	gridsizer->Add(newd wxStaticText(panel, wxID_ANY, "Unique ID"));

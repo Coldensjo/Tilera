@@ -2854,7 +2854,7 @@ void MapDrawer::WriteTooltip(Item* item, TileTooltipData& data, bool isHouseTile
 	}
 
 	const uint16_t unique = item->getUniqueID();
-	const uint16_t action = item->getActionID();
+	const uint32_t action = item->getActionID();
 	const std::string& text = item->getText();
 	uint8_t doorId = 0;
 	bool hasDoorProperties = false;

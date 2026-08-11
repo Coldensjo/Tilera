@@ -489,7 +489,7 @@ bool Editor::saveMap(FileName filename, bool showdialog) {
 
 	// Generate actionIds and uniqueIds .lua file
 	{
-		std::set<uint16_t> actionIds;
+		std::set<uint32_t> actionIds;
 		std::set<uint16_t> uniqueIds;
 
 		// Helper function to collect IDs from an item (recursively for containers)
@@ -498,7 +498,7 @@ bool Editor::saveMap(FileName filename, bool showdialog) {
 				return;
 			}
 
-			uint16_t actionId = item->getActionID();
+			uint32_t actionId = item->getActionID();
 			if (actionId > 0) {
 				actionIds.insert(actionId);
 			}
@@ -546,7 +546,7 @@ bool Editor::saveMap(FileName filename, bool showdialog) {
 		if (luaStream.is_open()) {
 			luaStream << "actionIds = {\n";
 			bool first = true;
-			for (uint16_t aid : actionIds) {
+			for (uint32_t aid : actionIds) {
 				if (!first) {
 					luaStream << ",\n";
 				}
@@ -1574,7 +1574,8 @@ void Editor::randomizeMap(bool showdialog) {
 		if (groundBrush) {
 			Item* oldGround = tile->ground;
 
-			uint16_t actionId, uniqueId;
+			uint32_t actionId;
+			uint16_t uniqueId;
 			if (oldGround) {
 				actionId = oldGround->getActionID();
 				uniqueId = oldGround->getUniqueID();

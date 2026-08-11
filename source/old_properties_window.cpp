@@ -77,7 +77,7 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "\"" + wxstr(item->getName()) + "\""));
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Action ID"));
-		action_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getActionID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getActionID());
+		action_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getActionID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0x7FFFFFFF, edit_item->getActionID());
 		subsizer->Add(action_id_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Unique ID"));
@@ -109,7 +109,7 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "\"" + wxstr(item->getName()) + "\""));
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Action ID"));
-		action_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getActionID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getActionID());
+		action_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getActionID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0x7FFFFFFF, edit_item->getActionID());
 		action_id_field->SetSelection(-1, -1);
 		subsizer->Add(action_id_field, wxSizerFlags().Expand()); // No proportion
 
@@ -174,7 +174,7 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 		subsizer->Add(splash_type_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Action ID"));
-		action_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getActionID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getActionID());
+		action_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getActionID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0x7FFFFFFF, edit_item->getActionID());
 		subsizer->Add(action_id_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Unique ID"));
@@ -284,7 +284,7 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 		subsizer->Add(count_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Action ID"));
-		action_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getActionID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getActionID());
+		action_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getActionID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0x7FFFFFFF, edit_item->getActionID());
 		subsizer->Add(action_id_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Unique ID"));
@@ -622,8 +622,8 @@ void OldPropertiesWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 				g_gui.PopupDialog(this, "Error", "Unique ID must be unique, this UID is already taken.", wxOK);
 				return;
 			}
-			if ((new_aid < 100 || new_aid > 0xFFFF) && new_aid != 0) {
-				g_gui.PopupDialog(this, "Error", "Action ID must be between 100 and 65535.", wxOK);
+			if (new_aid < 100 && new_aid != 0) {
+				g_gui.PopupDialog(this, "Error", "Action ID must be 0 or at least 100.", wxOK);
 				return;
 			}
 
@@ -644,8 +644,8 @@ void OldPropertiesWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 				g_gui.PopupDialog(this, "Error", "Unique ID must be unique, this UID is already taken.", wxOK);
 				return;
 			}
-			if ((new_aid < 100 || new_aid > 0xFFFF) && new_aid != 0) {
-				g_gui.PopupDialog(this, "Error", "Action ID must be between 100 and 65535.", wxOK);
+			if (new_aid < 100 && new_aid != 0) {
+				g_gui.PopupDialog(this, "Error", "Action ID must be 0 or at least 100.", wxOK);
 				return;
 			}
 			if (text.length() >= 0xFFFF) {
@@ -678,8 +678,8 @@ void OldPropertiesWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 				g_gui.PopupDialog(this, "Error", "Unique ID must be unique, this UID is already taken.", wxOK);
 				return;
 			}
-			if ((new_aid < 100 || new_aid > 0xFFFF) && new_aid != 0) {
-				g_gui.PopupDialog(this, "Error", "Action ID must be between 100 and 65535.", wxOK);
+			if (new_aid < 100 && new_aid != 0) {
+				g_gui.PopupDialog(this, "Error", "Action ID must be 0 or at least 100.", wxOK);
 				return;
 			}
 			if (new_type) {
@@ -744,8 +744,8 @@ void OldPropertiesWindow::OnClickOK(wxCommandEvent& WXUNUSED(event)) {
 				g_gui.PopupDialog(this, "Error", "Unique ID must be unique, this UID is already taken.", wxOK);
 				return;
 			}
-			if ((new_aid < 100 || new_aid > 0xFFFF) && new_aid != 0) {
-				g_gui.PopupDialog(this, "Error", "Action ID must be between 100 and 65535.", wxOK);
+			if (new_aid < 100 && new_aid != 0) {
+				g_gui.PopupDialog(this, "Error", "Action ID must be 0 or at least 100.", wxOK);
 				return;
 			}
 			if (new_tier < 0 || new_tier > 0xFF) {

@@ -369,9 +369,9 @@ public:
 	void setUniqueID(uint16_t n);
 	uint16_t getUniqueID() const;
 
-	// Action ID
-	void setActionID(uint16_t n);
-	uint16_t getActionID() const;
+	// Action ID (stored as a 32-bit attribute; OTBM < 4 clamps to 65535 on save)
+	void setActionID(uint32_t n);
+	uint32_t getActionID() const;
 
 	// Tier (12.81)
 	void setTier(uint16_t n);
@@ -423,10 +423,10 @@ inline uint16_t Item::getUniqueID() const {
 	return 0;
 }
 
-inline uint16_t Item::getActionID() const {
+inline uint32_t Item::getActionID() const {
 	const int32_t* a = getIntegerAttribute("aid");
-	if (a) {
-		return *a;
+	if (a && *a > 0) {
+		return static_cast<uint32_t>(*a);
 	}
 	return 0;
 }
