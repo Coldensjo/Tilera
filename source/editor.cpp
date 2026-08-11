@@ -42,6 +42,8 @@
 #include "doodad_brush.h"
 #include "creature_brush.h"
 #include "spawn_brush.h"
+#include "terraform.h"
+#include "terraform_brush.h"
 
 #include "live_server.h"
 #include "live_client.h"
@@ -2507,6 +2509,263 @@ void Editor::drawInternal(const PositionVector& tilestodraw, bool alt, bool dodr
 	addAction(action, 2);
 }
 
+namespace {
+
+// Pulls every non-border item off the (already deep-copied) tile so it can ride
+// along with the surface to its new floor. Creatures/spawns/house data stay put.
+ItemVector extractTerraformSurfaceItems(Tile* tile) {
+	ItemVector moved;
+	for (ItemVector::iterator it = tile->items.begin(); it != tile->items.end();) {
+		Item* item = *it;
+		if (item->isBorder()) {
+			++it;
+		} else {
+			moved.push_back(item);
+			it = tile->items.erase(it);
+		}
+	}
+	return moved;
+}
+
+// The borderize pass needs the tile and its 8 neighbors, at the tile's own z
+// (GroundBrush::doBorders only ever samples same-floor neighbors).
+void collectTerraformBorders(std::set<Position>& border_positions, const Position& pos) {
+	for (int dy = -1; dy <= 1; ++dy) {
+		for (int dx = -1; dx <= 1; ++dx) {
+			const Position neighbor(pos.x + dx, pos.y + dy, pos.z);
+			if (neighbor.isValid()) {
+				border_positions.insert(neighbor);
+			}
+		}
+	}
+}
+
+} // namespace
+
+bool Editor::terraformRaiseColumn(Action* action, const Position& anchor, int height, GroundBrush* fill, GroundBrush* top, std::set<Position>& border_positions) {
+	if (height >= TERRAFORM_MAX_HEIGHT) {
+		return false;
+	}
+
+	if (height == TERRAFORM_VOID) {
+		// Raising a void column plants the top ground at neutral level
+		const Position top_pos = terraformCell(anchor, 0);
+		if (!top_pos.isValid()) {
+			return false;
+		}
+		TileLocation* location = map.createTileL(top_pos);
+		Tile* tile = location->get();
+		Tile* new_tile = tile ? tile->deepCopy(map) : map.allocator(location);
+		new_tile->cleanBorders();
+		top->draw(&map, new_tile, nullptr);
+		action->addChange(newd Change(new_tile));
+		collectTerraformBorders(border_positions, top_pos);
+		return true;
+	}
+
+	const Position old_top_pos = terraformCell(anchor, height);
+	const Position new_top_pos = terraformCell(anchor, height + 1);
+	if (!new_top_pos.isValid()) {
+		return false;
+	}
+	Tile* old_tile = map.getTile(old_top_pos);
+	if (!old_tile) {
+		return false;
+	}
+
+	// The old surface becomes fill; whatever sat on it rides up with the surface
+	Tile* new_old = old_tile->deepCopy(map);
+	new_old->cleanBorders();
+	ItemVector moved = extractTerraformSurfaceItems(new_old);
+	fill->draw(&map, new_old, nullptr);
+	action->addChange(newd Change(new_old));
+
+	TileLocation* location = map.createTileL(new_top_pos);
+	Tile* tile = location->get();
+	Tile* new_top = tile ? tile->deepCopy(map) : map.allocator(location);
+	new_top->cleanBorders();
+	top->draw(&map, new_top, nullptr);
+	for (Item* item : moved) {
+		new_top->addItem(item);
+	}
+	action->addChange(newd Change(new_top));
+
+	collectTerraformBorders(border_positions, old_top_pos);
+	collectTerraformBorders(border_positions, new_top_pos);
+	return true;
+}
+
+bool Editor::terraformLowerColumn(Action* action, const Position& anchor, int height, GroundBrush* top, std::set<Position>& border_positions) {
+	if (height <= 0) { // TERRAFORM_VOID or already at neutral level
+		return false;
+	}
+
+	const Position old_top_pos = terraformCell(anchor, height);
+	const Position new_top_pos = terraformCell(anchor, height - 1);
+	Tile* old_tile = map.getTile(old_top_pos);
+	if (!old_tile || !new_top_pos.isValid()) {
+		return false;
+	}
+
+	// Strip the old surface; its items ride down to the newly exposed surface
+	Tile* new_old = old_tile->deepCopy(map);
+	new_old->cleanBorders();
+	ItemVector moved = extractTerraformSurfaceItems(new_old);
+	delete new_old->ground;
+	new_old->ground = nullptr;
+	action->addChange(newd Change(new_old));
+
+	// The cell below (previously fill) becomes the new surface
+	TileLocation* location = map.createTileL(new_top_pos);
+	Tile* tile = location->get();
+	Tile* new_top = tile ? tile->deepCopy(map) : map.allocator(location);
+	new_top->cleanBorders();
+	top->draw(&map, new_top, nullptr);
+	for (Item* item : moved) {
+		new_top->addItem(item);
+	}
+	action->addChange(newd Change(new_top));
+
+	collectTerraformBorders(border_positions, old_top_pos);
+	collectTerraformBorders(border_positions, new_top_pos);
+	return true;
+}
+
+void Editor::terraformInternal(const PositionVector& tilestodraw, bool dodraw) {
+	TerraformBrush* terraform_brush = g_gui.GetCurrentBrush()->asTerraform();
+	if (!terraform_brush || tilestodraw.empty()) {
+		return;
+	}
+
+	const TerraformPair* pair = g_terraform_pairs.getActive();
+	GroundBrush* fill_brush = pair ? pair->fill() : nullptr;
+	// The column top follows whatever ground the user painted with last; the
+	// pair's top is only the fallback before any ground brush was selected.
+	GroundBrush* top_brush = g_gui.last_ground_brush;
+	if (!top_brush) {
+		top_brush = pair ? pair->top() : nullptr;
+	}
+	if (!fill_brush || !top_brush) {
+		g_gui.SetStatusText("No terraform ground brushes available for this client version.");
+		return;
+	}
+
+	if (tilestodraw.front().z > GROUND_LAYER) {
+		g_gui.SetStatusText("Terraforming only works on the ground floor and above.");
+		return;
+	}
+
+	// Footprint -> unique column anchors (visited ones still count toward the
+	// flatten average below, they just don't move again this stroke)
+	std::vector<Position> anchors;
+	std::set<Position> seen;
+	for (const Position& pos : tilestodraw) {
+		const Position anchor = terraformAnchor(pos.x, pos.y, pos.z);
+		if (anchor.isValid() && seen.insert(anchor).second) {
+			anchors.push_back(anchor);
+		}
+	}
+	if (anchors.empty()) {
+		return;
+	}
+
+	// Snapshot all heights before writing anything, so the outcome does not
+	// depend on the order columns are processed in
+	std::map<Position, int> heights;
+	for (const Position& anchor : anchors) {
+		heights[anchor] = terraformResolveHeight(map, anchor);
+	}
+
+	TerraformBrush::Mode mode = terraform_brush->getMode();
+	if (!dodraw) { // Ctrl held: invert raise<->lower, flatten is unaffected
+		if (mode == TerraformBrush::RAISE) {
+			mode = TerraformBrush::LOWER;
+		} else if (mode == TerraformBrush::LOWER) {
+			mode = TerraformBrush::RAISE;
+		}
+	}
+
+	int flatten_target = 0;
+	if (mode == TerraformBrush::FLATTEN) {
+		long sum = 0;
+		int count = 0;
+		for (const Position& anchor : anchors) {
+			const int height = heights[anchor];
+			if (height != TERRAFORM_VOID) {
+				sum += height;
+				++count;
+			}
+		}
+		if (count == 0) {
+			return; // flatten never invents terrain on all-void footprints
+		}
+		flatten_target = static_cast<int>(std::lround(static_cast<double>(sum) / count));
+	}
+
+	BatchAction* batch = actionQueue->createBatch(ACTION_DRAW);
+	Action* action = actionQueue->createAction(batch);
+	std::set<Position> border_positions;
+	bool any_change = false;
+
+	for (const Position& anchor : anchors) {
+		if (terraform_brush->isVisited(anchor)) {
+			continue;
+		}
+		terraform_brush->markVisited(anchor);
+
+		const int height = heights[anchor];
+		int step = 0;
+		switch (mode) {
+			case TerraformBrush::RAISE:
+				step = 1;
+				break;
+			case TerraformBrush::LOWER:
+				step = -1;
+				break;
+			case TerraformBrush::FLATTEN:
+				if (height == TERRAFORM_VOID) {
+					continue;
+				}
+				step = height < flatten_target ? 1 : (height > flatten_target ? -1 : 0);
+				break;
+		}
+		if (step == 0) {
+			continue;
+		}
+
+		const bool changed = step > 0
+			? terraformRaiseColumn(action, anchor, height, fill_brush, top_brush, border_positions)
+			: terraformLowerColumn(action, anchor, height, top_brush, border_positions);
+		any_change = any_change || changed;
+	}
+
+	batch->addAndCommitAction(action);
+
+	if (any_change && g_settings.getInteger(Config::USE_AUTOMAGIC)) {
+		Action* border_action = actionQueue->createAction(batch);
+		for (const Position& pos : border_positions) {
+			TileLocation* location = map.createTileL(pos);
+			Tile* tile = location->get();
+			if (tile) {
+				Tile* new_tile = tile->deepCopy(map);
+				new_tile->borderize(&map);
+				border_action->addChange(newd Change(new_tile));
+			} else {
+				Tile* new_tile = map.allocator(location);
+				new_tile->borderize(&map);
+				if (new_tile->size() > 0) {
+					border_action->addChange(newd Change(new_tile));
+				} else {
+					delete new_tile;
+				}
+			}
+		}
+		batch->addAndCommitAction(border_action);
+	}
+
+	addBatch(batch, 2);
+}
+
 void Editor::drawInternal(const PositionVector& tilestodraw, PositionVector& tilestoborder, bool alt, bool dodraw) {
 	Brush* brush = g_gui.GetCurrentBrush();
 	if (!brush) {
@@ -2517,7 +2776,9 @@ void Editor::drawInternal(const PositionVector& tilestodraw, PositionVector& til
 		warnLiveBlockedBrushUse(brush);
 	}
 
-	if (brush->isGround() || brush->isEraser()) {
+	if (brush->isTerraform()) {
+		terraformInternal(tilestodraw, dodraw);
+	} else if (brush->isGround() || brush->isEraser()) {
 		BatchAction* batch = actionQueue->createBatch(ACTION_DRAW);
 		Action* action = actionQueue->createAction(batch);
 

@@ -32,6 +32,7 @@
 #include "materials.h"
 #include "doodad_brush.h"
 #include "spawn_brush.h"
+#include "terraform.h"
 
 #include "common_windows.h"
 #include "result_window.h"
@@ -482,6 +483,10 @@ GUI::GUI() :
 	house_exit_brush(nullptr),
 	optional_brush(nullptr),
 	eraser(nullptr),
+	raise_brush(nullptr),
+	lower_brush(nullptr),
+	flatten_brush(nullptr),
+	last_ground_brush(nullptr),
 	normal_door_brush(nullptr),
 	locked_door_brush(nullptr),
 	magic_door_brush(nullptr),
@@ -832,6 +837,10 @@ void GUI::UnloadVersion() {
 	house_exit_brush = nullptr;
 	optional_brush = nullptr;
 	eraser = nullptr;
+	raise_brush = nullptr;
+	lower_brush = nullptr;
+	flatten_brush = nullptr;
+	last_ground_brush = nullptr;
 	normal_door_brush = nullptr;
 	locked_door_brush = nullptr;
 	magic_door_brush = nullptr;
@@ -850,6 +859,7 @@ void GUI::UnloadVersion() {
 			find_brush_window->InvalidateResults();
 		}
 		g_materials.clear();
+		g_terraform_pairs.clear();
 		g_brushes.clear();
 		g_items.clear();
 		gfx.clear();
@@ -2560,6 +2570,11 @@ void GUI::SelectBrushInternal(Brush* brush) {
 	current_brush = brush;
 	if (!current_brush) {
 		return;
+	}
+
+	// The terraforming tools cap their columns with the last ground the user picked
+	if (brush->isGround() && brush->asGround()) {
+		last_ground_brush = brush->asGround();
 	}
 
 	const int max_variation = max(0, brush->getMaxVariation() - 1);

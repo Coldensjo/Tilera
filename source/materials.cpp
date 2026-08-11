@@ -29,6 +29,7 @@
 #include "brush.h"
 #include "creature_brush.h"
 #include "raw_brush.h"
+#include "terraform.h"
 
 Materials g_materials;
 
@@ -244,6 +245,22 @@ bool Materials::unserializeMaterials(const FileName& filename, pugi::xml_node no
 			}
 		} else if (childName == "tileset") {
 			unserializeTileset(childNode, warnings);
+		} else if (childName == "terraform") {
+			TerraformPair pair;
+			pair.name = childNode.attribute("name").as_string();
+			pair.fillName = childNode.attribute("fill").as_string();
+			pair.topName = childNode.attribute("top").as_string();
+			if (pair.fillName.empty() || pair.topName.empty()) {
+				warnings.push_back("materials.xml: terraform node without fill/top brush names.");
+			} else {
+				if (pair.name.empty()) {
+					pair.name = pair.fillName;
+				}
+				g_terraform_pairs.add(pair);
+				if (childNode.attribute("default").as_bool()) {
+					g_terraform_pairs.setActiveIndex(g_terraform_pairs.getPairs().size() - 1);
+				}
+			}
 		}
 	}
 	return true;

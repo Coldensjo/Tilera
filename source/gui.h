@@ -39,6 +39,8 @@ class HouseBrush;
 class HouseExitBrush;
 class OptionalBorderBrush;
 class EraserBrush;
+class TerraformBrush;
+class GroundBrush;
 class SpawnBrush;
 class DoorBrush;
 class FlagBrush;
@@ -464,6 +466,11 @@ public:
 	HouseExitBrush* house_exit_brush;
 	OptionalBorderBrush* optional_brush;
 	EraserBrush* eraser;
+	TerraformBrush* raise_brush;
+	TerraformBrush* lower_brush;
+	TerraformBrush* flatten_brush;
+	// Last ground brush the user selected; terraforming uses it as the column top
+	GroundBrush* last_ground_brush;
 	SpawnBrush* spawn_brush;
 	DoorBrush* normal_door_brush;
 	DoorBrush* locked_door_brush;

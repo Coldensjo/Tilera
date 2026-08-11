@@ -9,4 +9,5 @@
 	<include file="doodads.xml"/>
 	<include file="tilesets.xml"/>
 	<include file="collections.xml"/>
+	<include file="terraform.xml"/>
 </materials>

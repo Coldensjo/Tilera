@@ -21,6 +21,7 @@
 #include "editor.h"
 #include "settings.h"
 #include "brush.h"
+#include "terraform_brush.h"
 #include "pngfiles.h"
 #include "artprovider.h"
 #include <wx/artprov.h>
@@ -84,6 +85,9 @@ MainToolBar::MainToolBar(wxWindow* parent, wxAuiManager* manager) {
 
 	wxBitmap* hatch_bitmap = loadPNGFile(window_hatch_small_png);
 	wxBitmap* window_bitmap = loadPNGFile(window_normal_small_png);
+	wxBitmap* raise_bitmap = loadPNGFile(terraform_raise_small_png);
+	wxBitmap* lower_bitmap = loadPNGFile(terraform_lower_small_png);
+	wxBitmap* flatten_bitmap = loadPNGFile(terraform_flatten_small_png);
 
 	brushes_toolbar = newd wxAuiToolBar(parent, TOOLBAR_BRUSHES, wxDefaultPosition, wxDefaultSize, wxAUI_TB_DEFAULT_STYLE);
 	brushes_toolbar->SetToolBitmapSize(icon_size);
@@ -106,6 +110,10 @@ MainToolBar::MainToolBar(wxWindow* parent, wxAuiManager* manager) {
 	brushes_toolbar->AddSeparator();
 	brushes_toolbar->AddTool(PALETTE_TERRAIN_HATCH_DOOR, wxEmptyString, *hatch_bitmap, wxNullBitmap, wxITEM_CHECK, "Hatch Window", wxEmptyString, NULL);
 	brushes_toolbar->AddTool(PALETTE_TERRAIN_WINDOW_DOOR, wxEmptyString, *window_bitmap, wxNullBitmap, wxITEM_CHECK, "Window", wxEmptyString, NULL);
+	brushes_toolbar->AddSeparator();
+	brushes_toolbar->AddTool(PALETTE_TERRAIN_RAISE_TOOL, wxEmptyString, *raise_bitmap, wxNullBitmap, wxITEM_CHECK, "Raise Ground - top uses the last selected ground brush (Ctrl inverts)", wxEmptyString, NULL);
+	brushes_toolbar->AddTool(PALETTE_TERRAIN_LOWER_TOOL, wxEmptyString, *lower_bitmap, wxNullBitmap, wxITEM_CHECK, "Lower Ground - top uses the last selected ground brush (Ctrl inverts)", wxEmptyString, NULL);
+	brushes_toolbar->AddTool(PALETTE_TERRAIN_FLATTEN_TOOL, wxEmptyString, *flatten_bitmap, wxNullBitmap, wxITEM_CHECK, "Flatten Ground - top uses the last selected ground brush", wxEmptyString, NULL);
 	brushes_toolbar->Realize();
 
 	wxBitmap go_bitmap = wxArtProvider::GetBitmap(ART_POSITION_GO, wxART_TOOLBAR, icon_size);
@@ -230,6 +238,9 @@ void MainToolBar::UpdateButtons() {
 	brushes_toolbar->EnableTool(PALETTE_TERRAIN_ARCHWAY_DOOR, has_map);
 	brushes_toolbar->EnableTool(PALETTE_TERRAIN_HATCH_DOOR, has_map);
 	brushes_toolbar->EnableTool(PALETTE_TERRAIN_WINDOW_DOOR, has_map);
+	brushes_toolbar->EnableTool(PALETTE_TERRAIN_RAISE_TOOL, has_map);
+	brushes_toolbar->EnableTool(PALETTE_TERRAIN_LOWER_TOOL, has_map);
+	brushes_toolbar->EnableTool(PALETTE_TERRAIN_FLATTEN_TOOL, has_map);
 
 	position_toolbar->EnableTool(TOOLBAR_POSITION_GO, has_map);
 	x_control->Enable(has_map);
@@ -271,6 +282,9 @@ void MainToolBar::UpdateBrushButtons() {
 		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_ARCHWAY_DOOR, brush == g_gui.archway_door_brush);
 		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_HATCH_DOOR, brush == g_gui.hatch_door_brush);
 		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_WINDOW_DOOR, brush == g_gui.window_door_brush);
+		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_RAISE_TOOL, brush == g_gui.raise_brush);
+		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_LOWER_TOOL, brush == g_gui.lower_brush);
+		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_FLATTEN_TOOL, brush == g_gui.flatten_brush);
 	} else {
 		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_OPTIONAL_BORDER_TOOL, false);
 		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_ERASER, false);
@@ -287,6 +301,9 @@ void MainToolBar::UpdateBrushButtons() {
 		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_ARCHWAY_DOOR, false);
 		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_HATCH_DOOR, false);
 		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_WINDOW_DOOR, false);
+		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_RAISE_TOOL, false);
+		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_LOWER_TOOL, false);
+		brushes_toolbar->ToggleTool(PALETTE_TERRAIN_FLATTEN_TOOL, false);
 	}
 	g_gui.GetAuiManager()->Update();
 }
@@ -523,6 +540,15 @@ void MainToolBar::OnBrushesButtonClick(wxCommandEvent& event) {
 			break;
 		case PALETTE_TERRAIN_WINDOW_DOOR:
 			g_gui.SelectBrush(g_gui.window_door_brush);
+			break;
+		case PALETTE_TERRAIN_RAISE_TOOL:
+			g_gui.SelectBrush(g_gui.raise_brush);
+			break;
+		case PALETTE_TERRAIN_LOWER_TOOL:
+			g_gui.SelectBrush(g_gui.lower_brush);
+			break;
+		case PALETTE_TERRAIN_FLATTEN_TOOL:
+			g_gui.SelectBrush(g_gui.flatten_brush);
 			break;
 		default:
 			break;

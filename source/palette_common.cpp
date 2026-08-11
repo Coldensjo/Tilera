@@ -20,6 +20,8 @@
 #include "palette_common.h"
 #include "brush.h"
 #include "raw_brush.h"
+#include "terraform.h"
+#include "terraform_brush.h"
 #include "items.h"
 #include "sprites.h"
 #include "gui.h"
@@ -617,6 +619,11 @@ EVT_TOGGLEBUTTON(PALETTE_TERRAIN_NOLOGOUT_TOOL, BrushToolPanel::OnClickNoLogoutB
 EVT_TOGGLEBUTTON(PALETTE_TERRAIN_PVPZONE_TOOL, BrushToolPanel::OnClickPVPZoneBrushButton)
 EVT_TOGGLEBUTTON(PALETTE_TERRAIN_REFRESH_TOOL, BrushToolPanel::OnClickRefreshBrushButton)
 
+EVT_TOGGLEBUTTON(PALETTE_TERRAIN_RAISE_TOOL, BrushToolPanel::OnClickRaiseButton)
+EVT_TOGGLEBUTTON(PALETTE_TERRAIN_LOWER_TOOL, BrushToolPanel::OnClickLowerButton)
+EVT_TOGGLEBUTTON(PALETTE_TERRAIN_FLATTEN_TOOL, BrushToolPanel::OnClickFlattenButton)
+EVT_CHOICE(PALETTE_TERRAIN_TERRAFORM_PAIR_CHOICE, BrushToolPanel::OnSelectTerraformPair)
+
 EVT_CHECKBOX(PALETTE_TERRAIN_LOCK_DOOR, BrushToolPanel::OnClickLockDoorCheckbox)
 END_EVENT_TABLE()
 
@@ -638,7 +645,11 @@ BrushToolPanel::BrushToolPanel(wxWindow* parent) :
 	nopvpBrushButton(nullptr),
 	nologBrushButton(nullptr),
 	pvpzoneBrushButton(nullptr),
-	refreshBrushButton(nullptr) {
+	refreshBrushButton(nullptr),
+	raiseButton(nullptr),
+	lowerButton(nullptr),
+	flattenButton(nullptr),
+	terraformPairChoice(nullptr) {
 	////
 }
 
@@ -651,7 +662,8 @@ void BrushToolPanel::InvalidateContents() {
 		DestroyChildren();
 		SetSizer(nullptr);
 
-		optionalBorderButton = eraserButton = normalDoorButton = lockedDoorButton = magicDoorButton = questDoorButton = hatchDoorButton = windowDoorButton = normalDoorAltButton = archwayDoorButton = pzBrushButton = nopvpBrushButton = nologBrushButton = pvpzoneBrushButton = refreshBrushButton = nullptr;
+		optionalBorderButton = eraserButton = normalDoorButton = lockedDoorButton = magicDoorButton = questDoorButton = hatchDoorButton = windowDoorButton = normalDoorAltButton = archwayDoorButton = pzBrushButton = nopvpBrushButton = nologBrushButton = pvpzoneBrushButton = refreshBrushButton = raiseButton = lowerButton = flattenButton = nullptr;
+		terraformPairChoice = nullptr;
 
 		loaded = false;
 	}
@@ -749,6 +761,18 @@ void BrushToolPanel::LoadAllContents() {
 		ASSERT(g_gui.archway_door_brush);
 		sub_sizer->Add(archwayDoorButton = newd BrushButton(this, g_gui.archway_door_brush, RENDER_SIZE_32x32, PALETTE_TERRAIN_ARCHWAY_DOOR));
 		archwayDoorButton->SetToolTip("Archway Tool");
+
+		ASSERT(g_gui.raise_brush);
+		sub_sizer->Add(raiseButton = newd BrushButton(this, g_gui.raise_brush, RENDER_SIZE_32x32, PALETTE_TERRAIN_RAISE_TOOL));
+		raiseButton->SetToolTip("Raise Ground - top uses the last selected ground brush (Ctrl inverts)");
+
+		ASSERT(g_gui.lower_brush);
+		sub_sizer->Add(lowerButton = newd BrushButton(this, g_gui.lower_brush, RENDER_SIZE_32x32, PALETTE_TERRAIN_LOWER_TOOL));
+		lowerButton->SetToolTip("Lower Ground - top uses the last selected ground brush (Ctrl inverts)");
+
+		ASSERT(g_gui.flatten_brush);
+		sub_sizer->Add(flattenButton = newd BrushButton(this, g_gui.flatten_brush, RENDER_SIZE_32x32, PALETTE_TERRAIN_FLATTEN_TOOL));
+		flattenButton->SetToolTip("Flatten Ground - top uses the last selected ground brush");
 	} else {
 		// Create the tool page with 16x16 icons
 		// Create tool window #1
@@ -817,6 +841,18 @@ void BrushToolPanel::LoadAllContents() {
 		ASSERT(g_gui.refresh_brush);
 		sub_sizer->Add(refreshBrushButton = newd BrushButton(this, g_gui.refresh_brush, RENDER_SIZE_16x16, PALETTE_TERRAIN_REFRESH_TOOL));
 		refreshBrushButton->SetToolTip("Refresh Zone Tool");
+
+		ASSERT(g_gui.raise_brush);
+		sub_sizer->Add(raiseButton = newd BrushButton(this, g_gui.raise_brush, RENDER_SIZE_16x16, PALETTE_TERRAIN_RAISE_TOOL));
+		raiseButton->SetToolTip("Raise Ground - top uses the last selected ground brush (Ctrl inverts)");
+
+		ASSERT(g_gui.lower_brush);
+		sub_sizer->Add(lowerButton = newd BrushButton(this, g_gui.lower_brush, RENDER_SIZE_16x16, PALETTE_TERRAIN_LOWER_TOOL));
+		lowerButton->SetToolTip("Lower Ground - top uses the last selected ground brush (Ctrl inverts)");
+
+		ASSERT(g_gui.flatten_brush);
+		sub_sizer->Add(flattenButton = newd BrushButton(this, g_gui.flatten_brush, RENDER_SIZE_16x16, PALETTE_TERRAIN_FLATTEN_TOOL));
+		flattenButton->SetToolTip("Flatten Ground - top uses the last selected ground brush");
 	}
 
 	sub_sizer->AddSpacer(large_icons ? 42 : 24);
@@ -832,6 +868,19 @@ void BrushToolPanel::LoadAllContents() {
 	sub_sizer->Add(checkbox_sub_sizer);
 
 	size_sizer->Add(sub_sizer);
+
+	// Terraform pair selector - only relevant when the data files define a choice
+	if (g_terraform_pairs.getPairs().size() > 1) {
+		wxSizer* choice_sizer = newd wxBoxSizer(wxHORIZONTAL);
+		terraformPairChoice = newd wxChoice(this, PALETTE_TERRAIN_TERRAFORM_PAIR_CHOICE);
+		for (const TerraformPair& pair : g_terraform_pairs.getPairs()) {
+			terraformPairChoice->Append(wxstr(pair.name));
+		}
+		terraformPairChoice->SetSelection(static_cast<int>(g_terraform_pairs.getActiveIndex()));
+		terraformPairChoice->SetToolTip("Terraform brush pair (fill/top grounds used by raise, lower and flatten)");
+		choice_sizer->Add(terraformPairChoice);
+		size_sizer->Add(choice_sizer);
+	}
 
 	SetSizerAndFit(size_sizer);
 
@@ -864,6 +913,9 @@ void BrushToolPanel::DeselectAll() {
 		nologBrushButton->SetValue(false);
 		pvpzoneBrushButton->SetValue(false);
 		refreshBrushButton->SetValue(false);
+		raiseButton->SetValue(false);
+		lowerButton->SetValue(false);
+		flattenButton->SetValue(false);
 	}
 }
 
@@ -913,6 +965,15 @@ Brush* BrushToolPanel::GetSelectedBrush() const {
 	if (refreshBrushButton->GetValue()) {
 		return g_gui.refresh_brush;
 	}
+	if (raiseButton->GetValue()) {
+		return g_gui.raise_brush;
+	}
+	if (lowerButton->GetValue()) {
+		return g_gui.lower_brush;
+	}
+	if (flattenButton->GetValue()) {
+		return g_gui.flatten_brush;
+	}
 	return nullptr;
 }
 
@@ -948,6 +1009,12 @@ bool BrushToolPanel::SelectBrush(const Brush* whatbrush) {
 		button = pvpzoneBrushButton;
 	} else if (whatbrush == g_gui.refresh_brush) {
 		button = refreshBrushButton;
+	} else if (whatbrush == g_gui.raise_brush) {
+		button = raiseButton;
+	} else if (whatbrush == g_gui.lower_brush) {
+		button = lowerButton;
+	} else if (whatbrush == g_gui.flatten_brush) {
+		button = flattenButton;
 	}
 
 	DeselectAll();
@@ -1060,6 +1127,28 @@ void BrushToolPanel::OnClickPVPZoneBrushButton(wxCommandEvent& event) {
 void BrushToolPanel::OnClickRefreshBrushButton(wxCommandEvent& event) {
 	g_gui.ActivatePalette(GetParentPalette());
 	g_gui.SelectBrush(g_gui.refresh_brush);
+}
+
+void BrushToolPanel::OnClickRaiseButton(wxCommandEvent& event) {
+	g_gui.ActivatePalette(GetParentPalette());
+	g_gui.SelectBrush(g_gui.raise_brush);
+}
+
+void BrushToolPanel::OnClickLowerButton(wxCommandEvent& event) {
+	g_gui.ActivatePalette(GetParentPalette());
+	g_gui.SelectBrush(g_gui.lower_brush);
+}
+
+void BrushToolPanel::OnClickFlattenButton(wxCommandEvent& event) {
+	g_gui.ActivatePalette(GetParentPalette());
+	g_gui.SelectBrush(g_gui.flatten_brush);
+}
+
+void BrushToolPanel::OnSelectTerraformPair(wxCommandEvent& event) {
+	const int selection = event.GetSelection();
+	if (selection >= 0) {
+		g_terraform_pairs.setActiveIndex(static_cast<size_t>(selection));
+	}
 }
 
 void BrushToolPanel::OnClickLockDoorCheckbox(wxCommandEvent& event) {

@@ -480,6 +480,19 @@ bool GraphicManager::loadEditorSprites() {
 		nullptr
 	);
 
+	sprite_space[EDITOR_SPRITE_TERRAFORM_RAISE] = newd EditorSprite(
+		loadPNGFile(terraform_raise_small_png),
+		loadPNGFile(terraform_raise_png)
+	);
+	sprite_space[EDITOR_SPRITE_TERRAFORM_LOWER] = newd EditorSprite(
+		loadPNGFile(terraform_lower_small_png),
+		loadPNGFile(terraform_lower_png)
+	);
+	sprite_space[EDITOR_SPRITE_TERRAFORM_FLATTEN] = newd EditorSprite(
+		loadPNGFile(terraform_flatten_small_png),
+		loadPNGFile(terraform_flatten_png)
+	);
+
 	return true;
 }
 

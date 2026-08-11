@@ -27,6 +27,7 @@
 #include "raw_brush.h"
 #include "spawn_brush.h"
 #include "table_brush.h"
+#include "terraform_brush.h"
 #include "wall_brush.h"
 
 #include "settings.h"
@@ -80,6 +81,10 @@ void Brushes::init() {
 	addBrush(g_gui.window_door_brush = newd DoorBrush(WALL_WINDOW));
 	addBrush(g_gui.house_brush = newd HouseBrush());
 	addBrush(g_gui.house_exit_brush = newd HouseExitBrush());
+
+	addBrush(g_gui.raise_brush = newd TerraformBrush(TerraformBrush::RAISE));
+	addBrush(g_gui.lower_brush = newd TerraformBrush(TerraformBrush::LOWER));
+	addBrush(g_gui.flatten_brush = newd TerraformBrush(TerraformBrush::FLATTEN));
 
 	addBrush(g_gui.pz_brush = newd FlagBrush(TILESTATE_PROTECTIONZONE));
 	addBrush(g_gui.rook_brush = newd FlagBrush(TILESTATE_NOPVP));

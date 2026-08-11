@@ -128,4 +128,10 @@ extern unsigned char icon_house_png[1429];
 extern unsigned char icon_creature_png[896];
 extern unsigned char icon_raw_png[1600];
 extern unsigned char icon_comments_png[1474];
+extern unsigned char terraform_raise_png[305];
+extern unsigned char terraform_raise_small_png[214];
+extern unsigned char terraform_lower_png[304];
+extern unsigned char terraform_lower_small_png[218];
+extern unsigned char terraform_flatten_png[273];
+extern unsigned char terraform_flatten_small_png[183];
 #endif //_RME_PNG_HEADER_FILE_H_

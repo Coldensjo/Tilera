@@ -225,6 +225,11 @@ public:
 	void OnClickPVPZoneBrushButton(wxCommandEvent& event);
 	void OnClickRefreshBrushButton(wxCommandEvent& event);
 	// ----
+	void OnClickRaiseButton(wxCommandEvent& event);
+	void OnClickLowerButton(wxCommandEvent& event);
+	void OnClickFlattenButton(wxCommandEvent& event);
+	void OnSelectTerraformPair(wxCommandEvent& event);
+	// ----
 	void OnClickLockDoorCheckbox(wxCommandEvent& event);
 
 public:
@@ -250,6 +255,11 @@ public:
 	BrushButton* nologBrushButton;
 	BrushButton* pvpzoneBrushButton;
 	BrushButton* refreshBrushButton;
+	// ----
+	BrushButton* raiseButton;
+	BrushButton* lowerButton;
+	BrushButton* flattenButton;
+	wxChoice* terraformPairChoice;
 
 	wxCheckBox* lockDoorCheckbox;
 

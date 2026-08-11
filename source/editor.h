@@ -176,6 +176,12 @@ protected:
 	void drawInternal(const PositionVector& posvec, bool alt, bool dodraw);
 	void drawInternal(const PositionVector& todraw, PositionVector& toborder, bool alt, bool dodraw);
 
+	// Terraforming (raise/lower/flatten terrain columns, see terraform.h).
+	// dodraw == false is the Ctrl/undraw path: it inverts raise<->lower.
+	void terraformInternal(const PositionVector& tilestodraw, bool dodraw);
+	bool terraformRaiseColumn(Action* action, const Position& anchor, int height, GroundBrush* fill, GroundBrush* top, std::set<Position>& border_positions);
+	bool terraformLowerColumn(Action* action, const Position& anchor, int height, GroundBrush* top, std::set<Position>& border_positions);
+
 private:
 	std::vector<Item*> property_locked_items;
 

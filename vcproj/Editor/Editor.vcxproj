@@ -182,6 +182,10 @@
     <ClInclude Include="..\..\source\doodad_brush.h" />
     <ClCompile Include="..\..\source\doodad_brush.cpp" />
     <ClCompile Include="..\..\source\eraser_brush.cpp" />
+    <ClInclude Include="..\..\source\terraform.h" />
+    <ClCompile Include="..\..\source\terraform.cpp" />
+    <ClInclude Include="..\..\source\terraform_brush.h" />
+    <ClCompile Include="..\..\source\terraform_brush.cpp" />
     <ClInclude Include="..\..\source\extension.h" />
     <ClInclude Include="..\..\source\extension_window.h" />
     <ClInclude Include="..\..\source\filehandle.h" />

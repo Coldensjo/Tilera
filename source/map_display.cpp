@@ -58,6 +58,7 @@
 #include "house_brush.h"
 #include "wall_brush.h"
 #include "spawn_brush.h"
+#include "terraform_brush.h"
 #include "creature_brush.h"
 #include "ground_brush.h"
 #include "raw_brush.h"
@@ -1376,6 +1377,10 @@ void MapCanvas::OnMouseActionClick(wxMouseEvent& event) {
 			return;
 		}
 		Brush* brush = g_gui.GetCurrentBrush();
+		if (brush->isTerraform()) {
+			// New stroke: every column may move one step again
+			brush->asTerraform()->beginStroke();
+		}
 		if (event.ShiftDown() && brush->canDrag()) {
 			dragging_draw = true;
 			// Alt turns the drag into a straight line instead of a square/circle.
@@ -1914,6 +1919,9 @@ void MapCanvas::OnMouseActionRelease(wxMouseEvent& event) {
 			}
 		}
 		editor.actionQueue->resetTimer();
+		if (g_gui.GetCurrentBrush() && g_gui.GetCurrentBrush()->isTerraform()) {
+			g_gui.GetCurrentBrush()->asTerraform()->endStroke();
+		}
 		drawing = false;
 		dragging_draw = false;
 		dragging_draw_line = false;

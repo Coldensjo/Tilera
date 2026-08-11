@@ -50,6 +50,7 @@ class HouseBrush;
 class HouseExitBrush;
 class FlagBrush;
 class EraserBrush;
+class TerraformBrush;
 class PaletteSeparatorBrush;
 
 //=============================================================================
@@ -201,6 +202,9 @@ public:
 	virtual bool isEraser() const {
 		return false;
 	}
+	virtual bool isTerraform() const {
+		return false;
+	}
 	virtual bool isPaletteSeparator() const {
 		return false;
 	}
@@ -251,6 +255,9 @@ public:
 		return nullptr;
 	}
 	virtual EraserBrush* asEraser() {
+		return nullptr;
+	}
+	virtual TerraformBrush* asTerraform() {
 		return nullptr;
 	}
 	virtual PaletteSeparatorBrush* asPaletteSeparator() {

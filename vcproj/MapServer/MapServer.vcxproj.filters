@@ -282,6 +282,12 @@
     <ClInclude Include="..\..\source\ground_brush.h">
       <Filter>editor\brushes</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\terraform.h">
+      <Filter>editor\brushes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\terraform_brush.h">
+      <Filter>editor\brushes</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\source\wall_brush.h">
       <Filter>editor\brushes</Filter>
     </ClInclude>
@@ -588,6 +594,12 @@
       <Filter>editor\brushes</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\eraser_brush.cpp">
+      <Filter>editor\brushes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\terraform.cpp">
+      <Filter>editor\brushes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\terraform_brush.cpp">
       <Filter>editor\brushes</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\doodad_brush.cpp">

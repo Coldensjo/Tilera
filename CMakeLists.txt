@@ -129,6 +129,8 @@ set(RME_COMMON_SOURCES
 	source/spawn_brush.cpp
 	source/spawn.cpp
 	source/table_brush.cpp
+	source/terraform.cpp
+	source/terraform_brush.cpp
 	source/theme.cpp
 	source/tile.cpp
 	source/tileset.cpp
