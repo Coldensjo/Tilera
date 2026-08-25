@@ -19,4 +19,5 @@
 	<include file="walls.xml"/>
 	<include file="doodads.xml"/>
 	<include file="tilesets.xml"/>
+	<include file="terraform.xml"/>
 </materials>
