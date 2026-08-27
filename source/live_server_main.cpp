@@ -25,6 +25,12 @@
 #include <wx/app.h>
 #include <wx/init.h>
 
+#ifdef __WINDOWS__
+	#include <io.h>
+#else
+	#include <unistd.h>
+#endif
+
 #include <atomic>
 #include <chrono>
 #include <iostream>
@@ -114,6 +120,14 @@ bool parseMapServerConfigLong(const wxString& value, long& out) {
 		return false;
 	}
 	return trimmed.ToLong(&out);
+}
+
+bool isStdinInteractive() {
+#ifdef __WINDOWS__
+	return _isatty(_fileno(stdin)) != 0;
+#else
+	return isatty(fileno(stdin)) != 0;
+#endif
 }
 
 void waitForEnterOnStartupFailure(int argc) {
@@ -727,7 +741,15 @@ void drainPendingCommands() {
 class MapServerApp : public wxAppConsole {
 public:
 	bool OnInit() override {
-#if defined(__WXGTK__) || defined(__WINDOWS__)
+#if defined(__WXGTK__)
+		// Headless servers have no display; glutInit would abort. The server
+		// never renders, so glut is only initialized when a display exists.
+		if (std::getenv("DISPLAY") || std::getenv("WAYLAND_DISPLAY")) {
+			int glutArgc = 1;
+			char* glutArgv[1] = { const_cast<char*>("MapServer") };
+			glutInit(&glutArgc, glutArgv);
+		}
+#elif defined(__WINDOWS__)
 		int glutArgc = 1;
 		char* glutArgv[1] = { const_cast<char*>("MapServer") };
 		glutInit(&glutArgc, glutArgv);
@@ -835,7 +857,8 @@ public:
 	}
 
 	int OnRun() override {
-		std::thread inputThread([]() {
+		const bool interactiveInput = isStdinInteractive();
+		std::thread inputThread([interactiveInput]() {
 			std::string line;
 			while (g_running && std::getline(std::cin, line)) {
 				{
@@ -843,7 +866,12 @@ public:
 					g_pendingCommands.push_back(line);
 				}
 			}
-			g_running = false;
+			// EOF on a non-interactive stdin (service/daemon, redirected
+			// input) must not stop the server; only an interactive EOF
+			// counts as a quit request.
+			if (interactiveInput) {
+				g_running = false;
+			}
 		});
 
 		while (g_running) {
