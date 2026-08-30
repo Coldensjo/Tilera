@@ -644,7 +644,7 @@ BrushIconBox::BrushIconBox(wxWindow* parent, const TilesetCategory* _tileset, Re
 	BrushBoxInterface(_tileset),
 	icon_size(rsz),
 	use_actual_size(useActualSize),
-	slot_size(useActualSize ? 32 : (rsz == RENDER_SIZE_32x32 ? 36 : 20)),
+	slot_size((useActualSize || rsz == RENDER_SIZE_32x32 ? 32 : 16) + 2 * CELL_MARGIN),
 	columns(1),
 	virtual_height(0),
 	selected_index(-1) {
@@ -822,12 +822,11 @@ void BrushIconBox::DrawCell(wxDC& dc, const Cell& cell, bool selected) const {
 		return;
 	}
 
-	// Fixed-size cells (Small/Large icons) are 4px larger than their sprite so
-	// each icon keeps a 2px margin on every side. Exact-size cells use the same
-	// margin so icons are not drawn flush against neighbouring cells.
-	const int margin = 2;
+	// Every cell is CELL_MARGIN px larger than its sprite on each side. The
+	// margin is *outside* the sprite: the sprite is blitted at its native size
+	// inside `inner`, so it is never clipped or squashed.
 	wxRect inner = r;
-	inner.Deflate(margin);
+	inner.Deflate(CELL_MARGIN);
 
 	// Background fill (honours the configurable icon background shade)
 	const int bgshade = g_settings.getInteger(Config::ICON_BACKGROUND);
@@ -852,12 +851,27 @@ void BrushIconBox::DrawCell(wxDC& dc, const Cell& cell, bool selected) const {
 		} else if (icon_size == RENDER_SIZE_16x16) {
 			sprite_size = SPRITE_SIZE_16x16;
 		}
-		spr->DrawTo(&dc, sprite_size, inner.GetX(), inner.GetY(), inner.GetWidth(), inner.GetHeight());
+		// Blit the sprite at its native size, centred in the cell. Exact-size
+		// cells spanning several slots also absorb the inter-slot margins here.
+		int draw_w = inner.GetWidth();
+		int draw_h = inner.GetHeight();
+		if (sprite_size == SPRITE_SIZE_ACTUAL) {
+			draw_w = draw_h = SPRITE_PIXELS;
+			if (GameSprite* game_sprite = dynamic_cast<GameSprite*>(spr)) {
+				draw_w = std::max(1, int(game_sprite->width)) * SPRITE_PIXELS;
+				draw_h = std::max(1, int(game_sprite->height)) * SPRITE_PIXELS;
+			}
+			draw_w = std::min(draw_w, inner.GetWidth());
+			draw_h = std::min(draw_h, inner.GetHeight());
+		}
+		const int draw_x = inner.GetX() + (inner.GetWidth() - draw_w) / 2;
+		const int draw_y = inner.GetY() + (inner.GetHeight() - draw_h) / 2;
+		spr->DrawTo(&dc, sprite_size, draw_x, draw_y, draw_w, draw_h);
 
 		if (selected && g_settings.getInteger(Config::USE_GUI_SELECTION_SHADOW)) {
 			if (Sprite* marker = g_gui.gfx.getSprite(EDITOR_SPRITE_SELECTION_MARKER)) {
 				SpriteSize overlay_size = (sprite_size == SPRITE_SIZE_ACTUAL) ? SPRITE_SIZE_32x32 : sprite_size;
-				marker->DrawTo(&dc, overlay_size, inner.GetX(), inner.GetY(), inner.GetWidth(), inner.GetHeight());
+				marker->DrawTo(&dc, overlay_size, draw_x, draw_y, draw_w, draw_h);
 			}
 		}
 	}

@@ -133,7 +133,8 @@ protected:
 	std::vector<Cell> cells;
 	RenderSize icon_size;
 	bool use_actual_size;
-	int slot_size; // pixel size of one grid cell (fixed-size modes)
+	static constexpr int CELL_MARGIN = 2; // gap kept around every sprite so it is never clipped
+	int slot_size; // pixel size of one grid cell (sprite size + 2 * CELL_MARGIN)
 	int columns; // number of columns the layout was computed for
 	int virtual_height; // total height of the laid-out grid
 	int selected_index; // index into cells of the selected brush, or -1
