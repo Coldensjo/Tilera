@@ -32,7 +32,7 @@ END_EVENT_TABLE()
 CommentsWindow::CommentsWindow(wxWindow* parent) :
 	wxPanel(parent, wxID_ANY) {
 	wxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
-	comment_list = newd wxListBox(this, wxID_ANY, wxDefaultPosition, wxSize(260, 330), 0, nullptr, wxLB_SINGLE | wxLB_ALWAYS_SB);
+	comment_list = newd wxListBox(this, wxID_ANY, wxDefaultPosition, FromDIP(wxSize(260, 330)), 0, nullptr, wxLB_SINGLE | wxLB_ALWAYS_SB);
 	sizer->Add(comment_list, wxSizerFlags(1).Expand());
 
 	wxSizer* buttonsSizer = newd wxBoxSizer(wxHORIZONTAL);

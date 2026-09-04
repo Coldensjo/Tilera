@@ -52,7 +52,7 @@ FindBrushWindow::FindBrushWindow(wxWindow* parent) :
 	sizer->Add(results_panel, 1, wxEXPAND);
 
 	SetSizerAndFit(sizer);
-	SetMinSize(wxSize(300, 300));
+	SetMinSize(FromDIP(wxSize(300, 300)));
 
 	search_field->Bind(wxEVT_TEXT, &FindBrushWindow::OnTextChange, this);
 	search_field->Bind(wxEVT_TEXT_ENTER, &FindBrushWindow::OnSearchEnter, this);

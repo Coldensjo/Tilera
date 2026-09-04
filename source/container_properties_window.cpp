@@ -535,7 +535,7 @@ void ContainerItemButton::OnEditItem(wxCommandEvent& WXUNUSED(event)) {
 		}
 	}
 
-	newDialogAt += wxPoint(20, 20);
+	newDialogAt += FromDIP(wxPoint(20, 20));
 
 	wxDialog* d;
 

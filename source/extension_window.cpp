@@ -31,10 +31,10 @@ EVT_BUTTON(EXTENSIONS_OPEN_FOLDER_BUTTON, ExtensionsDialog::OnClickOpenFolder)
 END_EVENT_TABLE()
 
 ExtensionsDialog::ExtensionsDialog(wxWindow* parent) :
-	wxDialog(parent, wxID_ANY, "Extensions", wxDefaultPosition, wxSize(600, 500), wxRESIZE_BORDER | wxCAPTION) {
+	wxDialog(parent, wxID_ANY, "Extensions", wxDefaultPosition, wxWindow::FromDIP(wxSize(600, 500), parent), wxRESIZE_BORDER | wxCAPTION) {
 	wxBoxSizer* topSizer = new wxBoxSizer(wxVERTICAL);
 
-	wxHtmlWindow* htmlWindow = new wxHtmlWindow(this, wxID_ANY, wxDefaultPosition, wxSize(550, 400));
+	wxHtmlWindow* htmlWindow = new wxHtmlWindow(this, wxID_ANY, wxDefaultPosition, FromDIP(wxSize(550, 400)));
 	htmlWindow->SetPage(HTML());
 	topSizer->Add(htmlWindow, wxSizerFlags(1).DoubleBorder().Expand());
 

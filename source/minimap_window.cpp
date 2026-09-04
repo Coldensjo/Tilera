@@ -618,7 +618,7 @@ EVT_KEY_DOWN(MinimapWindow::OnKey)
 END_EVENT_TABLE()
 
 MinimapWindow::MinimapWindow(wxWindow* parent) :
-    wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(205, 150)),
+    wxPanel(parent, wxID_ANY, wxDefaultPosition, wxWindow::FromDIP(wxSize(205, 150), parent)),
     aui_event_source(nullptr),
     caption_bar(nullptr),
     canvas(nullptr),

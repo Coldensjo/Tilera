@@ -247,12 +247,12 @@ EditBrushWindow::EditBrushWindow(wxWindow* parent, Brush* brush) :
 	wxSizer* topsizer = newd wxBoxSizer(wxVERTICAL);
 
 	entry_list = newd EditBrushListBox(this, EDIT_BRUSH_LIST, this);
-	entry_list->SetMinSize(wxSize(640, 220));
+	entry_list->SetMinSize(FromDIP(wxSize(640, 220)));
 	topsizer->Add(entry_list, wxSizerFlags(1).Expand().Border(wxLEFT | wxRIGHT | wxTOP, 10));
 
 	composite_panel = newd wxStaticBoxSizer(wxVERTICAL, this, "Composite Tiles");
 	composite_tile_list = newd EditCompositeTileListBox(this, EDIT_BRUSH_COMPOSITE_TILE_LIST, this);
-	composite_tile_list->SetMinSize(wxSize(620, 120));
+	composite_tile_list->SetMinSize(FromDIP(wxSize(620, 120)));
 	composite_panel->Add(composite_tile_list, wxSizerFlags(1).Expand().Border(wxALL, 5));
 
 	wxSizer* compositeButtonSizer = newd wxBoxSizer(wxHORIZONTAL);
@@ -273,9 +273,9 @@ EditBrushWindow::EditBrushWindow(wxWindow* parent, Brush* brush) :
 	tile_pos_label = newd wxStaticText(this, wxID_ANY, "Tile X/Y/Z");
 	editSizer->Add(tile_pos_label, wxSizerFlags(1).CenterVertical());
 	wxSizer* tilePosSizer = newd wxBoxSizer(wxHORIZONTAL);
-	tile_x_spin = newd wxSpinCtrl(this, EDIT_BRUSH_TILE_X, "0", wxDefaultPosition, wxSize(55, -1), wxSP_ARROW_KEYS, -32767, 32767, 0);
-	tile_y_spin = newd wxSpinCtrl(this, EDIT_BRUSH_TILE_Y, "0", wxDefaultPosition, wxSize(55, -1), wxSP_ARROW_KEYS, -32767, 32767, 0);
-	tile_z_spin = newd wxSpinCtrl(this, EDIT_BRUSH_TILE_Z, "0", wxDefaultPosition, wxSize(45, -1), wxSP_ARROW_KEYS, -7, 7, 0);
+	tile_x_spin = newd wxSpinCtrl(this, EDIT_BRUSH_TILE_X, "0", wxDefaultPosition, FromDIP(wxSize(55, -1)), wxSP_ARROW_KEYS, -32767, 32767, 0);
+	tile_y_spin = newd wxSpinCtrl(this, EDIT_BRUSH_TILE_Y, "0", wxDefaultPosition, FromDIP(wxSize(55, -1)), wxSP_ARROW_KEYS, -32767, 32767, 0);
+	tile_z_spin = newd wxSpinCtrl(this, EDIT_BRUSH_TILE_Z, "0", wxDefaultPosition, FromDIP(wxSize(45, -1)), wxSP_ARROW_KEYS, -7, 7, 0);
 	tilePosSizer->Add(tile_x_spin, wxSizerFlags(0).Border(wxRIGHT, 4));
 	tilePosSizer->Add(tile_y_spin, wxSizerFlags(0).Border(wxRIGHT, 4));
 	tilePosSizer->Add(tile_z_spin, wxSizerFlags(0));
@@ -299,16 +299,16 @@ EditBrushWindow::EditBrushWindow(wxWindow* parent, Brush* brush) :
 	border_id_label = newd wxStaticText(this, wxID_ANY, "Border ID");
 	editSizer->Add(border_id_label, wxSizerFlags(1).CenterVertical());
 	wxSizer* borderIdSizer = newd wxBoxSizer(wxHORIZONTAL);
-	border_id_spin = newd wxSpinCtrl(this, EDIT_BRUSH_BORDER_ID, "0", wxDefaultPosition, wxSize(90, -1), wxSP_ARROW_KEYS, 0, 10000, 0);
+	border_id_spin = newd wxSpinCtrl(this, EDIT_BRUSH_BORDER_ID, "0", wxDefaultPosition, FromDIP(wxSize(90, -1)), wxSP_ARROW_KEYS, 0, 10000, 0);
 	borderIdSizer->Add(border_id_spin, wxSizerFlags(1).Expand());
-	pick_border_button = newd wxButton(this, EDIT_BRUSH_PICK_BORDER, "Pick...", wxDefaultPosition, wxSize(60, -1));
+	pick_border_button = newd wxButton(this, EDIT_BRUSH_PICK_BORDER, "Pick...", wxDefaultPosition, FromDIP(wxSize(60, -1)));
 	borderIdSizer->Add(pick_border_button, wxSizerFlags(0).Left().Border(wxLEFT, 5));
 	editSizer->Add(borderIdSizer, wxSizerFlags(1).Expand());
 	editSizer->AddSpacer(0);
 
 	ground_equivalent_label = newd wxStaticText(this, wxID_ANY, "Ground equiv.");
 	editSizer->Add(ground_equivalent_label, wxSizerFlags(1).CenterVertical());
-	ground_equivalent_spin = newd wxSpinCtrl(this, EDIT_BRUSH_GROUND_EQUIV, "0", wxDefaultPosition, wxSize(90, -1), wxSP_ARROW_KEYS, 0, 65535, 0);
+	ground_equivalent_spin = newd wxSpinCtrl(this, EDIT_BRUSH_GROUND_EQUIV, "0", wxDefaultPosition, FromDIP(wxSize(90, -1)), wxSP_ARROW_KEYS, 0, 65535, 0);
 	editSizer->Add(ground_equivalent_spin, wxSizerFlags(1).Expand());
 	editSizer->AddSpacer(0);
 
@@ -319,15 +319,15 @@ EditBrushWindow::EditBrushWindow(wxWindow* parent, Brush* brush) :
 
 	editSizer->Add(newd wxStaticText(this, wxID_ANY, "Item ID"), wxSizerFlags(1).CenterVertical());
 	wxSizer* itemIdSizer = newd wxBoxSizer(wxHORIZONTAL);
-	item_id_spin = newd wxSpinCtrl(this, EDIT_BRUSH_ITEM_ID, "0", wxDefaultPosition, wxSize(90, -1), wxSP_ARROW_KEYS, 1, 65535, 100);
+	item_id_spin = newd wxSpinCtrl(this, EDIT_BRUSH_ITEM_ID, "0", wxDefaultPosition, FromDIP(wxSize(90, -1)), wxSP_ARROW_KEYS, 1, 65535, 100);
 	itemIdSizer->Add(item_id_spin, wxSizerFlags(1).Expand());
-	pick_item_button = newd wxButton(this, EDIT_BRUSH_PICK_ITEM, "Pick...", wxDefaultPosition, wxSize(60, -1));
+	pick_item_button = newd wxButton(this, EDIT_BRUSH_PICK_ITEM, "Pick...", wxDefaultPosition, FromDIP(wxSize(60, -1)));
 	itemIdSizer->Add(pick_item_button, wxSizerFlags(0).Left().Border(wxLEFT, 5));
 	editSizer->Add(itemIdSizer, wxSizerFlags(1).Expand());
 	editSizer->AddSpacer(0);
 
 	editSizer->Add(newd wxStaticText(this, wxID_ANY, "Chance"), wxSizerFlags(1).CenterVertical());
-	chance_spin = newd wxSpinCtrl(this, EDIT_BRUSH_CHANCE, "1", wxDefaultPosition, wxSize(80, -1), wxSP_ARROW_KEYS, 0, 100000, 1);
+	chance_spin = newd wxSpinCtrl(this, EDIT_BRUSH_CHANCE, "1", wxDefaultPosition, FromDIP(wxSize(80, -1)), wxSP_ARROW_KEYS, 0, 100000, 1);
 	editSizer->Add(chance_spin, wxSizerFlags(1).Expand());
 	editSizer->AddSpacer(0);
 	topsizer->Add(editSizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT, 10));

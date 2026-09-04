@@ -72,15 +72,15 @@ HousePalettePanel::HousePalettePanel(wxWindow* parent, wxWindowID id) :
 
 	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
 	wxSizerFlags sizerFlags(1);
-	tmpsizer->Add(add_house_button = newd wxButton(this, PALETTE_HOUSE_ADD_HOUSE, "Add", wxDefaultPosition, wxSize(50, -1)), sizerFlags);
-	tmpsizer->Add(edit_house_button = newd wxButton(this, PALETTE_HOUSE_EDIT_HOUSE, "Edit", wxDefaultPosition, wxSize(50, -1)), sizerFlags);
-	tmpsizer->Add(remove_house_button = newd wxButton(this, PALETTE_HOUSE_REMOVE_HOUSE, "Remove", wxDefaultPosition, wxSize(70, -1)), sizerFlags);
+	tmpsizer->Add(add_house_button = newd wxButton(this, PALETTE_HOUSE_ADD_HOUSE, "Add", wxDefaultPosition, FromDIP(wxSize(50, -1))), sizerFlags);
+	tmpsizer->Add(edit_house_button = newd wxButton(this, PALETTE_HOUSE_EDIT_HOUSE, "Edit", wxDefaultPosition, FromDIP(wxSize(50, -1))), sizerFlags);
+	tmpsizer->Add(remove_house_button = newd wxButton(this, PALETTE_HOUSE_REMOVE_HOUSE, "Remove", wxDefaultPosition, FromDIP(wxSize(70, -1))), sizerFlags);
 	sidesizer->Add(tmpsizer, wxSizerFlags(0).Right());
 
 	topsizer->Add(sidesizer, 1, wxEXPAND);
 
 	// Temple position
-	sidesizer = newd wxStaticBoxSizer(newd wxStaticBox(this, wxID_ANY, "Brushes", wxDefaultPosition, wxSize(150, 200)), wxVERTICAL);
+	sidesizer = newd wxStaticBoxSizer(newd wxStaticBox(this, wxID_ANY, "Brushes", wxDefaultPosition, FromDIP(wxSize(150, 200))), wxVERTICAL);
 
 	// sidesizer->Add(180, 1, wxEXPAND);
 
@@ -441,7 +441,7 @@ END_EVENT_TABLE()
 
 EditHouseDialog::EditHouseDialog(wxWindow* parent, Map* map, House* house) :
 	// window title
-	wxDialog(parent, wxID_ANY, "House Properties", wxDefaultPosition, wxSize(250, 160)),
+	wxDialog(parent, wxID_ANY, "House Properties", wxDefaultPosition, wxWindow::FromDIP(wxSize(250, 160), parent)),
 	map(map),
 	what_house(house) {
 	ASSERT(map);
@@ -462,7 +462,7 @@ EditHouseDialog::EditHouseDialog(wxWindow* parent, Map* map, House* house) :
 
 	// House name
 	subsizer->Add(newd wxStaticText(this, wxID_ANY, "Name:"), wxSizerFlags(0).Border(wxLEFT, 5));
-	name_field = newd wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxSize(160, 20), 0, wxTextValidator(wxFILTER_ASCII, &house_name));
+	name_field = newd wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(160, 20)), 0, wxTextValidator(wxFILTER_ASCII, &house_name));
 	subsizer->Add(name_field, wxSizerFlags(1).Expand());
 
 	// Town selection menu
@@ -499,7 +499,7 @@ EditHouseDialog::EditHouseDialog(wxWindow* parent, Map* map, House* house) :
 
 	// Rent price
 	subsizer->Add(newd wxStaticText(this, wxID_ANY, "Rent:"), wxSizerFlags(0).Border(wxLEFT, 5));
-	rent_field = newd wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxSize(160, 20), 0, wxTextValidator(wxFILTER_NUMERIC, &house_rent));
+	rent_field = newd wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(160, 20)), 0, wxTextValidator(wxFILTER_NUMERIC, &house_rent));
 	subsizer->Add(rent_field, wxSizerFlags(1).Expand());
 
 	// Right column
@@ -509,14 +509,14 @@ EditHouseDialog::EditHouseDialog(wxWindow* parent, Map* map, House* house) :
 	wxFlexGridSizer* houseSizer = newd wxFlexGridSizer(2, 10, 10);
 
 	houseSizer->Add(newd wxStaticText(this, wxID_ANY, "ID:"), wxSizerFlags(0).Center());
-	id_field = newd wxSpinCtrl(this, wxID_ANY, "", wxDefaultPosition, wxSize(40, 20), wxSP_ARROW_KEYS, 1, 0xFFFF, house->getID());
+	id_field = newd wxSpinCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(40, 20)), wxSP_ARROW_KEYS, 1, 0xFFFF, house->getID());
 	// id_field->Enable(false);
 	houseSizer->Add(id_field, wxSizerFlags(1).Expand());
 	subsizerRight->Add(houseSizer, wxSizerFlags(1).Expand());
 
 	// Guildhall checkbox
 	wxSizer* checkbox_sub_sizer = newd wxBoxSizer(wxVERTICAL);
-	checkbox_sub_sizer->AddSpacer(4);
+	checkbox_sub_sizer->AddSpacer(FromDIP(4));
 
 	guildhall_field = newd wxCheckBox(this, wxID_ANY, "Guildhall");
 

@@ -44,7 +44,7 @@ PropertiesWindow::PropertiesWindow(wxWindow* parent, const Map* map, const Tile*
 	ObjectPropertiesWindowBase(parent, "Item Properties", map, tile_parent, item, pos),
 	currentPanel(nullptr) {
 	ASSERT(edit_item);
-	notebook = newd wxNotebook(this, wxID_ANY, wxDefaultPosition, wxSize(600, 300));
+	notebook = newd wxNotebook(this, wxID_ANY, wxDefaultPosition, FromDIP(wxSize(600, 300)));
 
 	notebook->AddPage(createGeneralPanel(notebook), "Simple", true);
 	if (dynamic_cast<Container*>(item)) {
@@ -92,9 +92,9 @@ wxWindow* PropertiesWindow::createGeneralPanel(wxWindow* parent) {
 
 	gridsizer->Add(newd wxStaticText(panel, wxID_ANY, "Unique ID"));
 	wxSizer* uidSizer = newd wxBoxSizer(wxHORIZONTAL);
-	unique_id_field = newd wxSpinCtrl(panel, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
+	unique_id_field = newd wxSpinCtrl(panel, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
 	uidSizer->Add(unique_id_field, wxSizerFlags(1).Expand());
-	uidSizer->Add(newd wxButton(panel, ITEM_PROPERTIES_PICK_UNIQUE_ID, "Pick", wxDefaultPosition, wxSize(-1, 20)), wxSizerFlags(0).Border(wxLEFT, 5));
+	uidSizer->Add(newd wxButton(panel, ITEM_PROPERTIES_PICK_UNIQUE_ID, "Pick", wxDefaultPosition, FromDIP(wxSize(-1, 20))), wxSizerFlags(0).Border(wxLEFT, 5));
 	gridsizer->Add(uidSizer, wxSizerFlags(1).Expand());
 
 	panel->SetSizerAndFit(gridsizer);
@@ -125,7 +125,7 @@ wxWindow* PropertiesWindow::createAttributesPanel(wxWindow* parent) {
 	wxPanel* panel = newd wxPanel(parent, wxID_ANY);
 	wxSizer* topSizer = newd wxBoxSizer(wxVERTICAL);
 
-	attributesGrid = newd wxGrid(panel, ITEM_PROPERTIES_ADVANCED_TAB, wxDefaultPosition, wxSize(-1, 160));
+	attributesGrid = newd wxGrid(panel, ITEM_PROPERTIES_ADVANCED_TAB, wxDefaultPosition, FromDIP(wxSize(-1, 160)));
 	topSizer->Add(attributesGrid, wxSizerFlags(1).Expand());
 
 	wxFont time_font(*wxSWISS_FONT);

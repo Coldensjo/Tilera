@@ -48,7 +48,7 @@ protected:
 };
 
 BrowseTileListBox::BrowseTileListBox(wxWindow* parent, wxWindowID id, Tile* tile) :
-	wxVListBox(parent, id, wxDefaultPosition, wxSize(200, 180), wxLB_MULTIPLE), edit_tile(tile) {
+	wxVListBox(parent, id, wxDefaultPosition, wxWindow::FromDIP(wxSize(200, 180), parent), wxLB_MULTIPLE), edit_tile(tile) {
 	UpdateItems();
 }
 
@@ -133,7 +133,7 @@ EVT_BUTTON(wxID_CANCEL, BrowseTileWindow::OnClickCancel)
 END_EVENT_TABLE()
 
 BrowseTileWindow::BrowseTileWindow(wxWindow* parent, Tile* tile, wxPoint position /* = wxDefaultPosition */) :
-	wxDialog(parent, wxID_ANY, "Browse Field", position, wxSize(600, 400), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER) {
+	wxDialog(parent, wxID_ANY, "Browse Field", position, wxWindow::FromDIP(wxSize(600, 400), parent), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER) {
 	wxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
 	item_list = newd BrowseTileListBox(this, wxID_ANY, tile);
 	sizer->Add(item_list, wxSizerFlags(1).Expand());
@@ -146,12 +146,12 @@ BrowseTileWindow::BrowseTileWindow(wxWindow* parent, Tile* tile, wxPoint positio
 	delete_button = newd wxButton(this, wxID_REMOVE, "Delete");
 	delete_button->Enable(false);
 	buttons->Add(delete_button);
-	buttons->AddSpacer(5);
+	buttons->AddSpacer(FromDIP(5));
 	select_raw_button = newd wxButton(this, wxID_FIND, "Select RAW");
 	select_raw_button->Enable(false);
 	buttons->Add(select_raw_button);
 	infoSizer->Add(buttons);
-	infoSizer->AddSpacer(5);
+	infoSizer->AddSpacer(FromDIP(5));
 	infoSizer->Add(newd wxStaticText(this, wxID_ANY, "Position:  " + pos), wxSizerFlags(0).Left());
 	infoSizer->Add(item_count_txt = newd wxStaticText(this, wxID_ANY, "Item count:  " + i2ws(item_list->GetItemCount())), wxSizerFlags(0).Left());
 	infoSizer->Add(newd wxStaticText(this, wxID_ANY, "Protection zone:  " + b2yn(tile->isPZ())), wxSizerFlags(0).Left());

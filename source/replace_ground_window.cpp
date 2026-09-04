@@ -124,7 +124,7 @@ EVT_BUTTON(wxID_CANCEL, ReplaceGroundDialog::OnClickCancel)
 END_EVENT_TABLE()
 
 ReplaceGroundDialog::ReplaceGroundDialog(wxWindow* parent, Editor& editor, const Position& startPos, GroundBrush* sourceBrush) :
-	wxDialog(parent, wxID_ANY, "Replace Ground", wxDefaultPosition, wxSize(520, 520), wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
+	wxDialog(parent, wxID_ANY, "Replace Ground", wxDefaultPosition, wxWindow::FromDIP(wxSize(520, 520), parent), wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
 	editor(editor),
 	start_pos(startPos),
 	source_brush(sourceBrush),
@@ -158,7 +158,7 @@ ReplaceGroundDialog::ReplaceGroundDialog(wxWindow* parent, Editor& editor, const
 	topsizer->Add(buttons, 0, wxEXPAND | wxALL, 10);
 
 	SetSizer(topsizer);
-	SetMinSize(wxSize(420, 420));
+	SetMinSize(FromDIP(wxSize(420, 420)));
 
 	int defaultSelection = 0;
 	int index = 0;

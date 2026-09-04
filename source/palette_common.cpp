@@ -412,9 +412,9 @@ void BrushSizePanel::LoadAllContents() {
 	brushshapeSquareButton->SetValue(true);
 
 	if (large_icons) {
-		sub_sizer->AddSpacer(36);
+		sub_sizer->AddSpacer(FromDIP(36));
 	} else {
-		sub_sizer->AddSpacer(18);
+		sub_sizer->AddSpacer(FromDIP(18));
 	}
 
 	sub_sizer->Add(brushsize0Button = newd DCButton(this, PALETTE_TERRAIN_BRUSHSIZE_0, wxDefaultPosition, DC_BTN_TOGGLE, render_size, EDITOR_SPRITE_BRUSH_CD_1x1));

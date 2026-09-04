@@ -82,9 +82,9 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Unique ID"));
 		wxSizer* uidSizer = newd wxBoxSizer(wxHORIZONTAL);
-		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
+		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
 		uidSizer->Add(unique_id_field, wxSizerFlags(1).Expand());
-		uidSizer->Add(newd wxButton(this, ITEM_PROPERTIES_PICK_UNIQUE_ID, "Pick", wxDefaultPosition, wxSize(-1, 20)), wxSizerFlags(0).Border(wxLEFT, 5));
+		uidSizer->Add(newd wxButton(this, ITEM_PROPERTIES_PICK_UNIQUE_ID, "Pick", wxDefaultPosition, FromDIP(wxSize(-1, 20))), wxSizerFlags(0).Border(wxLEFT, 5));
 		subsizer->Add(uidSizer, wxSizerFlags(1).Expand());
 
 		boxsizer->Add(subsizer, wxSizerFlags(0).Expand());
@@ -115,9 +115,9 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Unique ID"));
 		wxSizer* uidSizer = newd wxBoxSizer(wxHORIZONTAL);
-		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
+		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
 		uidSizer->Add(unique_id_field, wxSizerFlags(1).Expand());
-		uidSizer->Add(newd wxButton(this, ITEM_PROPERTIES_PICK_UNIQUE_ID, "Pick", wxDefaultPosition, wxSize(-1, 20)), wxSizerFlags(0).Border(wxLEFT, 5));
+		uidSizer->Add(newd wxButton(this, ITEM_PROPERTIES_PICK_UNIQUE_ID, "Pick", wxDefaultPosition, FromDIP(wxSize(-1, 20))), wxSizerFlags(0).Border(wxLEFT, 5));
 		subsizer->Add(uidSizer, wxSizerFlags().Expand()); // No proportion
 
 		// Add subsizer without excessive vertical space
@@ -126,7 +126,7 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 		// Adjust text field size to reduce height
 		wxSizer* textsizer = newd wxBoxSizer(wxVERTICAL);
 		textsizer->Add(newd wxStaticText(this, wxID_ANY, "Text"), wxSizerFlags().Center());
-		text_field = newd wxTextCtrl(this, wxID_ANY, wxstr(item->getText()), wxDefaultPosition, wxSize(550, 450), wxTE_MULTILINE); // Adjust height
+		text_field = newd wxTextCtrl(this, wxID_ANY, wxstr(item->getText()), wxDefaultPosition, FromDIP(wxSize(550, 450)), wxTE_MULTILINE); // Adjust height
 		textsizer->Add(text_field, wxSizerFlags().Expand());
 
 		// Add textsizer with no extra proportion
@@ -179,9 +179,9 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Unique ID"));
 		wxSizer* uidSizer = newd wxBoxSizer(wxHORIZONTAL);
-		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
+		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
 		uidSizer->Add(unique_id_field, wxSizerFlags(1).Expand());
-		uidSizer->Add(newd wxButton(this, ITEM_PROPERTIES_PICK_UNIQUE_ID, "Pick", wxDefaultPosition, wxSize(-1, 20)), wxSizerFlags(0).Border(wxLEFT, 5));
+		uidSizer->Add(newd wxButton(this, ITEM_PROPERTIES_PICK_UNIQUE_ID, "Pick", wxDefaultPosition, FromDIP(wxSize(-1, 20))), wxSizerFlags(0).Border(wxLEFT, 5));
 		subsizer->Add(uidSizer, wxSizerFlags(1).Expand());
 
 		boxsizer->Add(subsizer, wxSizerFlags(1).Expand());
@@ -289,9 +289,9 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Unique ID"));
 		wxSizer* uidSizer = newd wxBoxSizer(wxHORIZONTAL);
-		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
+		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
 		uidSizer->Add(unique_id_field, wxSizerFlags(1).Expand());
-		uidSizer->Add(newd wxButton(this, ITEM_PROPERTIES_PICK_UNIQUE_ID, "Pick", wxDefaultPosition, wxSize(-1, 20)), wxSizerFlags(0).Border(wxLEFT, 5));
+		uidSizer->Add(newd wxButton(this, ITEM_PROPERTIES_PICK_UNIQUE_ID, "Pick", wxDefaultPosition, FromDIP(wxSize(-1, 20))), wxSizerFlags(0).Border(wxLEFT, 5));
 		subsizer->Add(uidSizer, wxSizerFlags(1).Expand());
 
 		// item classification (12.81+)
@@ -301,50 +301,50 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 
 			// item iter
 			subsizer->Add(newd wxStaticText(this, wxID_ANY, "Tier"));
-			tier_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getTier()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFF, edit_item->getTier());
+			tier_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getTier()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 0xFF, edit_item->getTier());
 			subsizer->Add(tier_field, wxSizerFlags(1).Expand());
 		}
 
 		/*
 		if(item->canHoldDescription()) {
 			subsizer->Add(newd wxStaticText(this, wxID_ANY, "Description"));
-			description_field = newd wxTextCtrl(this, wxID_ANY, edit_item->getText(), wxDefaultPosition, wxSize(-1, 20));
+			description_field = newd wxTextCtrl(this, wxID_ANY, edit_item->getText(), wxDefaultPosition, FromDIP(wxSize(-1, 20)));
 			subsizer->Add(description_field, wxSizerFlags(1).Expand());
 		}
 		*/
 
 		if (door) {
 			subsizer->Add(newd wxStaticText(this, wxID_ANY, "Door ID"));
-			door_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(door->getDoorID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFF, door->getDoorID());
+			door_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(door->getDoorID()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 0xFF, door->getDoorID());
 			if (!edit_tile || !edit_tile->isHouseTile() || !door->isRealDoor()) {
 				door_id_field->Disable();
 			}
 			subsizer->Add(door_id_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, wxT("Key Hole Number")));
-		keyholenumber_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(door->getKeyHoleNumber()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, door->getKeyHoleNumber());
+		keyholenumber_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(door->getKeyHoleNumber()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 0xFFFF, door->getKeyHoleNumber());
 		keyholenumber_field->SetToolTip(i2ws(door->getKeyHoleNumber()));
 		subsizer->Add(keyholenumber_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, wxT("Door Level")));
-		doorlevel_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(door->getDoorLevel()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, door->getDoorLevel());
+		doorlevel_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(door->getDoorLevel()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 0xFFFF, door->getDoorLevel());
 		doorlevel_field->SetToolTip(i2ws(door->getDoorLevel()));
 		subsizer->Add(doorlevel_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, wxT("Door Quest Number")));
-		doorquestnumber_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(door->getQuestNumber()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, door->getQuestNumber());
+		doorquestnumber_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(door->getQuestNumber()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 0xFFFF, door->getQuestNumber());
 		doorquestnumber_field->SetToolTip(i2ws(door->getQuestNumber()));
 		subsizer->Add(doorquestnumber_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, wxT("Door Quest Value")));
-		doorquestvalue_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(door->getQuestValue()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, door->getQuestValue());
+		doorquestvalue_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(door->getQuestValue()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 0xFFFF, door->getQuestValue());
 		doorquestvalue_field->SetToolTip(i2ws(door->getQuestValue()));
 		subsizer->Add(doorquestvalue_field, wxSizerFlags(1).Expand());
 		}
 
 		if (key) {
 			subsizer->Add(newd wxStaticText(this, wxID_ANY, wxT("Key Number")));
-			keynumber_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(key->getKeyNumber()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, key->getKeyNumber());
+			keynumber_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(key->getKeyNumber()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 0xFFFF, key->getKeyNumber());
 			subsizer->Add(keynumber_field, wxSizerFlags(1).Expand());
 		}
 
@@ -352,13 +352,13 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 			subsizer->Add(newd wxStaticText(this, wxID_ANY, "Destination"));
 
 			wxSizer* possizer = newd wxBoxSizer(wxHORIZONTAL);
-			x_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(teleport->getX()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, map->getWidth(), teleport->getX());
+			x_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(teleport->getX()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, map->getWidth(), teleport->getX());
 			x_field->Bind(wxEVT_CHAR, &OldPropertiesWindow::OnChar, this);
 			possizer->Add(x_field, wxSizerFlags(3).Expand());
-			y_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(teleport->getY()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, map->getHeight(), teleport->getY());
+			y_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(teleport->getY()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, map->getHeight(), teleport->getY());
 			y_field->Bind(wxEVT_CHAR, &OldPropertiesWindow::OnChar, this);
 			possizer->Add(y_field, wxSizerFlags(3).Expand());
-			z_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(teleport->getZ()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, MAP_MAX_LAYER, teleport->getZ());
+			z_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(teleport->getZ()), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, MAP_MAX_LAYER, teleport->getZ());
 			z_field->Bind(wxEVT_CHAR, &OldPropertiesWindow::OnChar, this);
 			possizer->Add(z_field, wxSizerFlags(2).Expand());
 
@@ -403,27 +403,27 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 			outfitContainer->Add(newd wxStaticText(this, wxID_ANY, ""));
 
 			outfitContainer->Add(newd wxStaticText(this, wxID_ANY, "LookType"));
-			look_type = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookType), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, std::numeric_limits<uint16_t>::max(), outfit.lookType);
+			look_type = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookType), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, std::numeric_limits<uint16_t>::max(), outfit.lookType);
 			outfitContainer->Add(look_type, wxSizerFlags(3).Expand());
 
 			outfitContainer->Add(newd wxStaticText(this, wxID_ANY, "Head"));
-			look_head = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookHead), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookHead);
+			look_head = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookHead), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookHead);
 			outfitContainer->Add(look_head, wxSizerFlags(3).Expand());
 
 			outfitContainer->Add(newd wxStaticText(this, wxID_ANY, "Body"));
-			look_body = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookBody), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookBody);
+			look_body = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookBody), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookBody);
 			outfitContainer->Add(look_body, wxSizerFlags(3).Expand());
 
 			outfitContainer->Add(newd wxStaticText(this, wxID_ANY, "Legs"));
-			look_legs = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookLegs), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookLegs);
+			look_legs = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookLegs), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookLegs);
 			outfitContainer->Add(look_legs, wxSizerFlags(3).Expand());
 
 			outfitContainer->Add(newd wxStaticText(this, wxID_ANY, "Feet"));
-			look_feet = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookFeet), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookFeet);
+			look_feet = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookFeet), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookFeet);
 			outfitContainer->Add(look_feet, wxSizerFlags(3).Expand());
 
 			outfitContainer->Add(newd wxStaticText(this, wxID_ANY, "Addons"));
-			look_addon = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookAddon), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 3, outfit.lookAddon);
+			look_addon = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookAddon), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, 3, outfit.lookAddon);
 			outfitContainer->Add(look_addon, wxSizerFlags(3).Expand());
 
 			// mount container
@@ -433,23 +433,23 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 			mountContainer->Add(newd wxStaticText(this, wxID_ANY, ""));
 
 			mountContainer->Add(newd wxStaticText(this, wxID_ANY, "LookMount"));
-			look_mount = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookMount), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, std::numeric_limits<uint16_t>::max(), outfit.lookMount);
+			look_mount = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookMount), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, std::numeric_limits<uint16_t>::max(), outfit.lookMount);
 			mountContainer->Add(look_mount, wxSizerFlags(3).Expand());
 
 			mountContainer->Add(newd wxStaticText(this, wxID_ANY, "Head"));
-			look_mounthead = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookMountHead), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookMountHead);
+			look_mounthead = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookMountHead), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookMountHead);
 			mountContainer->Add(look_mounthead, wxSizerFlags(3).Expand());
 
 			mountContainer->Add(newd wxStaticText(this, wxID_ANY, "Body"));
-			look_mountbody = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookMountBody), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookMountBody);
+			look_mountbody = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookMountBody), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookMountBody);
 			mountContainer->Add(look_mountbody, wxSizerFlags(3).Expand());
 
 			mountContainer->Add(newd wxStaticText(this, wxID_ANY, "Legs"));
-			look_mountlegs = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookMountLegs), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookMountLegs);
+			look_mountlegs = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookMountLegs), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookMountLegs);
 			mountContainer->Add(look_mountlegs, wxSizerFlags(3).Expand());
 
 			mountContainer->Add(newd wxStaticText(this, wxID_ANY, "Feet"));
-			look_mountfeet = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookMountFeet), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookMountFeet);
+			look_mountfeet = newd wxSpinCtrl(this, wxID_ANY, i2ws(outfit.lookMountFeet), wxDefaultPosition, FromDIP(wxSize(-1, 20)), wxSP_ARROW_KEYS, 0, OUTFIT_COLOR_MAX, outfit.lookMountFeet);
 			mountContainer->Add(look_mountfeet, wxSizerFlags(3).Expand());
 
 			wxFlexGridSizer* propertiesContainer = newd wxFlexGridSizer(3, 10, 10);

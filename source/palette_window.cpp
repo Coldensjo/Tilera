@@ -54,7 +54,7 @@ PaletteWindow::PaletteWindow(wxWindow* parent, const TilesetContainer& tilesets)
 	// client area - including the rectangles occupied by the child buttons and
 	// panels - while those children are *not* invalidated, so their icons stay
 	// blank until something else (e.g. a mouse hover) invalidates them.
-	wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(450, 250), wxTAB_TRAVERSAL | wxCLIP_CHILDREN),
+	wxPanel(parent, wxID_ANY, wxDefaultPosition, wxWindow::FromDIP(wxSize(450, 250), parent), wxTAB_TRAVERSAL | wxCLIP_CHILDREN),
 	page_container(nullptr),
 	terrain_button(nullptr),
 	doodad_button(nullptr),
@@ -70,7 +70,7 @@ PaletteWindow::PaletteWindow(wxWindow* parent, const TilesetContainer& tilesets)
 	house_palette(nullptr),
 	raw_palette(nullptr),
 	current_page(TILESET_UNKNOWN) {
-	SetMinSize(wxSize(450, 250));
+	SetMinSize(FromDIP(wxSize(450, 250)));
 
 	// Create page container
 	page_container = newd wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxCLIP_CHILDREN);

@@ -50,7 +50,7 @@ EVT_BUTTON(wxID_CANCEL, MapPropertiesWindow::OnClickCancel)
 END_EVENT_TABLE()
 
 MapPropertiesWindow::MapPropertiesWindow(wxWindow* parent, MapTab* view, Editor& editor) :
-	wxDialog(parent, wxID_ANY, "Map Properties", wxDefaultPosition, wxSize(300, 200), wxRESIZE_BORDER | wxCAPTION),
+	wxDialog(parent, wxID_ANY, "Map Properties", wxDefaultPosition, wxWindow::FromDIP(wxSize(300, 200), parent), wxRESIZE_BORDER | wxCAPTION),
 	view(view),
 	editor(editor) {
 	// Setup data variabels
@@ -329,26 +329,26 @@ EVT_BUTTON(wxID_CANCEL, ImportMapWindow::OnClickCancel)
 END_EVENT_TABLE()
 
 ImportMapWindow::ImportMapWindow(wxWindow* parent, Editor& editor) :
-	wxDialog(parent, wxID_ANY, "Import Map", wxDefaultPosition, wxSize(350, 315)),
+	wxDialog(parent, wxID_ANY, "Import Map", wxDefaultPosition, wxWindow::FromDIP(wxSize(350, 315), parent)),
 	editor(editor) {
 	wxBoxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
 	wxStaticBoxSizer* tmpsizer;
 
 	// File
 	tmpsizer = newd wxStaticBoxSizer(new wxStaticBox(this, wxID_ANY, "Map File"), wxHORIZONTAL);
-	file_text_field = newd wxTextCtrl(tmpsizer->GetStaticBox(), wxID_ANY, "", wxDefaultPosition, wxSize(230, 23));
+	file_text_field = newd wxTextCtrl(tmpsizer->GetStaticBox(), wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(230, 23)));
 	tmpsizer->Add(file_text_field, 0, wxALL, 5);
-	wxButton* browse_button = newd wxButton(tmpsizer->GetStaticBox(), MAP_WINDOW_FILE_BUTTON, "Browse...", wxDefaultPosition, wxSize(80, 23));
+	wxButton* browse_button = newd wxButton(tmpsizer->GetStaticBox(), MAP_WINDOW_FILE_BUTTON, "Browse...", wxDefaultPosition, FromDIP(wxSize(80, 23)));
 	tmpsizer->Add(browse_button, 0, wxALL, 5);
 	sizer->Add(tmpsizer, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 5);
 
 	// Import offset
 	tmpsizer = newd wxStaticBoxSizer(new wxStaticBox(this, wxID_ANY, "Import Offset"), wxHORIZONTAL);
 	tmpsizer->Add(newd wxStaticText(tmpsizer->GetStaticBox(), wxID_ANY, "Offset X:"), 0, wxALL | wxEXPAND, 5);
-	x_offset_ctrl = newd wxSpinCtrl(tmpsizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(100, 23), wxSP_ARROW_KEYS, -MAP_MAX_HEIGHT, MAP_MAX_HEIGHT);
+	x_offset_ctrl = newd wxSpinCtrl(tmpsizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, FromDIP(wxSize(100, 23)), wxSP_ARROW_KEYS, -MAP_MAX_HEIGHT, MAP_MAX_HEIGHT);
 	tmpsizer->Add(x_offset_ctrl, 0, wxALL, 5);
 	tmpsizer->Add(newd wxStaticText(tmpsizer->GetStaticBox(), wxID_ANY, "Offset Y:"), 0, wxALL, 5);
-	y_offset_ctrl = newd wxSpinCtrl(tmpsizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(100, 23), wxSP_ARROW_KEYS, -MAP_MAX_HEIGHT, MAP_MAX_HEIGHT);
+	y_offset_ctrl = newd wxSpinCtrl(tmpsizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, FromDIP(wxSize(100, 23)), wxSP_ARROW_KEYS, -MAP_MAX_HEIGHT, MAP_MAX_HEIGHT);
 	tmpsizer->Add(y_offset_ctrl, 0, wxALL, 5);
 	sizer->Add(tmpsizer, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
 
@@ -457,7 +457,7 @@ EVT_CHOICE(wxID_ANY, ExportMiniMapWindow::OnExportTypeChange)
 END_EVENT_TABLE()
 
 ExportMiniMapWindow::ExportMiniMapWindow(wxWindow* parent, Editor& editor) :
-	wxDialog(parent, wxID_ANY, "Export Minimap", wxDefaultPosition, wxSize(400, 300)),
+	wxDialog(parent, wxID_ANY, "Export Minimap", wxDefaultPosition, wxWindow::FromDIP(wxSize(400, 300), parent)),
 	editor(editor) {
 	wxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
 	wxSizer* tmpsizer;
@@ -635,7 +635,7 @@ EVT_BUTTON(wxID_CANCEL, ExportTilesetsWindow::OnClickCancel)
 END_EVENT_TABLE()
 
 ExportTilesetsWindow::ExportTilesetsWindow(wxWindow* parent, Editor& editor) :
-	wxDialog(parent, wxID_ANY, "Export Tilesets", wxDefaultPosition, wxSize(400, 230)),
+	wxDialog(parent, wxID_ANY, "Export Tilesets", wxDefaultPosition, wxWindow::FromDIP(wxSize(400, 230), parent)),
 	editor(editor) {
 	wxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
 	wxSizer* tmpsizer;
@@ -853,7 +853,7 @@ FindDialog::FindDialog(wxWindow* parent, wxString title) :
 	sizer->Add(search_field, 0, wxEXPAND);
 
 	item_list = newd FindDialogListBox(this, JUMP_DIALOG_LIST);
-	item_list->SetMinSize(wxSize(470, 400));
+	item_list->SetMinSize(FromDIP(wxSize(470, 400)));
 	sizer->Add(item_list, wxSizerFlags(1).Expand().Border());
 
 	wxSizer* stdsizer = newd wxBoxSizer(wxHORIZONTAL);
@@ -1263,7 +1263,7 @@ void SortableListBox::DoSort() {
 // Object properties base
 
 ObjectPropertiesWindowBase::ObjectPropertiesWindowBase(wxWindow* parent, wxString title, const Map* map, const Tile* tile, Item* item, wxPoint position /* = wxDefaultPosition */) :
-	wxDialog(parent, wxID_ANY, dynamic_cast<Container*>(item) ? wxString("Container Properties") : title, position, wxSize(600, 400), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER),
+	wxDialog(parent, wxID_ANY, dynamic_cast<Container*>(item) ? wxString("Container Properties") : title, position, wxWindow::FromDIP(wxSize(600, 400), parent), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER),
 	edit_map(map),
 	edit_tile(tile),
 	edit_item(item),
@@ -1273,7 +1273,7 @@ ObjectPropertiesWindowBase::ObjectPropertiesWindowBase(wxWindow* parent, wxStrin
 }
 
 ObjectPropertiesWindowBase::ObjectPropertiesWindowBase(wxWindow* parent, wxString title, const Map* map, const Tile* tile, Creature* creature, wxPoint position /* = wxDefaultPosition */) :
-	wxDialog(parent, wxID_ANY, title, position, wxSize(600, 400), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER),
+	wxDialog(parent, wxID_ANY, title, position, wxWindow::FromDIP(wxSize(600, 400), parent), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER),
 	edit_map(map),
 	edit_tile(tile),
 	edit_item(nullptr),
@@ -1283,7 +1283,7 @@ ObjectPropertiesWindowBase::ObjectPropertiesWindowBase(wxWindow* parent, wxStrin
 }
 
 ObjectPropertiesWindowBase::ObjectPropertiesWindowBase(wxWindow* parent, wxString title, const Map* map, const Tile* tile, Spawn* spawn, wxPoint position /* = wxDefaultPosition */) :
-	wxDialog(parent, wxID_ANY, title, position, wxSize(600, 400), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER),
+	wxDialog(parent, wxID_ANY, title, position, wxWindow::FromDIP(wxSize(600, 400), parent), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER),
 	edit_map(map),
 	edit_tile(tile),
 	edit_item(nullptr),
@@ -1293,7 +1293,7 @@ ObjectPropertiesWindowBase::ObjectPropertiesWindowBase(wxWindow* parent, wxStrin
 }
 
 ObjectPropertiesWindowBase::ObjectPropertiesWindowBase(wxWindow* parent, wxString title, wxPoint position /* = wxDefaultPosition */) :
-	wxDialog(parent, wxID_ANY, title, position, wxSize(600, 400), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER) {
+	wxDialog(parent, wxID_ANY, title, position, wxWindow::FromDIP(wxSize(600, 400), parent), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER) {
 	////
 }
 
@@ -1396,7 +1396,7 @@ EVT_BUTTON(wxID_CANCEL, EditTownsDialog::OnClickCancel)
 END_EVENT_TABLE()
 
 EditTownsDialog::EditTownsDialog(wxWindow* parent, Editor& editor) :
-	wxDialog(parent, wxID_ANY, "Towns", wxDefaultPosition, wxSize(280, 330)),
+	wxDialog(parent, wxID_ANY, "Towns", wxDefaultPosition, wxWindow::FromDIP(wxSize(280, 330), parent)),
 	editor(editor) {
 	Map& map = editor.map;
 
@@ -1413,7 +1413,7 @@ EditTownsDialog::EditTownsDialog(wxWindow* parent, Editor& editor) :
 	}
 
 	// Town list
-	town_listbox = newd wxListBox(this, EDIT_TOWNS_LISTBOX, wxDefaultPosition, wxSize(240, 100));
+	town_listbox = newd wxListBox(this, EDIT_TOWNS_LISTBOX, wxDefaultPosition, FromDIP(wxSize(240, 100)));
 	sizer->Add(town_listbox, 1, wxEXPAND | wxTOP | wxLEFT | wxRIGHT, 10);
 
 	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
@@ -1423,10 +1423,10 @@ EditTownsDialog::EditTownsDialog(wxWindow* parent, Editor& editor) :
 
 	// House options
 	tmpsizer = newd wxStaticBoxSizer(wxHORIZONTAL, this, "Name / ID");
-	name_field = newd wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxSize(190, 20), 0, wxTextValidator(wxFILTER_ASCII, &town_name));
+	name_field = newd wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(190, 20)), 0, wxTextValidator(wxFILTER_ASCII, &town_name));
 	tmpsizer->Add(name_field, 2, wxEXPAND | wxLEFT | wxBOTTOM, 5);
 
-	id_field = newd wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxSize(40, 20), 0, wxTextValidator(wxFILTER_NUMERIC, &town_id));
+	id_field = newd wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(40, 20)), 0, wxTextValidator(wxFILTER_NUMERIC, &town_id));
 	id_field->Enable(false);
 	tmpsizer->Add(id_field, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5);
 	sizer->Add(tmpsizer, 0, wxEXPAND | wxALL, 10);
@@ -1752,7 +1752,7 @@ WarningDialog::WarningDialog(wxWindow* parent, wxString title, const wxArrayStri
 
 	wxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
 	item_list = newd wxListBox(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, nullptr, wxLB_SINGLE);
-	item_list->SetMinSize(wxSize(500, 300));
+	item_list->SetMinSize(FromDIP(wxSize(500, 300)));
 
 	wxArrayString list_items(items);
 	for (size_t i = 0; i != list_items.GetCount();) {
@@ -1829,7 +1829,7 @@ EVT_BUTTON(wxID_CANCEL, LiveConnectWindow::OnClickCancel)
 END_EVENT_TABLE()
 
 LiveConnectWindow::LiveConnectWindow(wxWindow* parent) :
-	wxDialog(parent, wxID_ANY, "Connect to Live Server", wxDefaultPosition, wxSize(380, 270)),
+	wxDialog(parent, wxID_ANY, "Connect to Live Server", wxDefaultPosition, wxWindow::FromDIP(wxSize(380, 270), parent)),
 	host_ctrl(nullptr), port_ctrl(nullptr), username_ctrl(nullptr), password_ctrl(nullptr), cursor_color_pick(nullptr) {
 	wxBoxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
 	wxFlexGridSizer* grid = newd wxFlexGridSizer(2, 5, 5);

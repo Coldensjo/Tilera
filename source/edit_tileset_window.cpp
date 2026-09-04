@@ -116,7 +116,7 @@ EditTilesetWindow::EditTilesetWindow(wxWindow* parent, Tileset* tileset, Tileset
 	wxSizer* topsizer = newd wxBoxSizer(wxVERTICAL);
 	wxStaticBoxSizer* list_box = newd wxStaticBoxSizer(wxVERTICAL, this, "Tileset entries");
 	entry_list = newd EditTilesetListBox(this, EDIT_TILESET_LIST, this);
-	entry_list->SetMinSize(wxSize(360, 240));
+	entry_list->SetMinSize(FromDIP(wxSize(360, 240)));
 	list_box->Add(entry_list, 1, wxEXPAND | wxALL, 5);
 	topsizer->Add(list_box, 1, wxEXPAND | wxALL, 10);
 

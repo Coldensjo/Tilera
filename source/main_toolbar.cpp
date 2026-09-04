@@ -22,37 +22,25 @@
 #include "settings.h"
 #include "brush.h"
 #include "terraform_brush.h"
-#include "pngfiles.h"
 #include "artprovider.h"
 #include <wx/artprov.h>
-#include <wx/mstream.h>
 
 const wxString MainToolBar::STANDARD_BAR_NAME = "standard_toolbar";
 const wxString MainToolBar::BRUSHES_BAR_NAME = "brushes_toolbar";
 const wxString MainToolBar::POSITION_BAR_NAME = "position_toolbar";
 const wxString MainToolBar::SIZES_BAR_NAME = "sizes_toolbar";
 
-#define loadPNGFile(name) _wxGetBitmapFromMemory(name, sizeof(name))
-inline wxBitmap* _wxGetBitmapFromMemory(const unsigned char* data, int length) {
-	wxMemoryInputStream is(data, length);
-	wxImage img(is, "image/png");
-	if (!img.IsOk()) {
-		return nullptr;
-	}
-	return newd wxBitmap(img, -1);
-}
-
 MainToolBar::MainToolBar(wxWindow* parent, wxAuiManager* manager) {
-	wxSize icon_size = FROM_DIP(parent, wxSize(16, 16));
-	wxBitmap new_bitmap = wxArtProvider::GetBitmap(wxART_NEW, wxART_TOOLBAR, icon_size);
-	wxBitmap open_bitmap = wxArtProvider::GetBitmap(wxART_FILE_OPEN, wxART_TOOLBAR, icon_size);
-	wxBitmap save_bitmap = wxArtProvider::GetBitmap(wxART_FILE_SAVE, wxART_TOOLBAR, icon_size);
-	wxBitmap saveas_bitmap = wxArtProvider::GetBitmap(wxART_FILE_SAVE_AS, wxART_TOOLBAR, icon_size);
-	wxBitmap undo_bitmap = wxArtProvider::GetBitmap(wxART_UNDO, wxART_TOOLBAR, icon_size);
-	wxBitmap redo_bitmap = wxArtProvider::GetBitmap(wxART_REDO, wxART_TOOLBAR, icon_size);
-	wxBitmap cut_bitmap = wxArtProvider::GetBitmap(wxART_CUT, wxART_TOOLBAR, icon_size);
-	wxBitmap copy_bitmap = wxArtProvider::GetBitmap(wxART_COPY, wxART_TOOLBAR, icon_size);
-	wxBitmap paste_bitmap = wxArtProvider::GetBitmap(wxART_PASTE, wxART_TOOLBAR, icon_size);
+	const wxSize icon_size(16, 16); // logical (DIP) size; the toolbar and the bundles scale it
+	wxBitmapBundle new_bitmap = wxArtProvider::GetBitmapBundle(wxART_NEW, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle open_bitmap = wxArtProvider::GetBitmapBundle(wxART_FILE_OPEN, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle save_bitmap = wxArtProvider::GetBitmapBundle(wxART_FILE_SAVE, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle saveas_bitmap = wxArtProvider::GetBitmapBundle(wxART_FILE_SAVE_AS, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle undo_bitmap = wxArtProvider::GetBitmapBundle(wxART_UNDO, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle redo_bitmap = wxArtProvider::GetBitmapBundle(wxART_REDO, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle cut_bitmap = wxArtProvider::GetBitmapBundle(wxART_CUT, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle copy_bitmap = wxArtProvider::GetBitmapBundle(wxART_COPY, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle paste_bitmap = wxArtProvider::GetBitmapBundle(wxART_PASTE, wxART_TOOLBAR, icon_size);
 
 	standard_toolbar = newd wxAuiToolBar(parent, TOOLBAR_STANDARD, wxDefaultPosition, wxDefaultSize, wxAUI_TB_DEFAULT_STYLE);
 	standard_toolbar->SetToolBitmapSize(icon_size);
@@ -69,36 +57,36 @@ MainToolBar::MainToolBar(wxWindow* parent, wxAuiManager* manager) {
 	standard_toolbar->AddTool(wxID_PASTE, wxEmptyString, paste_bitmap, wxNullBitmap, wxITEM_NORMAL, "Paste", wxEmptyString, NULL);
 	standard_toolbar->Realize();
 
-	wxBitmap* border_bitmap = loadPNGFile(optional_border_small_png);
-	wxBitmap* eraser_bitmap = loadPNGFile(eraser_small_png);
-	wxBitmap* refresh_bitmap = loadPNGFile(refresh_small_png);
-	wxBitmap pz_bitmap = wxArtProvider::GetBitmap(ART_PZ_BRUSH, wxART_TOOLBAR, icon_size);
-	wxBitmap nopvp_bitmap = wxArtProvider::GetBitmap(ART_NOPVP_BRUSH, wxART_TOOLBAR, icon_size);
-	wxBitmap nologout_bitmap = wxArtProvider::GetBitmap(ART_NOLOOUT_BRUSH, wxART_TOOLBAR, icon_size);
-	wxBitmap pvp_bitmap = wxArtProvider::GetBitmap(ART_PVP_BRUSH, wxART_TOOLBAR, icon_size);
-	wxBitmap normal_bitmap = wxArtProvider::GetBitmap(ART_DOOR_NORMAL_SMALL, wxART_TOOLBAR, icon_size);
-	wxBitmap locked_bitmap = wxArtProvider::GetBitmap(ART_DOOR_LOCKED_SMALL, wxART_TOOLBAR, icon_size);
-	wxBitmap magic_bitmap = wxArtProvider::GetBitmap(ART_DOOR_MAGIC_SMALL, wxART_TOOLBAR, icon_size);
-	wxBitmap quest_bitmap = wxArtProvider::GetBitmap(ART_DOOR_QUEST_SMALL, wxART_TOOLBAR, icon_size);
-	wxBitmap normal_alt_bitmap = wxArtProvider::GetBitmap(ART_DOOR_NORMAL_ALT_SMALL, wxART_TOOLBAR, icon_size);
-	wxBitmap archway_bitmap = wxArtProvider::GetBitmap(ART_DOOR_ARCHWAY_SMALL, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle border_bitmap = wxArtProvider::GetBitmapBundle(ART_OPTIONAL_BORDER_BRUSH, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle eraser_bitmap = wxArtProvider::GetBitmapBundle(ART_ERASER_BRUSH, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle refresh_bitmap = wxArtProvider::GetBitmapBundle(ART_REFRESH_BRUSH, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle pz_bitmap = wxArtProvider::GetBitmapBundle(ART_PZ_BRUSH, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle nopvp_bitmap = wxArtProvider::GetBitmapBundle(ART_NOPVP_BRUSH, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle nologout_bitmap = wxArtProvider::GetBitmapBundle(ART_NOLOOUT_BRUSH, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle pvp_bitmap = wxArtProvider::GetBitmapBundle(ART_PVP_BRUSH, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle normal_bitmap = wxArtProvider::GetBitmapBundle(ART_DOOR_NORMAL_SMALL, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle locked_bitmap = wxArtProvider::GetBitmapBundle(ART_DOOR_LOCKED_SMALL, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle magic_bitmap = wxArtProvider::GetBitmapBundle(ART_DOOR_MAGIC_SMALL, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle quest_bitmap = wxArtProvider::GetBitmapBundle(ART_DOOR_QUEST_SMALL, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle normal_alt_bitmap = wxArtProvider::GetBitmapBundle(ART_DOOR_NORMAL_ALT_SMALL, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle archway_bitmap = wxArtProvider::GetBitmapBundle(ART_DOOR_ARCHWAY_SMALL, wxART_TOOLBAR, icon_size);
 
-	wxBitmap* hatch_bitmap = loadPNGFile(window_hatch_small_png);
-	wxBitmap* window_bitmap = loadPNGFile(window_normal_small_png);
-	wxBitmap* raise_bitmap = loadPNGFile(terraform_raise_small_png);
-	wxBitmap* lower_bitmap = loadPNGFile(terraform_lower_small_png);
-	wxBitmap* flatten_bitmap = loadPNGFile(terraform_flatten_small_png);
+	wxBitmapBundle hatch_bitmap = wxArtProvider::GetBitmapBundle(ART_WINDOW_HATCH, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle window_bitmap = wxArtProvider::GetBitmapBundle(ART_WINDOW_NORMAL, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle raise_bitmap = wxArtProvider::GetBitmapBundle(ART_TERRAFORM_RAISE, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle lower_bitmap = wxArtProvider::GetBitmapBundle(ART_TERRAFORM_LOWER, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle flatten_bitmap = wxArtProvider::GetBitmapBundle(ART_TERRAFORM_FLATTEN, wxART_TOOLBAR, icon_size);
 
 	brushes_toolbar = newd wxAuiToolBar(parent, TOOLBAR_BRUSHES, wxDefaultPosition, wxDefaultSize, wxAUI_TB_DEFAULT_STYLE);
 	brushes_toolbar->SetToolBitmapSize(icon_size);
-	brushes_toolbar->AddTool(PALETTE_TERRAIN_OPTIONAL_BORDER_TOOL, wxEmptyString, *border_bitmap, wxNullBitmap, wxITEM_CHECK, "Border", wxEmptyString, NULL);
-	brushes_toolbar->AddTool(PALETTE_TERRAIN_ERASER, wxEmptyString, *eraser_bitmap, wxNullBitmap, wxITEM_CHECK, "Eraser", wxEmptyString, NULL);
+	brushes_toolbar->AddTool(PALETTE_TERRAIN_OPTIONAL_BORDER_TOOL, wxEmptyString, border_bitmap, wxNullBitmap, wxITEM_CHECK, "Border", wxEmptyString, NULL);
+	brushes_toolbar->AddTool(PALETTE_TERRAIN_ERASER, wxEmptyString, eraser_bitmap, wxNullBitmap, wxITEM_CHECK, "Eraser", wxEmptyString, NULL);
 	brushes_toolbar->AddSeparator();
 	brushes_toolbar->AddTool(PALETTE_TERRAIN_PZ_TOOL, wxEmptyString, pz_bitmap, wxNullBitmap, wxITEM_CHECK, "Protected Zone", wxEmptyString, NULL);
 	brushes_toolbar->AddTool(PALETTE_TERRAIN_NOPVP_TOOL, wxEmptyString, nopvp_bitmap, wxNullBitmap, wxITEM_CHECK, "No PvP Zone", wxEmptyString, NULL);
 	brushes_toolbar->AddTool(PALETTE_TERRAIN_NOLOGOUT_TOOL, wxEmptyString, nologout_bitmap, wxNullBitmap, wxITEM_CHECK, "No Logout Zone", wxEmptyString, NULL);
 	brushes_toolbar->AddTool(PALETTE_TERRAIN_PVPZONE_TOOL, wxEmptyString, pvp_bitmap, wxNullBitmap, wxITEM_CHECK, "PvP Zone", wxEmptyString, NULL);
-	brushes_toolbar->AddTool(PALETTE_TERRAIN_REFRESH_TOOL, wxEmptyString, *refresh_bitmap, wxNullBitmap, wxITEM_CHECK, "Refresh Zone", wxEmptyString, NULL);
+	brushes_toolbar->AddTool(PALETTE_TERRAIN_REFRESH_TOOL, wxEmptyString, refresh_bitmap, wxNullBitmap, wxITEM_CHECK, "Refresh Zone", wxEmptyString, NULL);
 	brushes_toolbar->AddSeparator();
 
 	brushes_toolbar->AddTool(PALETTE_TERRAIN_NORMAL_DOOR, wxEmptyString, normal_bitmap, wxNullBitmap, wxITEM_CHECK, "Normal Door", wxEmptyString, NULL);
@@ -108,15 +96,15 @@ MainToolBar::MainToolBar(wxWindow* parent, wxAuiManager* manager) {
 	brushes_toolbar->AddTool(PALETTE_TERRAIN_NORMAL_ALT_DOOR, wxEmptyString, normal_alt_bitmap, wxNullBitmap, wxITEM_CHECK, "Normal Door (alt)", wxEmptyString, NULL);
 	brushes_toolbar->AddTool(PALETTE_TERRAIN_ARCHWAY_DOOR, wxEmptyString, archway_bitmap, wxNullBitmap, wxITEM_CHECK, "Archway", wxEmptyString, NULL);
 	brushes_toolbar->AddSeparator();
-	brushes_toolbar->AddTool(PALETTE_TERRAIN_HATCH_DOOR, wxEmptyString, *hatch_bitmap, wxNullBitmap, wxITEM_CHECK, "Hatch Window", wxEmptyString, NULL);
-	brushes_toolbar->AddTool(PALETTE_TERRAIN_WINDOW_DOOR, wxEmptyString, *window_bitmap, wxNullBitmap, wxITEM_CHECK, "Window", wxEmptyString, NULL);
+	brushes_toolbar->AddTool(PALETTE_TERRAIN_HATCH_DOOR, wxEmptyString, hatch_bitmap, wxNullBitmap, wxITEM_CHECK, "Hatch Window", wxEmptyString, NULL);
+	brushes_toolbar->AddTool(PALETTE_TERRAIN_WINDOW_DOOR, wxEmptyString, window_bitmap, wxNullBitmap, wxITEM_CHECK, "Window", wxEmptyString, NULL);
 	brushes_toolbar->AddSeparator();
-	brushes_toolbar->AddTool(PALETTE_TERRAIN_RAISE_TOOL, wxEmptyString, *raise_bitmap, wxNullBitmap, wxITEM_CHECK, "Raise Ground - top uses the last selected ground brush (Ctrl inverts)", wxEmptyString, NULL);
-	brushes_toolbar->AddTool(PALETTE_TERRAIN_LOWER_TOOL, wxEmptyString, *lower_bitmap, wxNullBitmap, wxITEM_CHECK, "Lower Ground - top uses the last selected ground brush (Ctrl inverts)", wxEmptyString, NULL);
-	brushes_toolbar->AddTool(PALETTE_TERRAIN_FLATTEN_TOOL, wxEmptyString, *flatten_bitmap, wxNullBitmap, wxITEM_CHECK, "Flatten Ground - top uses the last selected ground brush", wxEmptyString, NULL);
+	brushes_toolbar->AddTool(PALETTE_TERRAIN_RAISE_TOOL, wxEmptyString, raise_bitmap, wxNullBitmap, wxITEM_CHECK, "Raise Ground - top uses the last selected ground brush (Ctrl inverts)", wxEmptyString, NULL);
+	brushes_toolbar->AddTool(PALETTE_TERRAIN_LOWER_TOOL, wxEmptyString, lower_bitmap, wxNullBitmap, wxITEM_CHECK, "Lower Ground - top uses the last selected ground brush (Ctrl inverts)", wxEmptyString, NULL);
+	brushes_toolbar->AddTool(PALETTE_TERRAIN_FLATTEN_TOOL, wxEmptyString, flatten_bitmap, wxNullBitmap, wxITEM_CHECK, "Flatten Ground - top uses the last selected ground brush", wxEmptyString, NULL);
 	brushes_toolbar->Realize();
 
-	wxBitmap go_bitmap = wxArtProvider::GetBitmap(ART_POSITION_GO, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle go_bitmap = wxArtProvider::GetBitmapBundle(ART_POSITION_GO, wxART_TOOLBAR, icon_size);
 
 	position_toolbar = newd wxAuiToolBar(parent, TOOLBAR_POSITION, wxDefaultPosition, wxDefaultSize, wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_HORZ_TEXT);
 	position_toolbar->SetToolBitmapSize(icon_size);
@@ -126,7 +114,7 @@ MainToolBar::MainToolBar(wxWindow* parent, wxAuiManager* manager) {
 	y_control->SetToolTip("Y Coordinate");
 	z_control = newd NumberTextCtrl(position_toolbar, wxID_ANY, 0, 0, MAP_MAX_LAYER, wxTE_PROCESS_ENTER, "Z", wxDefaultPosition, FROM_DIP(parent, wxSize(35, 20)));
 	z_control->SetToolTip("Z Coordinate");
-	go_button = newd wxButton(position_toolbar, TOOLBAR_POSITION_GO, wxEmptyString, wxDefaultPosition, wxSize(22, 20));
+	go_button = newd wxButton(position_toolbar, TOOLBAR_POSITION_GO, wxEmptyString, wxDefaultPosition, FROM_DIP(parent, wxSize(22, 20)));
 	go_button->SetBitmap(go_bitmap);
 	go_button->SetToolTip("Go To Position");
 	position_toolbar->AddControl(x_control);
@@ -135,15 +123,15 @@ MainToolBar::MainToolBar(wxWindow* parent, wxAuiManager* manager) {
 	position_toolbar->AddControl(go_button);
 	position_toolbar->Realize();
 
-	wxBitmap circular_bitmap = wxArtProvider::GetBitmap(ART_CIRCULAR, wxART_TOOLBAR, icon_size);
-	wxBitmap rectangular_bitmap = wxArtProvider::GetBitmap(ART_RECTANGULAR, wxART_TOOLBAR, icon_size);
-	wxBitmap size1_bitmap = wxArtProvider::GetBitmap(ART_RECTANGULAR_1, wxART_TOOLBAR, icon_size);
-	wxBitmap size2_bitmap = wxArtProvider::GetBitmap(ART_RECTANGULAR_2, wxART_TOOLBAR, icon_size);
-	wxBitmap size3_bitmap = wxArtProvider::GetBitmap(ART_RECTANGULAR_3, wxART_TOOLBAR, icon_size);
-	wxBitmap size4_bitmap = wxArtProvider::GetBitmap(ART_RECTANGULAR_4, wxART_TOOLBAR, icon_size);
-	wxBitmap size5_bitmap = wxArtProvider::GetBitmap(ART_RECTANGULAR_5, wxART_TOOLBAR, icon_size);
-	wxBitmap size6_bitmap = wxArtProvider::GetBitmap(ART_RECTANGULAR_6, wxART_TOOLBAR, icon_size);
-	wxBitmap size7_bitmap = wxArtProvider::GetBitmap(ART_RECTANGULAR_7, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle circular_bitmap = wxArtProvider::GetBitmapBundle(ART_CIRCULAR, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle rectangular_bitmap = wxArtProvider::GetBitmapBundle(ART_RECTANGULAR, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle size1_bitmap = wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_1, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle size2_bitmap = wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_2, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle size3_bitmap = wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_3, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle size4_bitmap = wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_4, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle size5_bitmap = wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_5, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle size6_bitmap = wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_6, wxART_TOOLBAR, icon_size);
+	wxBitmapBundle size7_bitmap = wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_7, wxART_TOOLBAR, icon_size);
 
 	sizes_toolbar = newd wxAuiToolBar(parent, TOOLBAR_SIZES, wxDefaultPosition, wxDefaultSize, wxAUI_TB_DEFAULT_STYLE);
 	sizes_toolbar->SetToolBitmapSize(icon_size);
@@ -313,29 +301,29 @@ void MainToolBar::UpdateBrushSize(BrushShape shape, int size) {
 		sizes_toolbar->ToggleTool(TOOLBAR_SIZES_CIRCULAR, true);
 		sizes_toolbar->ToggleTool(TOOLBAR_SIZES_RECTANGULAR, false);
 
-		wxSize icon_size = wxSize(16, 16);
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_1, wxArtProvider::GetBitmap(ART_CIRCULAR_1, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_2X2, wxArtProvider::GetBitmap(ART_CIRCULAR_2, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_2, wxArtProvider::GetBitmap(ART_CIRCULAR_3, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_3, wxArtProvider::GetBitmap(ART_CIRCULAR_4, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_4, wxArtProvider::GetBitmap(ART_CIRCULAR_5, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_5, wxArtProvider::GetBitmap(ART_CIRCULAR_6, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_6, wxArtProvider::GetBitmap(ART_CIRCULAR_7, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_7, wxArtProvider::GetBitmap(ART_CIRCULAR_7, wxART_TOOLBAR, icon_size));
+		const wxSize icon_size(16, 16);
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_1, wxArtProvider::GetBitmapBundle(ART_CIRCULAR_1, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_2X2, wxArtProvider::GetBitmapBundle(ART_CIRCULAR_2, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_2, wxArtProvider::GetBitmapBundle(ART_CIRCULAR_3, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_3, wxArtProvider::GetBitmapBundle(ART_CIRCULAR_4, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_4, wxArtProvider::GetBitmapBundle(ART_CIRCULAR_5, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_5, wxArtProvider::GetBitmapBundle(ART_CIRCULAR_6, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_6, wxArtProvider::GetBitmapBundle(ART_CIRCULAR_7, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_7, wxArtProvider::GetBitmapBundle(ART_CIRCULAR_7, wxART_TOOLBAR, icon_size));
 		sizes_toolbar->EnableTool(TOOLBAR_SIZES_2X2, false);
 	} else {
 		sizes_toolbar->ToggleTool(TOOLBAR_SIZES_CIRCULAR, false);
 		sizes_toolbar->ToggleTool(TOOLBAR_SIZES_RECTANGULAR, true);
 
-		wxSize icon_size = wxSize(16, 16);
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_1, wxArtProvider::GetBitmap(ART_RECTANGULAR_1, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_2X2, wxArtProvider::GetBitmap(ART_RECTANGULAR_2, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_2, wxArtProvider::GetBitmap(ART_RECTANGULAR_3, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_3, wxArtProvider::GetBitmap(ART_RECTANGULAR_4, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_4, wxArtProvider::GetBitmap(ART_RECTANGULAR_5, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_5, wxArtProvider::GetBitmap(ART_RECTANGULAR_6, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_6, wxArtProvider::GetBitmap(ART_RECTANGULAR_7, wxART_TOOLBAR, icon_size));
-		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_7, wxArtProvider::GetBitmap(ART_RECTANGULAR_7, wxART_TOOLBAR, icon_size));
+		const wxSize icon_size(16, 16);
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_1, wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_1, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_2X2, wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_2, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_2, wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_3, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_3, wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_4, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_4, wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_5, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_5, wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_6, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_6, wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_7, wxART_TOOLBAR, icon_size));
+		sizes_toolbar->SetToolBitmap(TOOLBAR_SIZES_7, wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_7, wxART_TOOLBAR, icon_size));
 		sizes_toolbar->EnableTool(TOOLBAR_SIZES_2X2, true);
 	}
 

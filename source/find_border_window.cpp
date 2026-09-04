@@ -80,20 +80,20 @@ EVT_BUTTON(wxID_CANCEL, FindBorderDialog::OnClickCancel)
 END_EVENT_TABLE()
 
 FindBorderDialog::FindBorderDialog(wxWindow* parent, uint32_t initialBorderId /* = 0 */) :
-	wxDialog(parent, wxID_ANY, "Choose Border", wxDefaultPosition, wxSize(640, 520), wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
+	wxDialog(parent, wxID_ANY, "Choose Border", wxDefaultPosition, wxWindow::FromDIP(wxSize(640, 520), parent), wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
 	filter_timer(this),
 	result_id(initialBorderId),
 	preview_border_id(initialBorderId) {
-	SetSizeHints(wxSize(520, 420), wxDefaultSize);
+	SetSizeHints(FromDIP(wxSize(520, 420)), wxDefaultSize);
 
 	wxBoxSizer* rootSizer = newd wxBoxSizer(wxVERTICAL);
 
 	wxBoxSizer* filterSizer = newd wxBoxSizer(wxHORIZONTAL);
 	filterSizer->Add(newd wxStaticText(this, wxID_ANY, "Border ID"), wxSizerFlags(0).CenterVertical().Border(wxALL, 5));
-	filter_id_spin = newd wxSpinCtrl(this, BORDER_DIALOG_FILTER_ID, wxEmptyString, wxDefaultPosition, wxSize(90, -1), wxSP_ARROW_KEYS, 0, 10000, static_cast<int>(initialBorderId));
+	filter_id_spin = newd wxSpinCtrl(this, BORDER_DIALOG_FILTER_ID, wxEmptyString, wxDefaultPosition, FromDIP(wxSize(90, -1)), wxSP_ARROW_KEYS, 0, 10000, static_cast<int>(initialBorderId));
 	filterSizer->Add(filter_id_spin, wxSizerFlags(0).CenterVertical().Border(wxTOP | wxBOTTOM | wxRIGHT, 5));
 	filterSizer->Add(newd wxStaticText(this, wxID_ANY, "Filter"), wxSizerFlags(0).CenterVertical().Border(wxALL, 5));
-	filter_text = newd wxTextCtrl(this, BORDER_DIALOG_FILTER_TEXT, wxEmptyString, wxDefaultPosition, wxSize(160, -1));
+	filter_text = newd wxTextCtrl(this, BORDER_DIALOG_FILTER_TEXT, wxEmptyString, wxDefaultPosition, FromDIP(wxSize(160, -1)));
 	filterSizer->Add(filter_text, wxSizerFlags(1).CenterVertical().Expand().Border(wxTOP | wxBOTTOM | wxRIGHT, 5));
 	rootSizer->Add(filterSizer, wxSizerFlags(0).Expand());
 
@@ -103,8 +103,8 @@ FindBorderDialog::FindBorderDialog(wxWindow* parent, uint32_t initialBorderId /*
 	contentSizer->Add(border_list, wxSizerFlags(1).Expand().Border(wxALL, 5));
 
 	wxBoxSizer* previewSizer = newd wxBoxSizer(wxVERTICAL);
-	preview_panel = newd wxPanel(this, BORDER_DIALOG_PREVIEW, wxDefaultPosition, wxSize(128, 128));
-	preview_panel->SetMinSize(wxSize(128, 128));
+	preview_panel = newd wxPanel(this, BORDER_DIALOG_PREVIEW, wxDefaultPosition, FromDIP(wxSize(128, 128)));
+	preview_panel->SetMinSize(FromDIP(wxSize(128, 128)));
 	preview_panel->Connect(wxEVT_PAINT, wxPaintEventHandler(FindBorderDialog::OnPreviewPaint), nullptr, this);
 	previewSizer->Add(preview_panel, wxSizerFlags(0).CenterHorizontal().Border(wxALL, 5));
 	preview_label = newd wxStaticText(this, wxID_ANY, "Select a border.");

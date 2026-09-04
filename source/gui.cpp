@@ -1925,7 +1925,7 @@ void GUI::CreateLoadBar(wxString message, bool canCancel /* = false */) {
 	currentProgress = -1;
 
 	progressBar = newd wxGenericProgressDialog("Loading", progressText + " (0%)", 100, root, wxPD_APP_MODAL | wxPD_SMOOTH | (canCancel ? wxPD_CAN_ABORT : 0));
-	progressBar->SetSize(280, -1);
+	progressBar->SetSize(progressBar->FromDIP(wxSize(280, -1)));
 	progressBar->Show(true);
 
 	for (int idx = 0; idx < tabbook->GetTabCount(); ++idx) {
@@ -2792,7 +2792,7 @@ void GUI::ShowTextBox(wxWindow* parent, wxString title, wxString content) {
 	wxDialog* dlg = newd wxDialog(parent, wxID_ANY, title, wxDefaultPosition, wxDefaultSize, wxRESIZE_BORDER | wxCAPTION | wxCLOSE_BOX);
 	wxSizer* topsizer = newd wxBoxSizer(wxVERTICAL);
 	wxTextCtrl* text_field = newd wxTextCtrl(dlg, wxID_ANY, content, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_READONLY);
-	text_field->SetMinSize(wxSize(400, 550));
+	text_field->SetMinSize(dlg->FromDIP(wxSize(400, 550)));
 	topsizer->Add(text_field, wxSizerFlags(5).Expand());
 
 	wxSizer* choicesizer = newd wxBoxSizer(wxHORIZONTAL);

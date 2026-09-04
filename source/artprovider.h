@@ -19,6 +19,7 @@
 #define RME_ART_PROVIDER_H_
 
 #include <wx/artprov.h>
+#include <wx/bmpbndl.h>
 
 #define ART_CIRCULAR wxART_MAKE_ART_ID(ART_CIRCULAR)
 #define ART_CIRCULAR_1 wxART_MAKE_ART_ID(ART_CIRCULAR_1)
@@ -33,6 +34,9 @@
 #define ART_POSITION_GO wxART_MAKE_ART_ID(ART_POSITION_GO)
 #define ART_PVP_BRUSH wxART_MAKE_ART_ID(ART_PVP_BRUSH)
 #define ART_PZ_BRUSH wxART_MAKE_ART_ID(ART_PZ_BRUSH)
+#define ART_REFRESH_BRUSH wxART_MAKE_ART_ID(ART_REFRESH_BRUSH)
+#define ART_OPTIONAL_BORDER_BRUSH wxART_MAKE_ART_ID(ART_OPTIONAL_BORDER_BRUSH)
+#define ART_ERASER_BRUSH wxART_MAKE_ART_ID(ART_ERASER_BRUSH)
 #define ART_RECTANGULAR wxART_MAKE_ART_ID(ART_RECTANGULAR)
 #define ART_RECTANGULAR_1 wxART_MAKE_ART_ID(ART_RECTANGULAR_1)
 #define ART_RECTANGULAR_2 wxART_MAKE_ART_ID(ART_RECTANGULAR_2)
@@ -54,10 +58,25 @@
 #define ART_DOOR_NORMAL_ALT_SMALL wxART_MAKE_ART_ID(ART_DOOR_NORMAL_ALT_SMALL)
 #define ART_DOOR_ARCHWAY wxART_MAKE_ART_ID(ART_DOOR_ARCHWAY)
 #define ART_DOOR_ARCHWAY_SMALL wxART_MAKE_ART_ID(ART_DOOR_ARCHWAY_SMALL)
+#define ART_WINDOW_HATCH wxART_MAKE_ART_ID(ART_WINDOW_HATCH)
+#define ART_WINDOW_NORMAL wxART_MAKE_ART_ID(ART_WINDOW_NORMAL)
+#define ART_TERRAFORM_RAISE wxART_MAKE_ART_ID(ART_TERRAFORM_RAISE)
+#define ART_TERRAFORM_LOWER wxART_MAKE_ART_ID(ART_TERRAFORM_LOWER)
+#define ART_TERRAFORM_FLATTEN wxART_MAKE_ART_ID(ART_TERRAFORM_FLATTEN)
 
+/*
+ * Serves the embedded toolbar art as wxBitmapBundles. Every toolbar icon
+ * ships as a 16 px and a 32 px PNG, so the bundle carries both and wx picks
+ * the crisp one for the window DPI (16 px at 100 %, 32 px at 200 %, a scaled
+ * 32 px at 150 %) instead of upscaling a single 16 px bitmap.
+ *
+ * Consumers should call wxArtProvider::GetBitmapBundle(id, wxART_TOOLBAR)
+ * and hand the bundle to the control; GetBitmap() still works for code that
+ * needs a plain wxBitmap for a device context.
+ */
 class ArtProvider : public wxArtProvider {
 protected:
-	virtual wxBitmap CreateBitmap(const wxArtID& id, const wxArtClient& client, const wxSize& size) override;
+	wxBitmapBundle CreateBitmapBundle(const wxArtID& id, const wxArtClient& client, const wxSize& size) override;
 };
 
 #endif // RME_ART_PROVIDER_H_

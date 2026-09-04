@@ -264,7 +264,7 @@ bool Application::OnInit() {
 		}
 	}
 
-	g_gui.root = newd MainFrame(__W_RME_APPLICATION_NAME__, wxDefaultPosition, wxSize(700, 500));
+	g_gui.root = newd MainFrame(__W_RME_APPLICATION_NAME__, wxDefaultPosition, wxWindow::FromDIP(wxSize(700, 500), nullptr));
 	SetTopWindow(g_gui.root);
 	g_gui.SetTitle("");
 

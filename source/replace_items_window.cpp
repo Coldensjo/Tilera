@@ -73,8 +73,8 @@ void ReplaceItemsButton::SetItemId(uint16_t id) {
 
 ReplaceItemsListBox::ReplaceItemsListBox(wxWindow* parent) :
 	wxVListBox(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLB_SINGLE) {
-	m_arrow_bitmap = wxArtProvider::GetBitmap(ART_POSITION_GO, wxART_TOOLBAR, wxSize(16, 16));
-	m_flag_bitmap = wxArtProvider::GetBitmap(ART_PZ_BRUSH, wxART_TOOLBAR, wxSize(16, 16));
+	m_arrow_bitmap = wxArtProvider::GetBitmapBundle(ART_POSITION_GO, wxART_TOOLBAR).GetBitmapFor(this);
+	m_flag_bitmap = wxArtProvider::GetBitmapBundle(ART_PZ_BRUSH, wxART_TOOLBAR).GetBitmapFor(this);
 	Bind(wxEVT_CHAR, &ReplaceItemsListBox::OnChar, this);
 }
 
@@ -206,7 +206,7 @@ wxCoord ReplaceItemsListBox::OnMeasureItem(size_t WXUNUSED(index)) const {
 // ReplaceItemsDialog
 
 ReplaceItemsDialog::ReplaceItemsDialog(wxWindow* parent, bool selectionOnly) :
-	wxDialog(parent, wxID_ANY, (selectionOnly ? "Replace Items on Selection" : "Replace Items"), wxDefaultPosition, wxSize(500, 510), wxDEFAULT_DIALOG_STYLE),
+	wxDialog(parent, wxID_ANY, (selectionOnly ? "Replace Items on Selection" : "Replace Items"), wxDefaultPosition, wxWindow::FromDIP(wxSize(500, 510), parent), wxDEFAULT_DIALOG_STYLE),
 	selectionOnly(selectionOnly),
 	replaceIdStart(0),
 	replaceIdEnd(0),
@@ -218,21 +218,21 @@ ReplaceItemsDialog::ReplaceItemsDialog(wxWindow* parent, bool selectionOnly) :
 	wxFlexGridSizer* list_sizer = new wxFlexGridSizer(0, 2, 0, 0);
 	list_sizer->SetFlexibleDirection(wxBOTH);
 	list_sizer->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
-	list_sizer->SetMinSize(wxSize(-1, 200));
+	list_sizer->SetMinSize(FromDIP(wxSize(-1, 200)));
 
 	list = new ReplaceItemsListBox(this);
-	list->SetMinSize(wxSize(480, 320));
+	list->SetMinSize(FromDIP(wxSize(480, 320)));
 
 	list_sizer->Add(list, 0, wxALL | wxEXPAND, 5);
 	sizer->Add(list_sizer, 1, wxALL | wxEXPAND, 5);
 
 	wxBoxSizer* items_sizer = new wxBoxSizer(wxHORIZONTAL);
-	items_sizer->SetMinSize(wxSize(-1, 40));
+	items_sizer->SetMinSize(FromDIP(wxSize(-1, 40)));
 
 	replace_button = new ReplaceItemsButton(this);
 	items_sizer->Add(replace_button, 0, wxALL, 5);
 
-	wxBitmap bitmap = wxArtProvider::GetBitmap(ART_POSITION_GO, wxART_TOOLBAR, wxSize(16, 16));
+	wxBitmapBundle bitmap = wxArtProvider::GetBitmapBundle(ART_POSITION_GO, wxART_TOOLBAR);
 	arrow_bitmap = new wxStaticBitmap(this, wxID_ANY, bitmap);
 	items_sizer->Add(arrow_bitmap, 0, wxTOP, 15);
 
@@ -348,7 +348,7 @@ void ReplaceItemsDialog::OnListSelected(wxCommandEvent& WXUNUSED(event)) {
 }
 
 bool ReplaceItemsDialog::GetReplaceItemRange(uint16_t& startId, uint16_t& endId) {
-	wxDialog rangeDialog(this, wxID_ANY, "Select Item Range", wxDefaultPosition, wxSize(300, 225), wxDEFAULT_DIALOG_STYLE);
+	wxDialog rangeDialog(this, wxID_ANY, "Select Item Range", wxDefaultPosition, FromDIP(wxSize(300, 225)), wxDEFAULT_DIALOG_STYLE);
 	
 	wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
 	

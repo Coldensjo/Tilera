@@ -25,7 +25,7 @@
 // xxyyzzt (major, minor, subversion)
 #define __RME_VERSION_MAJOR__ 2
 #define __RME_VERSION_MINOR__ 14
-#define __RME_SUBVERSION__ 13
+#define __RME_SUBVERSION__ 14
 
 #define MAKE_VERSION_ID(major, minor, subversion) \
 	((major) * 10000000 + (minor) * 100000 + (subversion) * 1000)

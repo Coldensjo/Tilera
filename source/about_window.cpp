@@ -33,7 +33,7 @@ EVT_MENU(wxID_CANCEL, AboutWindow::OnClickOK)
 END_EVENT_TABLE()
 
 AboutWindow::AboutWindow(wxWindow* parent) :
-	wxDialog(parent, wxID_ANY, "About", wxDefaultPosition, wxSize(300, 320), wxRESIZE_BORDER | wxCAPTION | wxCLOSE_BOX) {
+	wxDialog(parent, wxID_ANY, "About", wxDefaultPosition, wxWindow::FromDIP(wxSize(300, 320), parent), wxRESIZE_BORDER | wxCAPTION | wxCLOSE_BOX) {
 	wxString about;
 
 	about << "Tilera\n";
