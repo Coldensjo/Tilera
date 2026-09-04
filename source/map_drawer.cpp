@@ -35,6 +35,7 @@
 #include "map_display.h"
 #include "copybuffer.h"
 #include "graphics.h"
+#include "item_shaders.h"
 
 #include "doodad_brush.h"
 #include "creature_brush.h"
@@ -2458,6 +2459,7 @@ void MapDrawer::BlitItem(int& draw_x, int& draw_y, const Position& pos, Item* it
 	}
 
 	int frame = item->getFrame();
+	const bool shader_applied = !it.shader.empty() && g_itemShaders.apply(it.shader);
 	for (int cx = 0; cx != spr->width; cx++) {
 		for (int cy = 0; cy != spr->height; cy++) {
 			for (int cf = 0; cf != spr->layers; cf++) {
@@ -2465,6 +2467,9 @@ void MapDrawer::BlitItem(int& draw_x, int& draw_y, const Position& pos, Item* it
 				glBlitTexture(screenx - cx * TileSize, screeny - cy * TileSize, texnum, red, green, blue, alpha);
 			}
 		}
+	}
+	if (shader_applied) {
+		g_itemShaders.clear();
 	}
 
 	// zoomed out very far, avoid drawing stuff barely visible

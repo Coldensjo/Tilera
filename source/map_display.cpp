@@ -48,6 +48,7 @@
 #include "application.h"
 #include "browse_tile_window.h"
 #include "wall_creator_window.h"
+#include "item_shaders.h"
 #include "replace_wall_window.h"
 #include "replace_ground_window.h"
 #include "find_item_window.h"
@@ -770,6 +771,13 @@ void MapCanvas::OnPaint(wxPaintEvent& event) {
 		drawer->SetupVars();
 		drawer->SetupGL();
 		drawer->Draw();
+
+		// Keep refreshing while shader items are on screen so their
+		// u_Time-driven effects animate like in the client - at a
+		// client-like frame rate, not the 10 fps sprite cadence.
+		if (g_itemShaders.takeDrawnFlag()) {
+			animation_timer->Start(AnimationTimer::SHADER_INTERVAL_MS);
+		}
 
 		if (screenshot_buffer) {
 			drawer->TakeScreenshot(screenshot_buffer);
@@ -4127,7 +4135,8 @@ bool MapCanvas::floodFill(Map* map, const Position& center, int x, int y, Ground
 
 AnimationTimer::AnimationTimer(MapCanvas* canvas) : wxTimer(),
 													map_canvas(canvas),
-													started(false) {
+													started(false),
+													current_interval(SPRITE_INTERVAL_MS) {
 														////
 													};
 
@@ -4141,10 +4150,11 @@ void AnimationTimer::Notify() {
 	}
 };
 
-void AnimationTimer::Start() {
-	if (!started) {
+void AnimationTimer::Start(int interval) {
+	if (!started || current_interval != interval) {
 		started = true;
-		wxTimer::Start(100);
+		current_interval = interval;
+		wxTimer::Start(interval);
 	}
 };
 

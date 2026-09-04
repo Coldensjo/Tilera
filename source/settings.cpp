@@ -275,6 +275,8 @@ void Settings::IO(IOMode mode) {
 	Int(USE_CUSTOM_DATA_DIRECTORY, 0);
 	String(DATA_DIRECTORY, "");
 	String(EXTENSIONS_DIRECTORY, "");
+	// OTClient data directory holding shaders/ (empty = auto-detect from the client assets path)
+	String(SHADERS_DIRECTORY, "");
 	String(ASSETS_DATA_DIRS, "");
 
 	section("Editor");

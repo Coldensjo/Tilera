@@ -363,6 +363,7 @@ public:
 	std::string name;
 	std::string editorsuffix;
 	std::string description;
+	std::string shader; // OTClient shader name (items.xml <attribute key="shader">)
 
 	float weight;
 	// It might be useful to be able to extrapolate this information in the future

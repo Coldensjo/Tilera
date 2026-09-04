@@ -281,13 +281,19 @@ public:
 	AnimationTimer(MapCanvas* canvas);
 	~AnimationTimer();
 
+	// Sprite frame animation only needs ~10 fps; shader effects advance with
+	// real time and need a client-like refresh rate to look smooth.
+	static constexpr int SPRITE_INTERVAL_MS = 100;
+	static constexpr int SHADER_INTERVAL_MS = 16;
+
 	void Notify();
-	void Start();
+	void Start(int interval = SPRITE_INTERVAL_MS);
 	void Stop();
 
 private:
 	MapCanvas* map_canvas;
 	bool started;
+	int current_interval;
 };
 
 #endif
