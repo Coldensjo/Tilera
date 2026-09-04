@@ -81,6 +81,15 @@ public:
 	void OnMouseMotion(wxMouseEvent& event);
 	void OnMouseRightClick(wxMouseEvent& event);
 	void OnMouseLeave(wxMouseEvent& event);
+	void OnMouseWheel(wxMouseEvent& event);
+	void OnAnimationTimer(wxTimerEvent& event);
+
+protected:
+	// Redraws the list while animated sprites are visible so they cycle
+	// through their frames like on the map canvas. OnDrawItem flags whether an
+	// animated sprite was painted; the timer stops itself once none are.
+	mutable wxTimer animation_timer; // started from the const OnDrawItem
+	mutable bool animated_sprite_visible = false;
 
 	DECLARE_EVENT_TABLE();
 };
@@ -116,6 +125,8 @@ public:
 	void OnMouseMotion(wxMouseEvent& event);
 	void OnMouseLeave(wxMouseEvent& event);
 	void OnKey(wxKeyEvent& event);
+	void OnMouseWheel(wxMouseEvent& event);
+	void OnAnimationTimer(wxTimerEvent& event);
 
 protected:
 	struct Cell {
@@ -134,11 +145,19 @@ protected:
 	RenderSize icon_size;
 	bool use_actual_size;
 	static constexpr int CELL_MARGIN = 2; // gap kept around every sprite so it is never clipped
-	int slot_size; // pixel size of one grid cell (sprite size + 2 * CELL_MARGIN)
+	int base_icon_px; // unmagnified sprite size of one slot (16 or 32)
+	int zoom; // integer magnification the layout was computed for (Config::PALETTE_ZOOM)
+	int slot_size; // pixel size of one grid cell (base_icon_px * zoom + 2 * CELL_MARGIN)
 	int columns; // number of columns the layout was computed for
 	int virtual_height; // total height of the laid-out grid
 	int selected_index; // index into cells of the selected brush, or -1
 	std::set<int> multi_selected; // additional cells toggled via Shift+click
+
+	// Redraws the grid while animated sprites are on screen so they cycle
+	// through their frames like on the map canvas. DrawCell flags whether an
+	// animated sprite was painted; the timer stops itself once none are.
+	wxTimer animation_timer;
+	mutable bool animated_sprite_visible = false;
 
 	DECLARE_EVENT_TABLE();
 };

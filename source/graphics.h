@@ -58,8 +58,22 @@ public:
 	Sprite() { }
 	virtual ~Sprite() { }
 
-	virtual void DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int width = -1, int height = -1) = 0;
+	// `frame` selects the animation frame to blit (ignored by sprites without animation).
+	virtual void DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int width = -1, int height = -1, int frame = 0) = 0;
 	virtual void unloadDC() = 0;
+
+	// Software bitmap for the given size/frame (built on demand, cached until unloadDC()).
+	// Returns nullptr when the sprite has no pixel data. Callers must not delete it.
+	virtual wxBitmap* getBitmap(SpriteSize sz, int frame = 0) = 0;
+
+	// True when the sprite has more than one animation frame.
+	virtual bool isAnimated() const {
+		return false;
+	}
+	// Frame the sprite's animator is currently on (advances with the global animation clock); 0 when not animated.
+	virtual int getCurrentFrame() {
+		return 0;
+	}
 
 private:
 	Sprite(const Sprite&);
@@ -71,8 +85,9 @@ public:
 	EditorSprite(wxBitmap* b16x16, wxBitmap* b32x32);
 	virtual ~EditorSprite();
 
-	virtual void DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int width = -1, int height = -1);
+	virtual void DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int width = -1, int height = -1, int frame = 0);
 	virtual void unloadDC();
+	virtual wxBitmap* getBitmap(SpriteSize sz, int frame = 0);
 
 protected:
 	wxBitmap* bm[SPRITE_SIZE_COUNT];
@@ -86,10 +101,16 @@ public:
 	int getIndex(int width, int height, int layer, int pattern_x, int pattern_y, int pattern_z, int frame) const;
 	GLuint getHardwareID(int _x, int _y, int _layer, int _subtype, int _pattern_x, int _pattern_y, int _pattern_z, int _frame);
 	GLuint getHardwareID(int _x, int _y, int _dir, int _addon, int _pattern_z, const Outfit& _outfit, int _frame); // CreatureDatabase
-	virtual void DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int width = -1, int height = -1);
+	virtual void DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int width = -1, int height = -1, int frame = 0);
 	wxImage getCreatureImage(int dir, int addon, int pattern_z, const Outfit& outfit, int frame = 0);
 
 	virtual void unloadDC();
+	virtual wxBitmap* getBitmap(SpriteSize sz, int frame = 0);
+
+	virtual bool isAnimated() const {
+		return animator != nullptr && frames > 1;
+	}
+	virtual int getCurrentFrame();
 
 	void clean(int time);
 
@@ -109,7 +130,7 @@ protected:
 	class NormalImage;
 	class TemplateImage;
 
-	wxMemoryDC* getDC(SpriteSize size);
+	wxMemoryDC* getDC(SpriteSize size, int frame);
 	TemplateImage* getTemplateImage(int sprite_index, const Outfit& outfit);
 
 	class Image {
@@ -187,8 +208,9 @@ protected:
 	};
 
 	uint32_t id;
-	wxBitmap* bm[SPRITE_SIZE_COUNT];
-	wxMemoryDC* dc[SPRITE_SIZE_COUNT];
+	// Software (wxDC) render cache, one entry per animation frame; grown lazily by getDC().
+	std::vector<wxBitmap*> bm[SPRITE_SIZE_COUNT];
+	std::vector<wxMemoryDC*> dc[SPRITE_SIZE_COUNT];
 
 public:
 	// GameSprite info
@@ -246,6 +268,12 @@ public:
 	~Animator();
 
 	int getStartFrame() const;
+	int getLoopCount() const {
+		return loop_count;
+	}
+	bool isAsync() const {
+		return async;
+	}
 
 	FrameDuration* getFrameDuration(int frame);
 

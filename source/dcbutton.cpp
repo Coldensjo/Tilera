@@ -103,12 +103,9 @@ void DCButton::SetValue(bool val) {
 	bool oldval = val;
 	state = val;
 	if (state == oldval) {
-		// Cheap to change value to the old one (which is done ALOT)
-		if (GetValue() && g_settings.getInteger(Config::USE_GUI_SELECTION_SHADOW)) {
-			SetOverlay(g_gui.gfx.getSprite(EDITOR_SPRITE_SELECTION_MARKER));
-		} else {
-			SetOverlay(nullptr);
-		}
+		// Cheap to change value to the old one (which is done ALOT).
+		// The selection look is painted in OnPaint (tinted background and a
+		// border) - no marker overlay covering the sprite anymore.
 		Refresh();
 	}
 }
@@ -173,9 +170,21 @@ void DCButton::OnPaint(wxPaintEvent& event) {
 		pdc.DrawLine(size_x - 1, 0, size_x - 1, size_y - 1);
 		pdc.DrawLine(0, size_y - 1, size_y, size_y - 1);
 	} else {
-		pdc.SetPen(wxPen(palette.selection.ChangeLightness(150), 1));
+		// With the icon selection highlight enabled, make the border clearly
+		// distinct (2px, brighter and bluer than the theme selection color);
+		// the tinted background above already shows through the sprite's
+		// transparency.
 		pdc.SetBrush(*wxTRANSPARENT_BRUSH);
-		pdc.DrawRectangle(0, 0, size_x, size_y);
+		if (g_settings.getInteger(Config::USE_GUI_SELECTION_SHADOW)) {
+			const wxColour& sel = palette.selection;
+			const wxColour borderColor(wxMin(255, sel.Red() + 30), wxMin(255, sel.Green() + 60), wxMin(255, sel.Blue() + 120));
+			pdc.SetPen(wxPen(borderColor, 1));
+			pdc.DrawRectangle(0, 0, size_x, size_y);
+			pdc.DrawRectangle(1, 1, size_x - 2, size_y - 2);
+		} else {
+			pdc.SetPen(wxPen(palette.selection.ChangeLightness(150), 1));
+			pdc.DrawRectangle(0, 0, size_x, size_y);
+		}
 	}
 
 	if (sprite && !g_gui.gfx.isUnloaded()) {

@@ -375,7 +375,7 @@ wxNotebookPage* PreferencesWindow::CreateGraphicsPage() {
 	{
 		wxStaticBoxSizer* const section = AddSection(root, panel, "Sprites and icons");
 		AddCheckbox(section, &icon_selection_shadow_chkbox, panel, "Use icon selection shadow", g_settings.getBoolean(Config::USE_GUI_SELECTION_SHADOW),
-			"Shade selected items in palette menus.");
+			"Highlight selected palette items with a tinted background\n(visible through the sprite's transparency) and a distinct border.");
 		AddCheckbox(section, &use_memcached_chkbox, panel, "Use memcached sprites", g_settings.getBoolean(Config::USE_MEMCACHED_SPRITES),
 			"Load sprites into memory at startup for faster rendering.\nUses more memory but avoids repeated disk reads.");
 	}

@@ -2023,9 +2023,22 @@ void GraphicManager::addSpriteToCleanup(GameSprite* spr) {
 	cleanup_list.push_back(spr);
 	// Clean if needed
 	if (cleanup_list.size() > std::max<uint32_t>(100, g_settings.getInteger(Config::SOFTWARE_CLEAN_THRESHOLD))) {
-		for (int i = 0; i < g_settings.getInteger(Config::SOFTWARE_CLEAN_SIZE) && static_cast<uint32_t>(i) < cleanup_list.size(); ++i) {
-			cleanup_list.front()->unloadDC();
+		const int clean_count = g_settings.getInteger(Config::SOFTWARE_CLEAN_SIZE);
+		for (int i = 0; i < clean_count && !cleanup_list.empty(); ++i) {
+			GameSprite* victim = cleanup_list.front();
 			cleanup_list.pop_front();
+			if (victim == spr) {
+				// GameSprite::getDC() calls this right after building a DC for
+				// `spr` and returns dc[size][frame] afterwards. A sprite is
+				// pushed once per (size, frame) it renders, so an *older* entry
+				// for `spr` can sit near the front here; unloading it would
+				// destroy the DC the caller is about to hand out and leave it
+				// indexing an emptied vector (use-after-free while scrolling
+				// the palette). Drop the stale entry without unloading - the
+				// entry just pushed above keeps it scheduled for later.
+				continue;
+			}
+			victim->unloadDC();
 		}
 		palette_refresh_needed = true;
 	}
@@ -2069,7 +2082,7 @@ EditorSprite::~EditorSprite() {
 	unloadDC();
 }
 
-void EditorSprite::DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int width, int height) {
+void EditorSprite::DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int width, int height, int /*frame*/) {
 	wxBitmap* sp = bm[sz];
 	if (sp) {
 		// If width and height are specified and larger than bitmap size, scale the bitmap
@@ -2082,6 +2095,13 @@ void EditorSprite::DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int
 			dc->DrawBitmap(*sp, start_x, start_y, true);
 		}
 	}
+}
+
+wxBitmap* EditorSprite::getBitmap(SpriteSize sz, int /*frame*/) {
+	if (sz == SPRITE_SIZE_ACTUAL) {
+		sz = SPRITE_SIZE_32x32;
+	}
+	return bm[sz];
 }
 
 void EditorSprite::unloadDC() {
@@ -2107,12 +2127,7 @@ GameSprite::GameSprite() :
 	drawoffset_x(0),
 	drawoffset_y(0),
 	minimap_color(0) {
-	bm[SPRITE_SIZE_16x16] = nullptr;
-	bm[SPRITE_SIZE_32x32] = nullptr;
-	bm[SPRITE_SIZE_ACTUAL] = nullptr;
-	dc[SPRITE_SIZE_16x16] = nullptr;
-	dc[SPRITE_SIZE_32x32] = nullptr;
-	dc[SPRITE_SIZE_ACTUAL] = nullptr;
+	////
 }
 
 GameSprite::~GameSprite() {
@@ -2133,18 +2148,32 @@ void GameSprite::clean(int time) {
 }
 
 void GameSprite::unloadDC() {
-	delete dc[SPRITE_SIZE_16x16];
-	delete dc[SPRITE_SIZE_32x32];
-	delete dc[SPRITE_SIZE_ACTUAL];
-	dc[SPRITE_SIZE_16x16] = nullptr;
-	dc[SPRITE_SIZE_32x32] = nullptr;
-	dc[SPRITE_SIZE_ACTUAL] = nullptr;
-	delete bm[SPRITE_SIZE_16x16];
-	delete bm[SPRITE_SIZE_32x32];
-	delete bm[SPRITE_SIZE_ACTUAL];
-	bm[SPRITE_SIZE_16x16] = nullptr;
-	bm[SPRITE_SIZE_32x32] = nullptr;
-	bm[SPRITE_SIZE_ACTUAL] = nullptr;
+	for (int size = 0; size < SPRITE_SIZE_COUNT; ++size) {
+		for (wxMemoryDC* mdc : dc[size]) {
+			delete mdc;
+		}
+		dc[size].clear();
+		for (wxBitmap* bitmap : bm[size]) {
+			delete bitmap;
+		}
+		bm[size].clear();
+	}
+}
+
+wxBitmap* GameSprite::getBitmap(SpriteSize sz, int frame) {
+	if (!getDC(sz, frame)) {
+		return nullptr;
+	}
+	const int frame_count = std::max<int>(1, frames);
+	frame = ((frame % frame_count) + frame_count) % frame_count;
+	return bm[sz][frame];
+}
+
+int GameSprite::getCurrentFrame() {
+	if (!isAnimated()) {
+		return 0;
+	}
+	return animator->getFrame();
 }
 
 int GameSprite::getDrawHeight() const {
@@ -2217,10 +2246,17 @@ GLuint GameSprite::getHardwareID(int _x, int _y, int _dir, int _addon, int _patt
 	return spriteList[v]->getHardwareID();
 }
 
-wxMemoryDC* GameSprite::getDC(SpriteSize size) {
+wxMemoryDC* GameSprite::getDC(SpriteSize size, int frame) {
 	ASSERT(size == SPRITE_SIZE_16x16 || size == SPRITE_SIZE_32x32 || size == SPRITE_SIZE_ACTUAL);
 
-	if (!dc[size]) {
+	const int frame_count = std::max<int>(1, frames);
+	frame = ((frame % frame_count) + frame_count) % frame_count;
+	if (dc[size].size() < static_cast<size_t>(frame_count)) {
+		dc[size].resize(frame_count, nullptr);
+		bm[size].resize(frame_count, nullptr);
+	}
+
+	if (!dc[size][frame]) {
 		ASSERT(width >= 1 && height >= 1);
 
 		const int bgshade = g_settings.getInteger(Config::ICON_BACKGROUND);
@@ -2243,7 +2279,14 @@ wxMemoryDC* GameSprite::getDC(SpriteSize size) {
 		for (uint8_t l = 0; l < layers; l++) {
 			for (uint8_t w = 0; w < width; w++) {
 				for (uint8_t h = 0; h < height; h++) {
-					const int i = getIndex(w, h, l, 0, 0, 0, 0);
+					const int i = getIndex(w, h, l, 0, 0, 0, frame);
+					// Some sprite metadata declares more pattern/frame slots than
+					// the .spr file actually stores; getHardwareID() clamps for the
+					// same reason. Skip out-of-range indices instead of reading
+					// past the end of spriteList.
+					if (i < 0 || static_cast<uint32_t>(i) >= numsprites || static_cast<size_t>(i) >= spriteList.size()) {
+						continue;
+					}
 					uint8_t* data = spriteList[i]->getRGBData();
 					if (data) {
 						// Blend manually instead of wxImage::Paste + SetMaskColour: Paste does not
@@ -2277,12 +2320,12 @@ wxMemoryDC* GameSprite::getDC(SpriteSize size) {
 				image.Rescale(32, 32, wxIMAGE_QUALITY_NEAREST);
 			}
 		}
-		bm[size] = newd wxBitmap(image, -1);
-		dc[size] = newd wxMemoryDC(*bm[size]);
+		bm[size][frame] = newd wxBitmap(image, -1);
+		dc[size][frame] = newd wxMemoryDC(*bm[size][frame]);
 		g_gui.gfx.addSpriteToCleanup(this);
 		image.Destroy();
 	}
-	return dc[size];
+	return dc[size][frame];
 }
 
 wxImage GameSprite::getCreatureImage(int dir, int addon, int pattern_z, const Outfit& outfit, int frame) {
@@ -2323,7 +2366,7 @@ wxImage GameSprite::getCreatureImage(int dir, int addon, int pattern_z, const Ou
 	return image;
 }
 
-void GameSprite::DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int width, int height) {
+void GameSprite::DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int width, int height, int frame) {
 	int draw_width = width;
 	int draw_height = height;
 	if (sz == SPRITE_SIZE_ACTUAL) {
@@ -2343,7 +2386,7 @@ void GameSprite::DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int w
 			draw_height = sz == SPRITE_SIZE_32x32 ? 32 : 16;
 		}
 	}
-	wxDC* sdc = getDC(sz);
+	wxDC* sdc = getDC(sz, frame);
 	if (sdc) {
 		dc->Blit(start_x, start_y, draw_width, draw_height, sdc, 0, 0, wxCOPY, true);
 	} else {
@@ -2614,8 +2657,12 @@ void GameSprite::TemplateImage::colorizePixel(uint8_t color, uint8_t& red, uint8
 }
 
 uint8_t* GameSprite::TemplateImage::getRGBData() {
+	const size_t template_index = static_cast<size_t>(sprite_index) + static_cast<size_t>(parent->height) * parent->width;
+	if (sprite_index < 0 || template_index >= parent->spriteList.size()) {
+		return nullptr;
+	}
 	uint8_t* rgbdata = parent->spriteList[sprite_index]->getRGBData();
-	uint8_t* template_rgbdata = parent->spriteList[sprite_index + parent->height * parent->width]->getRGBData();
+	uint8_t* template_rgbdata = parent->spriteList[template_index]->getRGBData();
 
 	if (!rgbdata) {
 		delete[] template_rgbdata;
@@ -2626,16 +2673,16 @@ uint8_t* GameSprite::TemplateImage::getRGBData() {
 		return nullptr;
 	}
 
-	if (lookHead > (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
+	if (lookHead >= (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
 		lookHead = 0;
 	}
-	if (lookBody > (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
+	if (lookBody >= (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
 		lookBody = 0;
 	}
-	if (lookLegs > (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
+	if (lookLegs >= (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
 		lookLegs = 0;
 	}
-	if (lookFeet > (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
+	if (lookFeet >= (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
 		lookFeet = 0;
 	}
 
@@ -2665,8 +2712,12 @@ uint8_t* GameSprite::TemplateImage::getRGBData() {
 }
 
 uint8_t* GameSprite::TemplateImage::getRGBAData() {
+	const size_t template_index = static_cast<size_t>(sprite_index) + static_cast<size_t>(parent->height) * parent->width;
+	if (sprite_index < 0 || template_index >= parent->spriteList.size()) {
+		return nullptr;
+	}
 	uint8_t* rgbadata = parent->spriteList[sprite_index]->getRGBAData();
-	uint8_t* template_rgbdata = parent->spriteList[sprite_index + parent->height * parent->width]->getRGBData();
+	uint8_t* template_rgbdata = parent->spriteList[template_index]->getRGBData();
 
 	if (!rgbadata) {
 		delete[] template_rgbdata;
@@ -2677,16 +2728,16 @@ uint8_t* GameSprite::TemplateImage::getRGBAData() {
 		return nullptr;
 	}
 
-	if (lookHead > (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
+	if (lookHead >= (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
 		lookHead = 0;
 	}
-	if (lookBody > (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
+	if (lookBody >= (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
 		lookBody = 0;
 	}
-	if (lookLegs > (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
+	if (lookLegs >= (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
 		lookLegs = 0;
 	}
-	if (lookFeet > (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
+	if (lookFeet >= (sizeof(TemplateOutfitLookupTable) / sizeof(TemplateOutfitLookupTable[0]))) {
 		lookFeet = 0;
 	}
 

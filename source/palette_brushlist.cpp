@@ -40,6 +40,90 @@
 #include <limits>
 #include <wx/gbsizer.h>
 #include <wx/statline.h>
+#include <wx/timer.h>
+
+namespace {
+
+	// Matches MapCanvas' AnimationTimer so palette and map frames stay in step.
+	constexpr int PALETTE_ANIMATION_INTERVAL_MS = 100;
+
+	// Palette sprites animate only when the map preview animates (View > Show preview).
+	bool PaletteAnimationEnabled() {
+		return g_settings.getBoolean(Config::SHOW_PREVIEW);
+	}
+
+	// Returns the frame to draw `sprite` with, and records whether it animates so
+	// the owning box knows to keep repainting.
+	int PaletteSpriteFrame(Sprite* sprite, bool& animated_visible) {
+		if (!sprite || !sprite->isAnimated() || !PaletteAnimationEnabled()) {
+			return 0;
+		}
+		animated_visible = true;
+		return sprite->getCurrentFrame();
+	}
+
+	// Palette magnification is restricted to powers of two so sprites are always
+	// scaled by a whole number of pixels (crisp nearest-neighbour: 32/64/128/256).
+	constexpr int PALETTE_ZOOM_MIN = 1;
+	constexpr int PALETTE_ZOOM_MAX = 8;
+
+	int ClampPaletteZoom(int zoom) {
+		int clamped = PALETTE_ZOOM_MIN;
+		while (clamped * 2 <= zoom && clamped * 2 <= PALETTE_ZOOM_MAX) {
+			clamped *= 2;
+		}
+		return clamped;
+	}
+
+	int PaletteZoom() {
+		return ClampPaletteZoom(g_settings.getInteger(Config::PALETTE_ZOOM));
+	}
+
+	// Handles Ctrl+wheel on a palette view: steps the shared zoom setting one
+	// power of two up or down. Returns true when the zoom actually changed.
+	bool StepPaletteZoomFromWheel(const wxMouseEvent& event) {
+		if (!event.ControlDown() || event.GetWheelRotation() == 0) {
+			return false;
+		}
+		const int current = PaletteZoom();
+		const int next = ClampPaletteZoom(event.GetWheelRotation() > 0 ? current * 2 : current / 2);
+		if (next == current) {
+			return false;
+		}
+		g_settings.setInteger(Config::PALETTE_ZOOM, next);
+		return true;
+	}
+
+	// Draws `sprite` with its top-left corner at (x, y). `base_w`/`base_h` are the
+	// unmagnified pixel dimensions to take from the sprite bitmap; they are then
+	// blown up by `zoom` with nearest-neighbour sampling so pixel art stays sharp.
+	void DrawPaletteSprite(wxDC& dc, Sprite* sprite, SpriteSize size, int x, int y, int base_w, int base_h, int frame, int zoom) {
+		if (zoom <= 1) {
+			sprite->DrawTo(&dc, size, x, y, base_w, base_h, frame);
+			return;
+		}
+		wxBitmap* bitmap = sprite->getBitmap(size, frame);
+		if (!bitmap || !bitmap->IsOk()) {
+			const wxBrush& old = dc.GetBrush();
+			dc.SetBrush(*wxRED_BRUSH);
+			dc.DrawRectangle(x, y, base_w * zoom, base_h * zoom);
+			dc.SetBrush(old);
+			return;
+		}
+		wxImage image = bitmap->ConvertToImage();
+		base_w = std::min(base_w, image.GetWidth());
+		base_h = std::min(base_h, image.GetHeight());
+		if (base_w <= 0 || base_h <= 0) {
+			return;
+		}
+		if (base_w != image.GetWidth() || base_h != image.GetHeight()) {
+			image = image.GetSubImage(wxRect(0, 0, base_w, base_h));
+		}
+		image.Rescale(base_w * zoom, base_h * zoom, wxIMAGE_QUALITY_NEAREST);
+		dc.DrawBitmap(wxBitmap(image), x, y, true);
+	}
+
+} // namespace
 
 // ============================================================================
 // Brush Palette Panel
@@ -699,6 +783,8 @@ EVT_RIGHT_DOWN(BrushIconBox::OnMouseRightClick)
 EVT_MOTION(BrushIconBox::OnMouseMotion)
 EVT_LEAVE_WINDOW(BrushIconBox::OnMouseLeave)
 EVT_KEY_DOWN(BrushIconBox::OnKey)
+EVT_MOUSEWHEEL(BrushIconBox::OnMouseWheel)
+EVT_TIMER(wxID_ANY, BrushIconBox::OnAnimationTimer)
 END_EVENT_TABLE()
 
 BrushIconBox::BrushIconBox(wxWindow* parent, const TilesetCategory* _tileset, RenderSize rsz, bool useActualSize) :
@@ -706,10 +792,13 @@ BrushIconBox::BrushIconBox(wxWindow* parent, const TilesetCategory* _tileset, Re
 	BrushBoxInterface(_tileset),
 	icon_size(rsz),
 	use_actual_size(useActualSize),
-	slot_size((useActualSize || rsz == RENDER_SIZE_32x32 ? 32 : 16) + 2 * CELL_MARGIN),
+	base_icon_px(useActualSize || rsz == RENDER_SIZE_32x32 ? 32 : 16),
+	zoom(PaletteZoom()),
+	slot_size(base_icon_px * zoom + 2 * CELL_MARGIN),
 	columns(1),
 	virtual_height(0),
-	selected_index(-1) {
+	selected_index(-1),
+	animation_timer(this) {
 	ASSERT(tileset->getType() >= TILESET_UNKNOWN && tileset->getType() <= TILESET_HOUSE);
 	SetBackgroundStyle(wxBG_STYLE_PAINT);
 	SetBackgroundColour(ThemeManager::Get().GetPalette().control);
@@ -719,10 +808,36 @@ BrushIconBox::BrushIconBox(wxWindow* parent, const TilesetCategory* _tileset, Re
 }
 
 BrushIconBox::~BrushIconBox() {
-	////
+	animation_timer.Stop();
+}
+
+void BrushIconBox::OnAnimationTimer(wxTimerEvent& WXUNUSED(event)) {
+	if (!animated_sprite_visible || !IsShownOnScreen() || g_gui.gfx.isUnloaded()) {
+		animation_timer.Stop();
+		return;
+	}
+	Refresh(false);
+}
+
+void BrushIconBox::OnMouseWheel(wxMouseEvent& event) {
+	if (!StepPaletteZoomFromWheel(event)) {
+		event.Skip(); // plain wheel keeps scrolling the grid
+		return;
+	}
+	RecalculateGrid();
+	Refresh();
+	if (selected_index >= 0) {
+		EnsureVisible(static_cast<size_t>(selected_index));
+	}
 }
 
 void BrushIconBox::RecalculateGrid() {
+	// Pick up the shared zoom setting (changed from any palette view) and size
+	// the slots accordingly.
+	zoom = PaletteZoom();
+	slot_size = base_icon_px * zoom + 2 * CELL_MARGIN;
+	SetScrollRate(slot_size, slot_size);
+
 	// Determine how many columns fit in the currently available width. Use the
 	// real cell size as the divisor so the grid fills the panel - otherwise a
 	// gap grows between the icons and the scrollbar as the palette is widened.
@@ -747,9 +862,13 @@ void BrushIconBox::RecalculateGrid() {
 	available_width = std::max(available_width, 350);
 
 	int column_count = std::max(available_width / button_width, 1);
-	const int min_columns = (use_actual_size || icon_size == RENDER_SIZE_32x32)
+	// The configured minimum column count is meant for unmagnified icons; a
+	// zoomed grid would otherwise be forced far wider than the (non-horizontally
+	// scrolling) panel, so relax it in proportion.
+	int min_columns = (use_actual_size || icon_size == RENDER_SIZE_32x32)
 		? std::max(g_settings.getInteger(Config::PALETTE_COL_COUNT) / 2 + 1, 1)
 		: std::max(g_settings.getInteger(Config::PALETTE_COL_COUNT) + 1, 1);
+	min_columns = std::max(min_columns / zoom, 1);
 	column_count = std::max(column_count, min_columns);
 	columns = column_count;
 
@@ -893,6 +1012,20 @@ void BrushIconBox::DrawCell(wxDC& dc, const Cell& cell, bool selected) const {
 	// Background fill (honours the configurable icon background shade)
 	const int bgshade = g_settings.getInteger(Config::ICON_BACKGROUND);
 	wxColour fill = (bgshade < 0) ? palette.control : wxColour(bgshade, bgshade, bgshade);
+
+	// Selection highlight: tint the cell *background* so the color shows
+	// through the sprite's transparent pixels instead of covering the art,
+	// and pair it with a distinct border (drawn after the sprite, in the
+	// cell margin).
+	const bool selection_shadow = selected && g_settings.getInteger(Config::USE_GUI_SELECTION_SHADOW);
+	if (selection_shadow) {
+		const wxColour& sel = palette.selection;
+		fill = wxColour(
+			(sel.Red() * 2 + fill.Red()) / 3,
+			(sel.Green() * 2 + fill.Green()) / 3,
+			(sel.Blue() * 2 + fill.Blue()) / 3
+		);
+	}
 	dc.SetBrush(wxBrush(fill));
 	dc.SetPen(*wxTRANSPARENT_PEN);
 	dc.DrawRectangle(inner);
@@ -913,34 +1046,46 @@ void BrushIconBox::DrawCell(wxDC& dc, const Cell& cell, bool selected) const {
 		} else if (icon_size == RENDER_SIZE_16x16) {
 			sprite_size = SPRITE_SIZE_16x16;
 		}
-		// Blit the sprite at its native size, centred in the cell. Exact-size
-		// cells spanning several slots also absorb the inter-slot margins here.
-		int draw_w = inner.GetWidth();
-		int draw_h = inner.GetHeight();
+		// Blit the sprite at its native size (times the integer zoom), centred in
+		// the cell. Exact-size cells spanning several slots also absorb the
+		// inter-slot margins here. `base_*` are unmagnified sprite pixels.
+		int base_w = inner.GetWidth() / zoom;
+		int base_h = inner.GetHeight() / zoom;
 		if (sprite_size == SPRITE_SIZE_ACTUAL) {
-			draw_w = draw_h = SPRITE_PIXELS;
+			base_w = base_h = SPRITE_PIXELS;
 			if (GameSprite* game_sprite = dynamic_cast<GameSprite*>(spr)) {
-				draw_w = std::max(1, int(game_sprite->width)) * SPRITE_PIXELS;
-				draw_h = std::max(1, int(game_sprite->height)) * SPRITE_PIXELS;
+				base_w = std::max(1, int(game_sprite->width)) * SPRITE_PIXELS;
+				base_h = std::max(1, int(game_sprite->height)) * SPRITE_PIXELS;
 			}
-			draw_w = std::min(draw_w, inner.GetWidth());
-			draw_h = std::min(draw_h, inner.GetHeight());
+			base_w = std::min(base_w, inner.GetWidth() / zoom);
+			base_h = std::min(base_h, inner.GetHeight() / zoom);
 		}
+		const int draw_w = base_w * zoom;
+		const int draw_h = base_h * zoom;
 		const int draw_x = inner.GetX() + (inner.GetWidth() - draw_w) / 2;
 		const int draw_y = inner.GetY() + (inner.GetHeight() - draw_h) / 2;
-		spr->DrawTo(&dc, sprite_size, draw_x, draw_y, draw_w, draw_h);
-
-		if (selected && g_settings.getInteger(Config::USE_GUI_SELECTION_SHADOW)) {
-			if (Sprite* marker = g_gui.gfx.getSprite(EDITOR_SPRITE_SELECTION_MARKER)) {
-				SpriteSize overlay_size = (sprite_size == SPRITE_SIZE_ACTUAL) ? SPRITE_SIZE_32x32 : sprite_size;
-				marker->DrawTo(&dc, overlay_size, draw_x, draw_y, draw_w, draw_h);
-			}
-		}
+		const int frame = PaletteSpriteFrame(spr, animated_sprite_visible);
+		DrawPaletteSprite(dc, spr, sprite_size, draw_x, draw_y, base_w, base_h, frame, zoom);
 	}
 
-	// Exact-size cells draw the sprite edge to edge inside the margin, so mark
-	// selection with a highlight rectangle on top rather than an (absent) bevel.
-	if (use_actual_size && selected) {
+	if (selection_shadow) {
+		// Distinct selection border, drawn in the cell margin so it never
+		// covers the sprite itself. Brighter and bluer than the raw theme
+		// selection color, which all but disappears as a thin dark outline
+		// around fully opaque tiles (grounds). Two nested 1px rectangles
+		// guarantee a full 2px of visible border.
+		const wxColour& sel = palette.selection;
+		const wxColour borderColor(std::min(255, sel.Red() + 30), std::min(255, sel.Green() + 60), std::min(255, sel.Blue() + 120));
+		dc.SetBrush(*wxTRANSPARENT_BRUSH);
+		dc.SetPen(wxPen(borderColor, 1));
+		wxRect borderRect = r;
+		dc.DrawRectangle(borderRect);
+		borderRect.Deflate(1);
+		dc.DrawRectangle(borderRect);
+	} else if (use_actual_size && selected) {
+		// Exact-size cells draw the sprite edge to edge inside the margin, so
+		// mark selection with a highlight rectangle rather than an (absent)
+		// bevel.
 		dc.SetBrush(*wxTRANSPARENT_BRUSH);
 		dc.SetPen(wxPen(palette.selection, 2));
 		dc.DrawRectangle(inner);
@@ -958,6 +1103,11 @@ void BrushIconBox::OnPaint(wxPaintEvent& WXUNUSED(event)) {
 		return;
 	}
 
+	// Zoom is shared between palette views; re-layout if another view changed it.
+	if (zoom != PaletteZoom()) {
+		RecalculateGrid();
+	}
+
 	// Compute the visible band in unscrolled coordinates so we only draw cells
 	// that are actually on screen.
 	int view_start_y = 0;
@@ -970,6 +1120,7 @@ void BrushIconBox::OnPaint(wxPaintEvent& WXUNUSED(event)) {
 	const int top = view_start_y * ppuY;
 	const int bottom = top + client_h;
 
+	animated_sprite_visible = false;
 	for (size_t i = 0; i < cells.size(); ++i) {
 		const wxRect& r = cells[i].rect;
 		if (r.GetBottom() < top || r.GetY() > bottom) {
@@ -977,6 +1128,11 @@ void BrushIconBox::OnPaint(wxPaintEvent& WXUNUSED(event)) {
 		}
 		const bool sel = static_cast<int>(i) == selected_index || multi_selected.count(static_cast<int>(i)) > 0;
 		DrawCell(dc, cells[i], sel);
+	}
+
+	// Keep repainting while animated sprites are in view; the timer stops itself otherwise.
+	if (animated_sprite_visible && !animation_timer.IsRunning()) {
+		animation_timer.Start(PALETTE_ANIMATION_INTERVAL_MS);
 	}
 }
 
@@ -1107,11 +1263,6 @@ void BrushIconBox::OnMouseClick(wxMouseEvent& event) {
 }
 
 void BrushIconBox::OnMouseRightClick(wxMouseEvent& event) {
-	if (!wxGetKeyState(WXK_CONTROL)) {
-		event.Skip();
-		return;
-	}
-
 	int ux = 0, uy = 0;
 	CalcUnscrolledPosition(event.GetX(), event.GetY(), &ux, &uy);
 	const int index = CellIndexAt(wxPoint(ux, uy));
@@ -1164,16 +1315,48 @@ EVT_CHAR(BrushListBox::OnChar)
 EVT_MOTION(BrushListBox::OnMouseMotion)
 EVT_RIGHT_DOWN(BrushListBox::OnMouseRightClick)
 EVT_LEAVE_WINDOW(BrushListBox::OnMouseLeave)
+EVT_MOUSEWHEEL(BrushListBox::OnMouseWheel)
+EVT_TIMER(wxID_ANY, BrushListBox::OnAnimationTimer)
 END_EVENT_TABLE()
 
 BrushListBox::BrushListBox(wxWindow* parent, const TilesetCategory* tileset) :
 	wxVListBox(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLB_SINGLE),
-	BrushBoxInterface(tileset) {
+	BrushBoxInterface(tileset),
+	animation_timer(this) {
 	SetItemCount(tileset->size());
+	// wxVListBox paints rows one at a time, so the "animated sprite visible"
+	// flag is reset once per paint here, before the first row is drawn.
+	Bind(wxEVT_PAINT, [this](wxPaintEvent& event) {
+		animated_sprite_visible = false;
+		event.Skip();
+	});
 }
 
 BrushListBox::~BrushListBox() {
-	////
+	animation_timer.Stop();
+}
+
+void BrushListBox::OnAnimationTimer(wxTimerEvent& WXUNUSED(event)) {
+	if (!animated_sprite_visible || !IsShownOnScreen() || g_gui.gfx.isUnloaded()) {
+		animation_timer.Stop();
+		return;
+	}
+	RefreshAll();
+}
+
+void BrushListBox::OnMouseWheel(wxMouseEvent& event) {
+	if (!StepPaletteZoomFromWheel(event)) {
+		event.Skip(); // plain wheel keeps scrolling the list
+		return;
+	}
+	// Row heights depend on the zoom: force wxVListBox to re-measure every row.
+	const int selection = GetSelection();
+	SetItemCount(tileset ? tileset->size() : 0);
+	if (selection != wxNOT_FOUND) {
+		SetSelection(selection);
+		ScrollToRow(selection);
+	}
+	RefreshAll();
 }
 
 void BrushListBox::SelectAll() {
@@ -1204,7 +1387,7 @@ void BrushListBox::SelectFirstBrush() {
 }
 
 void BrushListBox::OnMouseRightClick(wxMouseEvent& event) {
-	if (!wxGetKeyState(WXK_CONTROL) || !tileset) {
+	if (!tileset) {
 		event.Skip();
 		return;
 	}
@@ -1280,19 +1463,26 @@ void BrushListBox::OnDrawItem(wxDC& dc, const wxRect& rect, size_t n) const {
 		return;
 	}
 
+	const int zoom = PaletteZoom();
+	const int icon_px = 32 * zoom;
 	Sprite* spr = g_gui.gfx.getSprite(brush->getLookID());
 	if (spr) {
-		spr->DrawTo(&dc, SPRITE_SIZE_32x32, rect.GetX(), rect.GetY(), rect.GetWidth(), rect.GetHeight());
+		const int frame = PaletteSpriteFrame(spr, animated_sprite_visible);
+		DrawPaletteSprite(dc, spr, SPRITE_SIZE_32x32, rect.GetX(), rect.GetY(), 32, 32, frame, zoom);
+		if (animated_sprite_visible && !animation_timer.IsRunning()) {
+			animation_timer.Start(PALETTE_ANIMATION_INTERVAL_MS);
+		}
 	}
 	dc.SetTextForeground(ThemeManager::Get().GetPalette().text);
-	dc.DrawText(wxstr(brush->getName()), rect.GetX() + 40, rect.GetY() + 6);
+	const int text_y = (zoom > 1) ? rect.GetY() + (rect.GetHeight() - dc.GetCharHeight()) / 2 : rect.GetY() + 6;
+	dc.DrawText(wxstr(brush->getName()), rect.GetX() + icon_px + 8, text_y);
 }
 
 wxCoord BrushListBox::OnMeasureItem(size_t n) const {
 	if (tileset && n < tileset->size() && tileset->brushlist[n] && tileset->brushlist[n]->isPaletteSeparator()) {
 		return 10;
 	}
-	return 32;
+	return 32 * PaletteZoom();
 }
 
 void BrushListBox::OnMouseMotion(wxMouseEvent& event) {
