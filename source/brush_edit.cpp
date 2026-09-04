@@ -319,7 +319,7 @@ bool BrushSaveToXml(Brush* brush, wxString& error) {
 	}
 
 	pugi::xml_document doc;
-	pugi::xml_parse_result result = doc.load_file(sourceFile.c_str());
+	pugi::xml_parse_result result = doc.load_file(sourceFile.c_str(), pugi::parse_full);
 	if (!result) {
 		error = wxString::Format("Could not open '%s' for writing.", wxstr(sourceFile));
 		return false;

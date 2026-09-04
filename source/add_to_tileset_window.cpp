@@ -141,7 +141,7 @@ void removeMatchingItemNodes(pugi::xml_node categoryNode, uint16_t itemId) {
 
 bool persistAdd(const std::string& file, const std::string& tilesetName, TilesetCategoryType type, uint16_t itemId, const TilesetInsertSpec& spec, wxString& error) {
 	pugi::xml_document doc;
-	if (!doc.load_file(file.c_str())) {
+	if (!doc.load_file(file.c_str(), pugi::parse_full)) {
 		error = wxString::Format("Could not open '%s'.", wxstr(file));
 		return false;
 	}
