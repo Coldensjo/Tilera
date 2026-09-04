@@ -401,4 +401,14 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <!-- Lets the build succeed while Editor_x64.exe is running: Windows forbids
+       overwriting a running exe but allows renaming it, so a locked output is
+       moved aside and the linker writes a fresh one. Stale renamed copies are
+       deleted on the next build once their process has exited. -->
+  <Target Name="MoveLockedOutputAside" BeforeTargets="Link">
+    <Exec IgnoreExitCode="true" Command="del /q &quot;$(TargetDir)$(TargetName).locked-*.old&quot; 2&gt;nul
+if not exist &quot;$(TargetPath)&quot; exit /b 0
+(&gt;&gt;&quot;$(TargetPath)&quot; call;) 2&gt;nul || ren &quot;$(TargetPath)&quot; &quot;$(TargetName).locked-%RANDOM%.old&quot;
+exit /b 0" />
+  </Target>
 </Project>

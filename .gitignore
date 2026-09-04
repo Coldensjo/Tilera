@@ -10,6 +10,7 @@ mapserver.cfg
 # exe and dll
 *.dll
 *.exe
+*.locked-*.old
 
 # assets
 *.spr
