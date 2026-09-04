@@ -209,6 +209,8 @@ public:
 	// Turn on/off all buttons according to current editor state
 	void Update();
 	void UpdateFloorMenu(); // Only concerns the floor menu
+	// (Re)applies the action icons; call after a theme change re-tints them.
+	void RefreshIcons();
 
 	void AddRecentFile(FileName file);
 	void LoadRecentFiles();

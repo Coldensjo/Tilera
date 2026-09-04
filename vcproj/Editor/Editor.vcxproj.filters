@@ -355,6 +355,9 @@
     <ClInclude Include="..\..\source\artprovider.h">
       <Filter>gui</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\icon_svgs.h">
+      <Filter>gui</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\source\welcome_dialog.h">
       <Filter>gui\dialogs</Filter>
     </ClInclude>
@@ -675,6 +678,9 @@
       <Filter>gui</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\artprovider.cpp">
+      <Filter>gui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\icon_svgs.cpp">
       <Filter>gui</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\welcome_dialog.cpp">

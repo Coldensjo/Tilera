@@ -19,6 +19,7 @@
 
 #include "main_menubar.h"
 #include "application.h"
+#include "artprovider.h"
 #include "hotkey_manager.h"
 #include "hotkey_manager_dialog.h"
 #include "preferences.h"
@@ -46,6 +47,75 @@
 
 BEGIN_EVENT_TABLE(MainMenuBar, wxEvtHandler)
 END_EVENT_TABLE()
+
+// Same action, same icon everywhere: this table pairs menu actions with the
+// art ids the toolbars already use. Only normal (non-check) items get one.
+static const wxArtID* MenuIconFor(const std::string& action) {
+	static const std::map<std::string, wxArtID> icons = {
+		{ "NEW", wxART_NEW },
+		{ "OPEN", wxART_FILE_OPEN },
+		{ "SAVE", wxART_FILE_SAVE },
+		{ "SAVE_AS", wxART_FILE_SAVE_AS },
+		{ "GENERATE_MAP", ART_GENERATE },
+		{ "CLOSE", wxART_CLOSE },
+		{ "EXIT", wxART_QUIT },
+		{ "IMPORT_MAP", ART_IMPORT },
+		{ "IMPORT_MONSTERS", ART_IMPORT },
+		{ "IMPORT_MINIMAP", ART_IMPORT },
+		{ "EXPORT_MINIMAP", ART_EXPORT },
+		{ "EXPORT_TILESETS", ART_EXPORT },
+		{ "EXPORT_CREATURES_IN_SELECTION", ART_EXPORT },
+		{ "RELOAD_DATA", ART_RELOAD },
+		{ "PREFERENCES", ART_PREFERENCES },
+		{ "UNDO", wxART_UNDO },
+		{ "REDO", wxART_REDO },
+		{ "CUT", wxART_CUT },
+		{ "COPY", wxART_COPY },
+		{ "PASTE", wxART_PASTE },
+		{ "FIND_ITEM", wxART_FIND },
+		{ "FIND_CREATURE", wxART_FIND },
+		{ "FIND_BRUSH_WINDOW", wxART_FIND },
+		{ "SEARCH_ON_MAP_EVERYTHING", wxART_FIND },
+		{ "SEARCH_ON_SELECTION_EVERYTHING", wxART_FIND },
+		{ "REPLACE_ITEMS", wxART_FIND_AND_REPLACE },
+		{ "REPLACE_ON_SELECTION_ITEMS", wxART_FIND_AND_REPLACE },
+		{ "REMOVE_ON_SELECTION_ITEM", ART_CLEANUP },
+		{ "MAP_REMOVE_ITEMS", ART_CLEANUP },
+		{ "MAP_REMOVE_CORPSES", ART_CLEANUP },
+		{ "MAP_REMOVE_UNREACHABLE_TILES", ART_CLEANUP },
+		{ "MAP_CLEANUP", ART_CLEANUP },
+		{ "CLEAR_INVALID_HOUSES", ART_CLEANUP },
+		{ "FLIP_SELECTION_HORIZONTAL", ART_FLIP_HORIZONTAL },
+		{ "FLIP_SELECTION_VERTICAL", ART_FLIP_VERTICAL },
+		{ "ROTATE_SELECTION_CW", ART_ROTATE_CW },
+		{ "ROTATE_SELECTION_CCW", ART_ROTATE_CCW },
+		{ "MOVE_SELECTION_UP", ART_MOVE_UP },
+		{ "MOVE_SELECTION_DOWN", ART_MOVE_DOWN },
+		{ "GOTO_POSITION", ART_GOTO_POSITION },
+		{ "GOTO_PREVIOUS_POSITION", ART_GOTO_PREVIOUS },
+		{ "JUMP_TO_BRUSH", ART_JUMP_TO_BRUSH },
+		{ "JUMP_TO_ITEM_BRUSH", ART_JUMP_TO_BRUSH },
+		{ "ZOOM_IN", ART_ZOOM_IN },
+		{ "ZOOM_OUT", ART_ZOOM_OUT },
+		{ "ZOOM_NORMAL", ART_ZOOM_RESET },
+		{ "TOGGLE_FULLSCREEN", wxART_FULL_SCREEN },
+		{ "TAKE_SCREENSHOT", ART_SCREENSHOT },
+		{ "NEW_VIEW", ART_NEW_VIEW },
+		{ "NEW_PALETTE", ART_NEW_VIEW },
+		{ "WIN_MINIMAP", ART_MAP },
+		{ "MAP_PROPERTIES", ART_MAP_PROPERTIES },
+		{ "MAP_STATISTICS", ART_STATISTICS },
+		{ "EDIT_TOWNS", ART_TOWNS },
+		{ "LIVE_CONNECT", ART_LIVE_CONNECT },
+		{ "LIVE_DISCONNECT", ART_LIVE_DISCONNECT },
+		{ "HOTKEY_MANAGER", ART_HOTKEYS },
+		{ "EXTENSIONS", ART_EXTENSIONS },
+		{ "GOTO_WEBSITE", ART_WEBSITE },
+		{ "ABOUT", wxART_INFORMATION },
+	};
+	auto it = icons.find(action);
+	return it == icons.end() ? nullptr : &it->second;
+}
 
 MainMenuBar::MainMenuBar(MainFrame* frame) : frame(frame) {
 	using namespace MenuBar;
@@ -853,6 +923,11 @@ wxObject* MainMenuBar::LoadItem(pugi::xml_node node, wxMenu* parent, wxArrayStri
 			wxstr(help), // Help text
 			act.kind // Kind of item
 		);
+		if (act.kind == wxITEM_NORMAL) {
+			if (const wxArtID* icon = MenuIconFor(action)) {
+				tmp->SetBitmap(wxArtProvider::GetBitmapBundle(*icon, wxART_MENU));
+			}
+		}
 		items[MenuBar::ActionID(act.id)].push_back(tmp);
 		return tmp;
 	} else if (nodeName == "separator") {
@@ -2676,5 +2751,25 @@ void MainMenuBar::SearchItems(bool unique, bool action, bool container, bool wri
 	result->Clear();
 	for (std::vector<std::pair<Tile*, Item*>>::iterator iter = found.begin(); iter != found.end(); ++iter) {
 		result->AddPosition(searcher.desc(iter->second), iter->first->getPosition());
+	}
+}
+
+void MainMenuBar::RefreshIcons() {
+	for (const auto& entry : actions) {
+		const MenuBar::Action* act = entry.second;
+		if (!act || act->kind != wxITEM_NORMAL) {
+			continue;
+		}
+		const wxArtID* icon = MenuIconFor(entry.first);
+		if (!icon) {
+			continue;
+		}
+		auto fi = items.find(MenuBar::ActionID(act->id));
+		if (fi == items.end()) {
+			continue;
+		}
+		for (wxMenuItem* item : fi->second) {
+			item->SetBitmap(wxArtProvider::GetBitmapBundle(*icon, wxART_MENU));
+		}
 	}
 }

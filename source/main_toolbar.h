@@ -34,6 +34,8 @@ public:
 	void UpdateButtons();
 	void UpdateBrushButtons();
 	void UpdateBrushSize(BrushShape shape, int size);
+	// Re-fetches the theme-tinted icons after a theme change.
+	void RefreshIcons();
 	void Show(ToolBarID id, bool show);
 	void HideAll(bool update = true);
 	void LoadPerspective();

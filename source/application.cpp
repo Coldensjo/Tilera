@@ -575,6 +575,16 @@ bool MainFrame::MSWTranslateMessage(WXMSG* msg) {
 }
 #endif
 
+void MainFrame::RefreshThemeIcons() {
+	ArtProvider::Refresh();
+	if (menu_bar) {
+		menu_bar->RefreshIcons();
+	}
+	if (tool_bar) {
+		tool_bar->RefreshIcons();
+	}
+}
+
 void MainFrame::UpdateMenubar() {
 	menu_bar->Update();
 	tool_bar->UpdateButtons();

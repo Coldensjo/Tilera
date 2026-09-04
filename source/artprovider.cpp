@@ -19,6 +19,47 @@
 #include "artprovider.h"
 
 #include "pngfiles.h"
+#include "theme.h"
+
+#include <string>
+
+namespace {
+
+ArtProvider* g_installedProvider = nullptr;
+
+#ifdef wxHAS_SVG
+// Rasterises a "currentColor" SVG in the theme text colour.
+wxBitmapBundle TintedSvgBundle(const char* svg, const wxSize& size) {
+	std::string source(svg);
+	const std::string colour = ThemeManager::Get().GetPalette().text.GetAsString(wxC2S_HTML_SYNTAX).ToStdString();
+	const std::string placeholder = "currentColor";
+	for (std::string::size_type pos = source.find(placeholder); pos != std::string::npos; pos = source.find(placeholder, pos + colour.size())) {
+		source.replace(pos, placeholder.size(), colour);
+	}
+	return wxBitmapBundle::FromSVG(source.c_str(), size);
+}
+#endif
+
+} // namespace
+
+ArtProvider::ArtProvider() {
+	g_installedProvider = this;
+}
+
+ArtProvider::~ArtProvider() {
+	if (g_installedProvider == this) {
+		g_installedProvider = nullptr;
+	}
+}
+
+void ArtProvider::Refresh() {
+	if (!g_installedProvider) {
+		return;
+	}
+	// Push() clears the shared bitmap cache; Remove() first keeps a single entry.
+	wxArtProvider::Remove(g_installedProvider);
+	wxArtProvider::Push(g_installedProvider);
+}
 
 // A 16 px base bitmap plus its 32 px twin; wx serves whichever matches the DPI.
 #define PNG_BUNDLE(small, large) wxBitmapBundle::FromBitmaps(PNG_BITMAP(small), PNG_BITMAP(large))
@@ -26,7 +67,17 @@
 // Only a single resolution exists for this art; wx scales it as needed.
 #define PNG_BUNDLE_SINGLE(name) wxBitmapBundle::FromBitmap(PNG_BITMAP(name))
 
-wxBitmapBundle ArtProvider::CreateBitmapBundle(const wxArtID& id, const wxArtClient& client, const wxSize& WXUNUSED(size)) {
+wxBitmapBundle ArtProvider::CreateBitmapBundle(const wxArtID& id, const wxArtClient& client, const wxSize& size) {
+#ifdef wxHAS_SVG
+	// The monochrome action family serves toolbars, menus and buttons alike.
+	if (client == wxART_TOOLBAR || client == wxART_MENU || client == wxART_BUTTON || client == wxART_OTHER) {
+		if (const char* svg = FindIconSvg(id)) {
+			const wxSize logical = (size.IsFullySpecified() && size.x > 0) ? size : wxSize(16, 16);
+			return TintedSvgBundle(svg, logical);
+		}
+	}
+#endif
+
 	if (client != wxART_TOOLBAR) {
 		return wxBitmapBundle();
 	}
@@ -83,8 +134,6 @@ wxBitmapBundle ArtProvider::CreateBitmapBundle(const wxArtID& id, const wxArtCli
 		return PNG_BUNDLE(terraform_lower_small_png, terraform_lower_png);
 	} else if (id == ART_TERRAFORM_FLATTEN) {
 		return PNG_BUNDLE(terraform_flatten_small_png, terraform_flatten_png);
-	} else if (id == ART_POSITION_GO) {
-		return PNG_BUNDLE_SINGLE(icon_position_go_png);
 	}
 
 	// Doors and windows

@@ -21,6 +21,8 @@
 #include <wx/artprov.h>
 #include <wx/bmpbndl.h>
 
+#include "icon_svgs.h"
+
 #define ART_CIRCULAR wxART_MAKE_ART_ID(ART_CIRCULAR)
 #define ART_CIRCULAR_1 wxART_MAKE_ART_ID(ART_CIRCULAR_1)
 #define ART_CIRCULAR_2 wxART_MAKE_ART_ID(ART_CIRCULAR_2)
@@ -75,6 +77,14 @@
  * needs a plain wxBitmap for a device context.
  */
 class ArtProvider : public wxArtProvider {
+public:
+	ArtProvider();
+	~ArtProvider() override;
+
+	// Drops every cached bitmap so the monochrome SVG icons are re-tinted with
+	// the current theme text colour. Call after ThemeManager::Apply().
+	static void Refresh();
+
 protected:
 	wxBitmapBundle CreateBitmapBundle(const wxArtID& id, const wxArtClient& client, const wxSize& size) override;
 };

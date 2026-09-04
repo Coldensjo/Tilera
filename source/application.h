@@ -68,6 +68,8 @@ public:
 	~MainFrame();
 
 	void UpdateMenubar();
+	// Re-tints the SVG icon family after a theme change.
+	void RefreshThemeIcons();
 	bool DoQueryClose();
 	bool DoQuerySave(bool doclose = true);
 	bool LoadMap(FileName name);

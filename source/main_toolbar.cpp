@@ -668,3 +668,27 @@ wxAuiPaneInfo& MainToolBar::GetPane(ToolBarID id) {
 			return wxAuiNullPaneInfo;
 	}
 }
+
+void MainToolBar::RefreshIcons() {
+	const wxSize icon_size(16, 16);
+	const struct {
+		int id;
+		wxArtID art;
+	} standard[] = {
+		{ wxID_NEW, wxART_NEW },
+		{ wxID_OPEN, wxART_FILE_OPEN },
+		{ wxID_SAVE, wxART_FILE_SAVE },
+		{ wxID_SAVEAS, wxART_FILE_SAVE_AS },
+		{ wxID_UNDO, wxART_UNDO },
+		{ wxID_REDO, wxART_REDO },
+		{ wxID_CUT, wxART_CUT },
+		{ wxID_COPY, wxART_COPY },
+		{ wxID_PASTE, wxART_PASTE },
+	};
+	for (const auto& tool : standard) {
+		standard_toolbar->SetToolBitmap(tool.id, wxArtProvider::GetBitmapBundle(tool.art, wxART_TOOLBAR, icon_size));
+	}
+	standard_toolbar->Refresh();
+
+	go_button->SetBitmap(wxArtProvider::GetBitmapBundle(ART_POSITION_GO, wxART_TOOLBAR, icon_size));
+}

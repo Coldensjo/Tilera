@@ -35,6 +35,7 @@ set(RME_COMMON_SOURCES
 	source/add_to_tileset_window.cpp
 	source/application.cpp
 	source/artprovider.cpp
+	source/icon_svgs.cpp
 	source/basemap.cpp
 	source/browse_tile_window.cpp
 	source/brush.cpp

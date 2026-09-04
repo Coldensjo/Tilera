@@ -144,6 +144,7 @@
     <ClCompile Include="..\..\source\replace_wall_window.cpp" />
     <ClCompile Include="..\..\source\replace_ground_window.cpp" />
     <ClCompile Include="..\..\source\artprovider.cpp" />
+    <ClCompile Include="..\..\source\icon_svgs.cpp" />
     <ClCompile Include="..\..\source\brush_tables.cpp" />
     <ClCompile Include="..\..\source\container_properties_window.cpp" />
     <ClCompile Include="..\..\source\find_border_window.cpp" />
@@ -164,6 +165,7 @@
     <ClInclude Include="..\..\source\replace_wall_window.h" />
     <ClInclude Include="..\..\source\replace_ground_window.h" />
     <ClInclude Include="..\..\source\artprovider.h" />
+    <ClInclude Include="..\..\source\icon_svgs.h" />
     <ClInclude Include="..\..\source\light_drawer.h" />
     <ClInclude Include="..\..\source\main_toolbar.h" />
     <ClInclude Include="..\..\source\otml.h" />

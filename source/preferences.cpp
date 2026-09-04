@@ -21,6 +21,7 @@
 #include "client_version.h"
 #include "editor.h"
 #include "theme.h"
+#include "application.h"
 #include "gui.h"
 #include "preferences.h"
 
@@ -704,6 +705,9 @@ bool PreferencesWindow::Apply() {
 		return false;
 	}
 	g_settings.setInteger(Config::UI_THEME, static_cast<int>(themeMode));
+	if (g_gui.root) {
+		g_gui.root->RefreshThemeIcons();
+	}
 
 	bool must_restart = false;
 	bool palette_update_needed = false;
