@@ -324,26 +324,27 @@ END_EVENT_TABLE()
 ImportMapWindow::ImportMapWindow(wxWindow* parent, Editor& editor) :
 	wxDialog(parent, wxID_ANY, "Import Map", wxDefaultPosition, wxWindow::FromDIP(wxSize(350, 315), parent)),
 	editor(editor) {
+	const int gap = FromDIP(5);
 	wxBoxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
 	wxStaticBoxSizer* tmpsizer;
 
 	// File
 	tmpsizer = newd wxStaticBoxSizer(new wxStaticBox(this, wxID_ANY, "Map File"), wxHORIZONTAL);
-	file_text_field = newd wxTextCtrl(tmpsizer->GetStaticBox(), wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(230, 23)));
-	tmpsizer->Add(file_text_field, 0, wxALL, 5);
-	wxButton* browse_button = newd wxButton(tmpsizer->GetStaticBox(), MAP_WINDOW_FILE_BUTTON, "Browse...", wxDefaultPosition, FromDIP(wxSize(80, 23)));
-	tmpsizer->Add(browse_button, 0, wxALL, 5);
-	sizer->Add(tmpsizer, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 5);
+	file_text_field = newd wxTextCtrl(tmpsizer->GetStaticBox(), wxID_ANY, "");
+	tmpsizer->Add(file_text_field, wxSizerFlags(1).CenterVertical().Border(wxALL, gap));
+	wxButton* browse_button = newd wxButton(tmpsizer->GetStaticBox(), MAP_WINDOW_FILE_BUTTON, "Browse...");
+	tmpsizer->Add(browse_button, wxSizerFlags(0).CenterVertical().Border(wxALL, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, gap * 2));
 
 	// Import offset
 	tmpsizer = newd wxStaticBoxSizer(new wxStaticBox(this, wxID_ANY, "Import Offset"), wxHORIZONTAL);
-	tmpsizer->Add(newd wxStaticText(tmpsizer->GetStaticBox(), wxID_ANY, "Offset X:"), 0, wxALL | wxEXPAND, 5);
-	x_offset_ctrl = newd wxSpinCtrl(tmpsizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, FromDIP(wxSize(100, 23)), wxSP_ARROW_KEYS, -MAP_MAX_HEIGHT, MAP_MAX_HEIGHT);
-	tmpsizer->Add(x_offset_ctrl, 0, wxALL, 5);
-	tmpsizer->Add(newd wxStaticText(tmpsizer->GetStaticBox(), wxID_ANY, "Offset Y:"), 0, wxALL, 5);
-	y_offset_ctrl = newd wxSpinCtrl(tmpsizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, FromDIP(wxSize(100, 23)), wxSP_ARROW_KEYS, -MAP_MAX_HEIGHT, MAP_MAX_HEIGHT);
-	tmpsizer->Add(y_offset_ctrl, 0, wxALL, 5);
-	sizer->Add(tmpsizer, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
+	tmpsizer->Add(newd wxStaticText(tmpsizer->GetStaticBox(), wxID_ANY, "Offset X:"), wxSizerFlags(0).CenterVertical().Border(wxALL, gap));
+	x_offset_ctrl = newd wxSpinCtrl(tmpsizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, FromDIP(wxSize(100, -1)), wxSP_ARROW_KEYS, -MAP_MAX_HEIGHT, MAP_MAX_HEIGHT);
+	tmpsizer->Add(x_offset_ctrl, wxSizerFlags(1).CenterVertical().Border(wxALL, gap));
+	tmpsizer->Add(newd wxStaticText(tmpsizer->GetStaticBox(), wxID_ANY, "Offset Y:"), wxSizerFlags(0).CenterVertical().Border(wxALL, gap));
+	y_offset_ctrl = newd wxSpinCtrl(tmpsizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, FromDIP(wxSize(100, -1)), wxSP_ARROW_KEYS, -MAP_MAX_HEIGHT, MAP_MAX_HEIGHT);
+	tmpsizer->Add(y_offset_ctrl, wxSizerFlags(1).CenterVertical().Border(wxALL, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, gap));
 
 	// Import options
 	wxArrayString house_choices;
@@ -356,8 +357,8 @@ ImportMapWindow::ImportMapWindow(wxWindow* parent, Editor& editor) :
 	tmpsizer = newd wxStaticBoxSizer(new wxStaticBox(this, wxID_ANY, "House Import Behaviour"), wxVERTICAL);
 	house_options = newd wxChoice(tmpsizer->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, house_choices);
 	house_options->SetSelection(0);
-	tmpsizer->Add(house_options, 0, wxALL | wxEXPAND, 5);
-	sizer->Add(tmpsizer, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
+	tmpsizer->Add(house_options, wxSizerFlags(0).Expand().Border(wxALL, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, gap));
 
 	// Import options
 	wxArrayString spawn_choices;
@@ -368,17 +369,12 @@ ImportMapWindow::ImportMapWindow(wxWindow* parent, Editor& editor) :
 	tmpsizer = newd wxStaticBoxSizer(new wxStaticBox(this, wxID_ANY, "Spawn Import Behaviour"), wxVERTICAL);
 	spawn_options = newd wxChoice(tmpsizer->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, spawn_choices);
 	spawn_options->SetSelection(0);
-	tmpsizer->Add(spawn_options, 0, wxALL | wxEXPAND, 5);
-	sizer->Add(tmpsizer, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
+	tmpsizer->Add(spawn_options, wxSizerFlags(0).Expand().Border(wxALL, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, gap));
 
-	// OK/Cancel buttons
-	wxBoxSizer* buttons = newd wxBoxSizer(wxHORIZONTAL);
-	buttons->Add(newd wxButton(this, wxID_OK, "Ok"), 0, wxALL, 5);
-	buttons->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), 0, wxALL, 5);
-	sizer->Add(buttons, wxSizerFlags(1).Center());
+	sizer->Add(CreateStdDialogButtonSizer(wxOK | wxCANCEL), wxSizerFlags(0).Expand().Border(wxALL, gap * 2));
 
-	SetSizer(sizer);
-	Layout();
+	SetSizerAndFit(sizer);
 	Centre(wxBOTH);
 }
 
@@ -452,6 +448,7 @@ END_EVENT_TABLE()
 ExportMiniMapWindow::ExportMiniMapWindow(wxWindow* parent, Editor& editor) :
 	wxDialog(parent, wxID_ANY, "Export Minimap", wxDefaultPosition, wxWindow::FromDIP(wxSize(400, 300), parent)),
 	editor(editor) {
+	const int gap = FromDIP(5);
 	wxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
 	wxSizer* tmpsizer;
 
@@ -459,25 +456,25 @@ ExportMiniMapWindow::ExportMiniMapWindow(wxWindow* parent, Editor& editor) :
 	error_field = newd wxStaticText(this, wxID_VIEW_DETAILS, "", wxDefaultPosition, wxDefaultSize);
 	error_field->SetForegroundColour(*wxRED);
 	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
-	tmpsizer->Add(error_field, 0, wxALL, 5);
-	sizer->Add(tmpsizer, 0, wxLEFT | wxRIGHT | wxBOTTOM | wxEXPAND, 5);
+	tmpsizer->Add(error_field, wxSizerFlags(0).Border(wxALL, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, gap));
 
 	// Output folder
 	directory_text_field = newd wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize);
 	directory_text_field->Bind(wxEVT_KEY_UP, &ExportMiniMapWindow::OnDirectoryChanged, this);
 	directory_text_field->SetValue(wxString(g_settings.getString(Config::MINIMAP_EXPORT_DIR)));
 	tmpsizer = newd wxStaticBoxSizer(wxHORIZONTAL, this, "Output Folder");
-	tmpsizer->Add(directory_text_field, 1, wxALL, 5);
-	tmpsizer->Add(newd wxButton(this, MAP_WINDOW_FILE_BUTTON, "Browse"), 0, wxALL, 5);
-	sizer->Add(tmpsizer, 0, wxALL | wxEXPAND, 5);
+	tmpsizer->Add(directory_text_field, wxSizerFlags(1).CenterVertical().Border(wxALL, gap));
+	tmpsizer->Add(newd wxButton(this, MAP_WINDOW_FILE_BUTTON, "Browse..."), wxSizerFlags(0).CenterVertical().Border(wxALL, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, gap * 2));
 
 	// File name
 	wxString mapName(editor.map.getName().c_str(), wxConvUTF8);
 	file_name_text_field = newd wxTextCtrl(this, wxID_ANY, mapName.BeforeLast('.'), wxDefaultPosition, wxDefaultSize);
 	file_name_text_field->Bind(wxEVT_KEY_UP, &ExportMiniMapWindow::OnFileNameChanged, this);
 	tmpsizer = newd wxStaticBoxSizer(wxHORIZONTAL, this, "File Name");
-	tmpsizer->Add(file_name_text_field, 1, wxALL, 5);
-	sizer->Add(tmpsizer, 0, wxLEFT | wxRIGHT | wxBOTTOM | wxEXPAND, 5);
+	tmpsizer->Add(file_name_text_field, wxSizerFlags(1).Border(wxALL, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, gap * 2));
 
 	// Export options
 	wxArrayString choices;
@@ -495,18 +492,21 @@ ExportMiniMapWindow::ExportMiniMapWindow(wxWindow* parent, Editor& editor) :
 	floor_number = newd wxSpinCtrl(this, wxID_ANY, i2ws(GROUND_LAYER), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, MAP_MAX_LAYER, GROUND_LAYER);
 	floor_number->Enable(false);
 	floor_options->SetSelection(0);
-	tmpsizer->Add(floor_options, 1, wxALL, 5);
-	tmpsizer->Add(floor_number, 0, wxALL, 5);
-	sizer->Add(tmpsizer, 0, wxLEFT | wxRIGHT | wxBOTTOM | wxEXPAND, 5);
+	tmpsizer->Add(floor_options, wxSizerFlags(1).CenterVertical().Border(wxALL, gap));
+	tmpsizer->Add(floor_number, wxSizerFlags(0).CenterVertical().Border(wxALL, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, gap * 2));
 
-	// OK/Cancel buttons
-	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
-	tmpsizer->Add(ok_button = newd wxButton(this, wxID_OK, "OK"), wxSizerFlags(1).Center());
-	tmpsizer->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), wxSizerFlags(1).Center());
-	sizer->Add(tmpsizer, 0, wxCENTER, 10);
+	// OK/Cancel buttons (ok_button is toggled by CheckValues)
+	wxStdDialogButtonSizer* buttons = CreateStdDialogButtonSizer(wxOK | wxCANCEL);
+	ok_button = buttons->GetAffirmativeButton();
+	sizer->Add(buttons, wxSizerFlags(0).Expand().Border(wxALL, gap * 2));
 
-	SetSizer(sizer);
-	Layout();
+	SetSizerAndFit(sizer);
+	// Fit() collapses the path fields to their tiny best size; keep the intended width.
+	wxSize minimum = GetMinSize();
+	minimum.x = std::max(minimum.x, FromDIP(400));
+	SetMinSize(minimum);
+	SetSize(minimum);
 	Centre(wxBOTH);
 	CheckValues();
 }
@@ -630,6 +630,7 @@ END_EVENT_TABLE()
 ExportTilesetsWindow::ExportTilesetsWindow(wxWindow* parent, Editor& editor) :
 	wxDialog(parent, wxID_ANY, "Export Tilesets", wxDefaultPosition, wxWindow::FromDIP(wxSize(400, 230), parent)),
 	editor(editor) {
+	const int gap = FromDIP(5);
 	wxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
 	wxSizer* tmpsizer;
 
@@ -637,33 +638,36 @@ ExportTilesetsWindow::ExportTilesetsWindow(wxWindow* parent, Editor& editor) :
 	error_field = newd wxStaticText(this, wxID_VIEW_DETAILS, "", wxDefaultPosition, wxDefaultSize);
 	error_field->SetForegroundColour(*wxRED);
 	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
-	tmpsizer->Add(error_field, 0, wxALL, 5);
-	sizer->Add(tmpsizer, 0, wxLEFT | wxRIGHT | wxBOTTOM | wxEXPAND, 5);
+	tmpsizer->Add(error_field, wxSizerFlags(0).Border(wxALL, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, gap));
 
 	// Output folder
 	directory_text_field = newd wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize);
 	directory_text_field->Bind(wxEVT_KEY_UP, &ExportTilesetsWindow::OnDirectoryChanged, this);
 	directory_text_field->SetValue(wxString(g_settings.getString(Config::TILESET_EXPORT_DIR)));
 	tmpsizer = newd wxStaticBoxSizer(wxHORIZONTAL, this, "Output Folder");
-	tmpsizer->Add(directory_text_field, 1, wxALL, 5);
-	tmpsizer->Add(newd wxButton(this, TILESET_FILE_BUTTON, "Browse"), 0, wxALL, 5);
-	sizer->Add(tmpsizer, 0, wxALL | wxEXPAND, 5);
+	tmpsizer->Add(directory_text_field, wxSizerFlags(1).CenterVertical().Border(wxALL, gap));
+	tmpsizer->Add(newd wxButton(this, TILESET_FILE_BUTTON, "Browse..."), wxSizerFlags(0).CenterVertical().Border(wxALL, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, gap * 2));
 
 	// File name
 	file_name_text_field = newd wxTextCtrl(this, wxID_ANY, "tilesets", wxDefaultPosition, wxDefaultSize);
 	file_name_text_field->Bind(wxEVT_KEY_UP, &ExportTilesetsWindow::OnFileNameChanged, this);
 	tmpsizer = newd wxStaticBoxSizer(wxHORIZONTAL, this, "File Name");
-	tmpsizer->Add(file_name_text_field, 1, wxALL, 5);
-	sizer->Add(tmpsizer, 0, wxLEFT | wxRIGHT | wxBOTTOM | wxEXPAND, 5);
+	tmpsizer->Add(file_name_text_field, wxSizerFlags(1).Border(wxALL, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, gap * 2));
 
-	// OK/Cancel buttons
-	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
-	tmpsizer->Add(ok_button = newd wxButton(this, wxID_OK, "OK"), wxSizerFlags(1).Center());
-	tmpsizer->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), wxSizerFlags(1).Center());
-	sizer->Add(tmpsizer, 0, wxCENTER, 10);
+	// OK/Cancel buttons (ok_button is toggled by CheckValues)
+	wxStdDialogButtonSizer* buttons = CreateStdDialogButtonSizer(wxOK | wxCANCEL);
+	ok_button = buttons->GetAffirmativeButton();
+	sizer->Add(buttons, wxSizerFlags(0).Expand().Border(wxALL, gap * 2));
 
-	SetSizer(sizer);
-	Layout();
+	SetSizerAndFit(sizer);
+	// Fit() collapses the path fields to their tiny best size; keep the intended width.
+	wxSize minimum = GetMinSize();
+	minimum.x = std::max(minimum.x, FromDIP(400));
+	SetMinSize(minimum);
+	SetSize(minimum);
 	Centre(wxBOTH);
 	CheckValues();
 }
@@ -1394,6 +1398,7 @@ EditTownsDialog::EditTownsDialog(wxWindow* parent, Editor& editor) :
 	Map& map = editor.map;
 
 	// Create topsizer
+	const int gap = FromDIP(5);
 	wxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
 	wxSizer* tmpsizer;
 
@@ -1407,34 +1412,30 @@ EditTownsDialog::EditTownsDialog(wxWindow* parent, Editor& editor) :
 
 	// Town list
 	town_listbox = newd wxListBox(this, EDIT_TOWNS_LISTBOX, wxDefaultPosition, FromDIP(wxSize(240, 100)));
-	sizer->Add(town_listbox, 1, wxEXPAND | wxTOP | wxLEFT | wxRIGHT, 10);
+	sizer->Add(town_listbox, wxSizerFlags(1).Expand().Border(wxTOP | wxLEFT | wxRIGHT, gap * 2));
 
 	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
-	tmpsizer->Add(newd wxButton(this, EDIT_TOWNS_ADD, "Add"), 0, wxTOP, 5);
-	tmpsizer->Add(remove_button = newd wxButton(this, EDIT_TOWNS_REMOVE, "Remove"), 0, wxRIGHT | wxTOP, 5);
-	sizer->Add(tmpsizer, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
+	tmpsizer->Add(newd wxButton(this, EDIT_TOWNS_ADD, "Add"), wxSizerFlags(0).Border(wxTOP | wxRIGHT, gap));
+	tmpsizer->Add(remove_button = newd wxButton(this, EDIT_TOWNS_REMOVE, "Remove"), wxSizerFlags(0).Border(wxTOP, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT, gap * 2));
 
 	// House options
 	tmpsizer = newd wxStaticBoxSizer(wxHORIZONTAL, this, "Name / ID");
 	name_field = newd wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(190, 20)), 0, wxTextValidator(wxFILTER_ASCII, &town_name));
-	tmpsizer->Add(name_field, 2, wxEXPAND | wxLEFT | wxBOTTOM, 5);
+	tmpsizer->Add(name_field, wxSizerFlags(2).Expand().Border(wxLEFT | wxBOTTOM, gap));
 
 	id_field = newd wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(40, 20)), 0, wxTextValidator(wxFILTER_NUMERIC, &town_id));
 	id_field->Enable(false);
-	tmpsizer->Add(id_field, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5);
-	sizer->Add(tmpsizer, 0, wxEXPAND | wxALL, 10);
+	tmpsizer->Add(id_field, wxSizerFlags(1).Expand().Border(wxLEFT | wxRIGHT | wxBOTTOM, gap));
+	sizer->Add(tmpsizer, wxSizerFlags(0).Expand().Border(wxALL, gap * 2));
 
 	// Temple position
 	temple_position = newd PositionCtrl(this, "Temple Position", 0, 0, 0, map.getWidth(), map.getHeight());
 	select_position_button = newd wxButton(this, EDIT_TOWNS_SELECT_TEMPLE, "Go To");
-	temple_position->Add(select_position_button, 0, wxLEFT | wxRIGHT | wxBOTTOM, 5);
-	sizer->Add(temple_position, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
+	temple_position->Add(select_position_button, wxSizerFlags(0).Border(wxLEFT | wxRIGHT | wxBOTTOM, gap));
+	sizer->Add(temple_position, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT, gap * 2));
 
-	// OK/Cancel buttons
-	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
-	tmpsizer->Add(newd wxButton(this, wxID_OK, "OK"), wxSizerFlags(1).Center());
-	tmpsizer->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), wxSizerFlags(1).Center());
-	sizer->Add(tmpsizer, 0, wxCENTER | wxALL, 10);
+	sizer->Add(CreateStdDialogButtonSizer(wxOK | wxCANCEL), wxSizerFlags(0).Expand().Border(wxALL, gap * 2));
 
 	SetSizerAndFit(sizer);
 	Centre(wxBOTH);

@@ -212,91 +212,84 @@ ReplaceItemsDialog::ReplaceItemsDialog(wxWindow* parent, bool selectionOnly) :
 	replaceIdEnd(0),
 	isRangeSelection(false) {
 	SetSizeHints(wxDefaultSize, wxDefaultSize);
+	const int gap = FromDIP(5);
 
 	wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
 
-	wxFlexGridSizer* list_sizer = new wxFlexGridSizer(0, 2, 0, 0);
-	list_sizer->SetFlexibleDirection(wxBOTH);
-	list_sizer->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
-	list_sizer->SetMinSize(FromDIP(wxSize(-1, 200)));
-
 	list = new ReplaceItemsListBox(this);
 	list->SetMinSize(FromDIP(wxSize(480, 320)));
-
-	list_sizer->Add(list, 0, wxALL | wxEXPAND, 5);
-	sizer->Add(list_sizer, 1, wxALL | wxEXPAND, 5);
+	sizer->Add(list, wxSizerFlags(1).Expand().Border(wxALL, gap * 2));
 
 	wxBoxSizer* items_sizer = new wxBoxSizer(wxHORIZONTAL);
-	items_sizer->SetMinSize(FromDIP(wxSize(-1, 40)));
 
 	replace_button = new ReplaceItemsButton(this);
-	items_sizer->Add(replace_button, 0, wxALL, 5);
+	items_sizer->Add(replace_button, wxSizerFlags(0).CenterVertical().Border(wxALL, gap));
 
 	wxBitmapBundle bitmap = wxArtProvider::GetBitmapBundle(ART_POSITION_GO, wxART_TOOLBAR);
 	arrow_bitmap = new wxStaticBitmap(this, wxID_ANY, bitmap);
-	items_sizer->Add(arrow_bitmap, 0, wxTOP, 15);
+	items_sizer->Add(arrow_bitmap, wxSizerFlags(0).CenterVertical().Border(wxLEFT | wxRIGHT, gap));
 
 	with_button = new ReplaceItemsButton(this);
-	items_sizer->Add(with_button, 0, wxALL, 5);
+	items_sizer->Add(with_button, wxSizerFlags(0).CenterVertical().Border(wxALL, gap));
 
 	secondary_button = new ReplaceItemsButton(this);
-	items_sizer->Add(secondary_button, 0, wxALL, 5);
+	items_sizer->Add(secondary_button, wxSizerFlags(0).CenterVertical().Border(wxALL, gap));
 
-	secondary_above_checkbox = new wxCheckBox(this, wxID_ANY, wxT("Above"));
+	secondary_above_checkbox = new wxCheckBox(this, wxID_ANY, "Above");
 	secondary_above_checkbox->SetValue(false);
-	items_sizer->Add(secondary_above_checkbox, 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+	items_sizer->Add(secondary_above_checkbox, 0, wxALL | wxALIGN_CENTER_VERTICAL, gap);
 
-	items_sizer->Add(0, 0, 1, wxEXPAND, 5);
+	items_sizer->Add(0, 0, 1, wxEXPAND, gap);
 
 	progress = new wxGauge(this, wxID_ANY, 100);
 	progress->SetValue(0);
-	items_sizer->Add(progress, 0, wxALL, 5);
+	items_sizer->Add(progress, wxSizerFlags(0).CenterVertical().Border(wxALL, gap));
 
-	sizer->Add(items_sizer, 1, wxALL | wxEXPAND, 5);
+	sizer->Add(items_sizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT, gap));
 
 	wxBoxSizer* options_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-	selection_only_checkbox = new wxCheckBox(this, wxID_ANY, wxT("Replace within selection"));
+	selection_only_checkbox = new wxCheckBox(this, wxID_ANY, "Replace within selection");
 	selection_only_checkbox->SetValue(selectionOnly);
-	selection_only_checkbox->SetToolTip(wxT("Only replace items on tiles that are part of the current selection"));
-	options_sizer->Add(selection_only_checkbox, 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+	selection_only_checkbox->SetToolTip("Only replace items on tiles that are part of the current selection");
+	options_sizer->Add(selection_only_checkbox, 0, wxALL | wxALIGN_CENTER_VERTICAL, gap);
 
-	sizer->Add(options_sizer, 0, wxLEFT | wxRIGHT | wxEXPAND, 5);
+	sizer->Add(options_sizer, 0, wxLEFT | wxRIGHT | wxEXPAND, gap);
 
 	wxBoxSizer* buttons_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-	add_button = new wxButton(this, wxID_ANY, wxT("Add"));
+	add_button = new wxButton(this, wxID_ANY, "Add");
 	add_button->Enable(false);
-	buttons_sizer->Add(add_button, 0, wxALL, 5);
+	buttons_sizer->Add(add_button, 0, wxALL, gap);
 
-	edit_button = new wxButton(this, wxID_ANY, wxT("Edit"));
+	edit_button = new wxButton(this, wxID_ANY, "Edit");
 	edit_button->Enable(false);
-	buttons_sizer->Add(edit_button, 0, wxALL, 5);
+	buttons_sizer->Add(edit_button, 0, wxALL, gap);
 
-	duplicate_button = new wxButton(this, wxID_ANY, wxT("Duplicate"));
+	duplicate_button = new wxButton(this, wxID_ANY, "Duplicate");
 	duplicate_button->Enable(false);
-	buttons_sizer->Add(duplicate_button, 0, wxALL, 5);
+	buttons_sizer->Add(duplicate_button, 0, wxALL, gap);
 
-	remove_button = new wxButton(this, wxID_ANY, wxT("Remove"));
+	remove_button = new wxButton(this, wxID_ANY, "Remove");
 	remove_button->Enable(false);
-	buttons_sizer->Add(remove_button, 0, wxALL, 5);
+	buttons_sizer->Add(remove_button, 0, wxALL, gap);
 
-	import_button = new wxButton(this, wxID_ANY, wxT("Import"));
-	buttons_sizer->Add(import_button, 0, wxALL, 5);
+	import_button = new wxButton(this, wxID_ANY, "Import");
+	buttons_sizer->Add(import_button, 0, wxALL, gap);
 
-	buttons_sizer->Add(0, 0, 1, wxEXPAND, 5);
+	buttons_sizer->Add(0, 0, 1, wxEXPAND, gap);
 
-	execute_button = new wxButton(this, wxID_ANY, wxT("Execute"));
+	execute_button = new wxButton(this, wxID_ANY, "Execute");
 	execute_button->Enable(false);
-	buttons_sizer->Add(execute_button, 0, wxALL, 5);
+	buttons_sizer->Add(execute_button, 0, wxALL, gap);
 
-	close_button = new wxButton(this, wxID_ANY, wxT("Close"));
-	buttons_sizer->Add(close_button, 0, wxALL, 5);
+	close_button = new wxButton(this, wxID_ANY, "Close");
+	buttons_sizer->Add(close_button, 0, wxALL, gap);
 
-	sizer->Add(buttons_sizer, 0, wxALL | wxEXPAND, 5);
+	sizer->Add(buttons_sizer, 0, wxALL | wxEXPAND, gap);
 
-	SetSizer(sizer);
-	Layout();
+	// Size to content: the button row and the list decide the minimum.
+	SetSizerAndFit(sizer);
 	Centre(wxBOTH);
 
 	// Connect Events
@@ -348,41 +341,37 @@ void ReplaceItemsDialog::OnListSelected(wxCommandEvent& WXUNUSED(event)) {
 }
 
 bool ReplaceItemsDialog::GetReplaceItemRange(uint16_t& startId, uint16_t& endId) {
-	wxDialog rangeDialog(this, wxID_ANY, "Select Item Range", wxDefaultPosition, FromDIP(wxSize(300, 225)), wxDEFAULT_DIALOG_STYLE);
-	
+	wxDialog rangeDialog(this, wxID_ANY, "Select Item Range", wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE);
+	const int gap = rangeDialog.FromDIP(5);
+
 	wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
-	
+
 	wxStaticBoxSizer* rangeSizer = new wxStaticBoxSizer(new wxStaticBox(&rangeDialog, wxID_ANY, "Item ID Range"), wxVERTICAL);
-	
+
 	wxBoxSizer* fromSizer = new wxBoxSizer(wxHORIZONTAL);
-	fromSizer->Add(new wxStaticText(&rangeDialog, wxID_ANY, "From:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+	fromSizer->Add(new wxStaticText(&rangeDialog, wxID_ANY, "From:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, gap);
 	wxSpinCtrl* fromSpin = new wxSpinCtrl(&rangeDialog, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 100, g_items.getMaxID(), 100);
-	fromSizer->Add(fromSpin, 1, wxALL | wxEXPAND, 5);
-	rangeSizer->Add(fromSizer, 0, wxALL | wxEXPAND, 5);
-	
+	fromSizer->Add(fromSpin, 1, wxALL | wxEXPAND, gap);
+	rangeSizer->Add(fromSizer, 0, wxALL | wxEXPAND, gap);
+
 	wxBoxSizer* toSizer = new wxBoxSizer(wxHORIZONTAL);
-	toSizer->Add(new wxStaticText(&rangeDialog, wxID_ANY, "To (optional):"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
-	wxSpinCtrl* toSpin = new wxSpinCtrl(&rangeDialog, wxID_ANY, wxT("0"), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, g_items.getMaxID(), 0);
-	toSizer->Add(toSpin, 1, wxALL | wxEXPAND, 5);
-	rangeSizer->Add(toSizer, 0, wxALL | wxEXPAND, 5);
-	
+	toSizer->Add(new wxStaticText(&rangeDialog, wxID_ANY, "To (optional):"), 0, wxALL | wxALIGN_CENTER_VERTICAL, gap);
+	wxSpinCtrl* toSpin = new wxSpinCtrl(&rangeDialog, wxID_ANY, "0", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, g_items.getMaxID(), 0);
+	toSizer->Add(toSpin, 1, wxALL | wxEXPAND, gap);
+	rangeSizer->Add(toSizer, 0, wxALL | wxEXPAND, gap);
+
 	wxStaticText* hintText = new wxStaticText(&rangeDialog, wxID_ANY, "Leave 'To' empty or set to 0 for single item");
 	hintText->SetForegroundColour(ThemeManager::Get().GetPalette().mutedText);
-	rangeSizer->Add(hintText, 0, wxALL, 5);
-	
-	mainSizer->Add(rangeSizer, 1, wxALL | wxEXPAND, 5);
-	
-	wxBoxSizer* buttonSizer = new wxBoxSizer(wxHORIZONTAL);
-	wxButton* okBtn = new wxButton(&rangeDialog, wxID_OK, "OK");
-	wxButton* cancelBtn = new wxButton(&rangeDialog, wxID_CANCEL, "Cancel");
-	buttonSizer->Add(okBtn, 0, wxALL, 5);
-	buttonSizer->Add(cancelBtn, 0, wxALL, 5);
-	mainSizer->Add(buttonSizer, 0, wxALL | wxALIGN_CENTER, 5);
-	
-	rangeDialog.SetSizer(mainSizer);
-	rangeDialog.Layout();
+	rangeSizer->Add(hintText, 0, wxALL, gap);
+
+	mainSizer->Add(rangeSizer, 1, wxALL | wxEXPAND, gap);
+
+	mainSizer->Add(rangeDialog.CreateStdDialogButtonSizer(wxOK | wxCANCEL), wxSizerFlags(0).Expand().Border(wxALL, gap * 2));
+
+	rangeDialog.SetSizerAndFit(mainSizer);
+	rangeDialog.SetMinSize(rangeDialog.FromDIP(wxSize(300, -1)));
 	rangeDialog.Centre(wxBOTH);
-	
+
 	if (rangeDialog.ShowModal() == wxID_OK) {
 		startId = static_cast<uint16_t>(fromSpin->GetValue());
 		uint16_t toValue = static_cast<uint16_t>(toSpin->GetValue());
