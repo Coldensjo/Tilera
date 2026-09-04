@@ -8,6 +8,9 @@
 #include <wx/colour.h>
 
 class wxWindow;
+class wxAuiManager;
+class wxAuiToolBar;
+class wxAuiNotebook;
 
 enum class ThemeMode {
 	Dark = 0,
@@ -25,6 +28,7 @@ struct ThemePalette {
 	wxColour selection;
 	wxColour hover;
 	wxColour disabledText;
+	wxColour accent;
 };
 
 class ThemeManager {
@@ -38,6 +42,14 @@ public:
 	ThemeMode GetMode() const;
 	const ThemePalette& GetPalette() const;
 	bool Apply(ThemeMode mode, wxWindow* root);
+
+	// Flat chrome (Config::UI_FLAT_CHROME) swaps the stock AUI art for the
+	// palette-driven flat variants in theme_art.h. Call these once when a
+	// manager, toolbar or notebook is created; Apply() restyles existing ones.
+	bool IsFlatChrome() const;
+	void StyleAuiManager(wxAuiManager* manager) const;
+	void StyleToolBar(wxAuiToolBar* toolbar) const;
+	void StyleNotebook(wxAuiNotebook* notebook) const;
 
 private:
 	ThemeManager();

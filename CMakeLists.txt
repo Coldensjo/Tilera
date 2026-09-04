@@ -134,6 +134,7 @@ set(RME_COMMON_SOURCES
 	source/terraform.cpp
 	source/terraform_brush.cpp
 	source/theme.cpp
+	source/theme_art.cpp
 	source/tile.cpp
 	source/tileset.cpp
 	source/tileset_edit.cpp

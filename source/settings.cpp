@@ -379,6 +379,7 @@ void Settings::IO(IOMode mode) {
 	String(PALETTE_ITEM_STYLE, "listbox");
 	String(PALETTE_RAW_STYLE, "listbox");
 	Int(UI_THEME, 0);
+	Int(UI_FLAT_CHROME, 1);
 	Int(SHOW_PALETTE_TOOLS, 1);
 	Int(SHOW_PALETTE_BRUSH_SIZE, 1);
 

@@ -23,6 +23,7 @@
 #include "brush.h"
 #include "terraform_brush.h"
 #include "artprovider.h"
+#include "theme.h"
 #include <wx/artprov.h>
 
 const wxString MainToolBar::STANDARD_BAR_NAME = "standard_toolbar";
@@ -43,6 +44,7 @@ MainToolBar::MainToolBar(wxWindow* parent, wxAuiManager* manager) {
 	wxBitmapBundle paste_bitmap = wxArtProvider::GetBitmapBundle(wxART_PASTE, wxART_TOOLBAR, icon_size);
 
 	standard_toolbar = newd wxAuiToolBar(parent, TOOLBAR_STANDARD, wxDefaultPosition, wxDefaultSize, wxAUI_TB_DEFAULT_STYLE);
+	ThemeManager::Get().StyleToolBar(standard_toolbar);
 	standard_toolbar->SetToolBitmapSize(icon_size);
 	standard_toolbar->AddTool(wxID_NEW, wxEmptyString, new_bitmap, wxNullBitmap, wxITEM_NORMAL, "New Map", wxEmptyString, NULL);
 	standard_toolbar->AddTool(wxID_OPEN, wxEmptyString, open_bitmap, wxNullBitmap, wxITEM_NORMAL, "Open Map", wxEmptyString, NULL);
@@ -78,6 +80,7 @@ MainToolBar::MainToolBar(wxWindow* parent, wxAuiManager* manager) {
 	wxBitmapBundle flatten_bitmap = wxArtProvider::GetBitmapBundle(ART_TERRAFORM_FLATTEN, wxART_TOOLBAR, icon_size);
 
 	brushes_toolbar = newd wxAuiToolBar(parent, TOOLBAR_BRUSHES, wxDefaultPosition, wxDefaultSize, wxAUI_TB_DEFAULT_STYLE);
+	ThemeManager::Get().StyleToolBar(brushes_toolbar);
 	brushes_toolbar->SetToolBitmapSize(icon_size);
 	brushes_toolbar->AddTool(PALETTE_TERRAIN_OPTIONAL_BORDER_TOOL, wxEmptyString, border_bitmap, wxNullBitmap, wxITEM_CHECK, "Border", wxEmptyString, NULL);
 	brushes_toolbar->AddTool(PALETTE_TERRAIN_ERASER, wxEmptyString, eraser_bitmap, wxNullBitmap, wxITEM_CHECK, "Eraser", wxEmptyString, NULL);
@@ -107,6 +110,7 @@ MainToolBar::MainToolBar(wxWindow* parent, wxAuiManager* manager) {
 	wxBitmapBundle go_bitmap = wxArtProvider::GetBitmapBundle(ART_POSITION_GO, wxART_TOOLBAR, icon_size);
 
 	position_toolbar = newd wxAuiToolBar(parent, TOOLBAR_POSITION, wxDefaultPosition, wxDefaultSize, wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_HORZ_TEXT);
+	ThemeManager::Get().StyleToolBar(position_toolbar);
 	position_toolbar->SetToolBitmapSize(icon_size);
 	x_control = newd NumberTextCtrl(position_toolbar, wxID_ANY, 0, 0, MAP_MAX_WIDTH, wxTE_PROCESS_ENTER, "X", wxDefaultPosition, FROM_DIP(parent, wxSize(60, 20)));
 	x_control->SetToolTip("X Coordinate");
@@ -134,6 +138,7 @@ MainToolBar::MainToolBar(wxWindow* parent, wxAuiManager* manager) {
 	wxBitmapBundle size7_bitmap = wxArtProvider::GetBitmapBundle(ART_RECTANGULAR_7, wxART_TOOLBAR, icon_size);
 
 	sizes_toolbar = newd wxAuiToolBar(parent, TOOLBAR_SIZES, wxDefaultPosition, wxDefaultSize, wxAUI_TB_DEFAULT_STYLE);
+	ThemeManager::Get().StyleToolBar(sizes_toolbar);
 	sizes_toolbar->SetToolBitmapSize(icon_size);
 	sizes_toolbar->AddTool(TOOLBAR_SIZES_RECTANGULAR, wxEmptyString, rectangular_bitmap, wxNullBitmap, wxITEM_CHECK, "Rectangular Brush", wxEmptyString, NULL);
 	sizes_toolbar->AddTool(TOOLBAR_SIZES_CIRCULAR, wxEmptyString, circular_bitmap, wxNullBitmap, wxITEM_CHECK, "Circular Brush", wxEmptyString, NULL);

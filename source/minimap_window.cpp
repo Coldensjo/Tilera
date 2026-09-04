@@ -26,6 +26,7 @@
 #include "live_socket.h"
 #include "map_display.h"
 #include "minimap_window.h"
+#include "theme.h"
 #include <algorithm>
 #include <wx/aui/dockart.h>
 #include <wx/aui/framemanager.h>
@@ -602,6 +603,14 @@ void MinimapCaptionBar::OnPaint(wxPaintEvent& event) {
 	const wxSize size = GetClientSize();
 	wxRect rect(0, 0, size.GetWidth(), size.GetHeight());
 	dc.GradientFillLinear(rect, top_colour, bottom_colour, wxSOUTH);
+
+	// Match FlatDockArt: the active pane carries a thin accent line.
+	if (pane_active && ThemeManager::Get().IsFlatChrome()) {
+		const int accent = FromDIP(2);
+		dc.SetPen(*wxTRANSPARENT_PEN);
+		dc.SetBrush(wxBrush(ThemeManager::Get().GetPalette().accent));
+		dc.DrawRectangle(rect.x, rect.y + rect.height - accent, rect.width, accent);
+	}
 }
 
 BEGIN_EVENT_TABLE(MinimapWindow, wxPanel)

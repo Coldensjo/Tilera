@@ -255,6 +255,9 @@
     <ClInclude Include="..\..\source\theme.h">
       <Filter>common</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\theme_art.h">
+      <Filter>common</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\source\spawn.h">
       <Filter>objects</Filter>
     </ClInclude>
@@ -492,6 +495,9 @@
       <Filter>common</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\theme.cpp">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\theme_art.cpp">
       <Filter>common</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\dcbutton.cpp">

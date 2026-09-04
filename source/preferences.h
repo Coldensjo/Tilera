@@ -101,6 +101,7 @@ protected:
 
 	// Interface
 	wxChoice* theme_choice = nullptr;
+	wxCheckBox* flat_chrome_chkbox = nullptr;
 	wxChoice* terrain_palette_style_choice = nullptr;
 	wxChoice* doodad_palette_style_choice = nullptr;
 	wxChoice* item_palette_style_choice = nullptr;

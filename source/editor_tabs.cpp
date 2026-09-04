@@ -21,6 +21,7 @@
 #include "editor.h"
 #include "map_tab.h"
 #include "gui.h"
+#include "theme.h"
 #include "live_tab.h"
 #include "live_client.h"
 
@@ -41,6 +42,7 @@ MapTabbook::MapTabbook(wxWindow* parent, wxWindowID id) :
 	wxPanel(parent, id, wxDefaultPosition, wxDefaultSize) {
 	wxSizer* wxz = newd wxBoxSizer(wxHORIZONTAL);
 	notebook = newd wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize);
+	ThemeManager::Get().StyleNotebook(notebook);
 	wxz->Add(notebook, 1, wxEXPAND);
 	SetSizerAndFit(wxz);
 }

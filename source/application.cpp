@@ -511,6 +511,7 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& si
 
 	// Le sizer
 	g_gui.aui_manager = newd wxAuiManager(this);
+	ThemeManager::Get().StyleAuiManager(g_gui.aui_manager);
 	g_gui.tabbook = newd MapTabbook(this, wxID_ANY);
 
 	tool_bar = newd MainToolBar(this, g_gui.aui_manager);

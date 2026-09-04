@@ -482,6 +482,11 @@ wxNotebookPage* PreferencesWindow::CreateUIPage() {
 		theme_choice->SetSelection(static_cast<int>(ThemeManager::Get().GetMode()));
 		AddFormLabel(grid, panel, "Theme:");
 		grid->Add(theme_choice, 0, wxEXPAND);
+		flat_chrome_chkbox = newd wxCheckBox(panel, wxID_ANY, "Flat panel chrome");
+		flat_chrome_chkbox->SetToolTip("Draw docked panels, toolbars and tabs with flat borders and solid captions instead of the classic bevelled look.");
+		flat_chrome_chkbox->SetValue(g_settings.getBoolean(Config::UI_FLAT_CHROME));
+		AddFormLabel(grid, panel, "");
+		grid->Add(flat_chrome_chkbox, 0, wxEXPAND);
 		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
 	}
 
@@ -692,6 +697,7 @@ void PreferencesWindow::OnClickApply(wxCommandEvent& WXUNUSED(event)) {
 }
 
 bool PreferencesWindow::Apply() {
+	g_settings.setInteger(Config::UI_FLAT_CHROME, flat_chrome_chkbox->GetValue() ? 1 : 0);
 	const ThemeMode themeMode = ThemeManager::ModeFromChoice(theme_choice->GetSelection());
 	if (!ThemeManager::Get().Apply(themeMode, g_gui.root)) {
 		wxMessageBox("The selected theme could not be applied.", "Theme", wxOK | wxICON_ERROR, this);
