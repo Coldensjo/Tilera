@@ -54,7 +54,8 @@ FindItemDialog::FindItemDialog(wxWindow* parent, const wxString& title, bool onl
 	result_brush(nullptr),
 	result_id(0),
 	only_pickupables(onlyPickupables) {
-	this->SetSizeHints(wxDefaultSize, wxDefaultSize);
+	SetSizeHints(wxDefaultSize, wxDefaultSize);
+	const int gap = FromDIP(5);
 
 	wxBoxSizer* box_sizer = newd wxBoxSizer(wxHORIZONTAL);
 
@@ -70,32 +71,29 @@ FindItemDialog::FindItemDialog(wxWindow* parent, const wxString& title, bool onl
 	int radio_boxNChoices = sizeof(radio_boxChoices) / sizeof(wxString);
 	options_radio_box = newd wxRadioBox(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, radio_boxNChoices, radio_boxChoices, 1, wxRA_SPECIFY_COLS);
 	options_radio_box->SetSelection(SearchMode::ServerIDs);
-	options_box_sizer->Add(options_radio_box, 0, wxALL | wxEXPAND, 5);
+	options_box_sizer->Add(options_radio_box, 0, wxALL | wxEXPAND, gap);
 
 	wxStaticBoxSizer* server_id_box_sizer = newd wxStaticBoxSizer(newd wxStaticBox(this, wxID_ANY, "Server ID"), wxVERTICAL);
 	server_id_spin = newd wxSpinCtrl(server_id_box_sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 100, g_items.getMaxID(), 100);
-	server_id_box_sizer->Add(server_id_spin, 0, wxALL | wxEXPAND, 5);
+	server_id_box_sizer->Add(server_id_spin, 0, wxALL | wxEXPAND, gap);
 
 	invalid_item = newd wxCheckBox(server_id_box_sizer->GetStaticBox(), wxID_ANY, "Force select", wxDefaultPosition, wxDefaultSize, 0);
 	invalid_item->SetToolTip("Force choose item ID that does not appear on the list.");
-	server_id_box_sizer->Add(invalid_item, 1, wxALL | wxEXPAND, 5);
+	server_id_box_sizer->Add(invalid_item, 1, wxALL | wxEXPAND, gap);
 
-	options_box_sizer->Add(server_id_box_sizer, 1, wxALL | wxEXPAND, 5);
+	options_box_sizer->Add(server_id_box_sizer, 1, wxALL | wxEXPAND, gap);
 
 	wxStaticBoxSizer* client_id_box_sizer = newd wxStaticBoxSizer(newd wxStaticBox(this, wxID_ANY, "Client ID"), wxVERTICAL);
 	client_id_spin = newd wxSpinCtrl(client_id_box_sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 100, g_gui.gfx.getItemSpriteMaxID(), 100);
 	client_id_spin->Enable(false);
-	client_id_box_sizer->Add(client_id_spin, 0, wxALL | wxEXPAND, 5);
-	options_box_sizer->Add(client_id_box_sizer, 1, wxALL | wxEXPAND, 5);
+	client_id_box_sizer->Add(client_id_spin, 0, wxALL | wxEXPAND, gap);
+	options_box_sizer->Add(client_id_box_sizer, 1, wxALL | wxEXPAND, gap);
 
 	wxStaticBoxSizer* name_box_sizer = newd wxStaticBoxSizer(newd wxStaticBox(this, wxID_ANY, "Name"), wxVERTICAL);
 	name_text_input = newd wxTextCtrl(name_box_sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
 	name_text_input->Enable(false);
-	name_box_sizer->Add(name_text_input, 0, wxALL | wxEXPAND, 5);
-	options_box_sizer->Add(name_box_sizer, 1, wxALL | wxEXPAND, 5);
-
-	// spacer
-	options_box_sizer->Add(0, 0, 4, wxALL | wxEXPAND, 5);
+	name_box_sizer->Add(name_text_input, 0, wxALL | wxEXPAND, gap);
+	options_box_sizer->Add(name_box_sizer, 1, wxALL | wxEXPAND, gap);
 
 	buttons_box_sizer = newd wxStdDialogButtonSizer();
 	ok_button = newd wxButton(this, wxID_OK);
@@ -104,9 +102,8 @@ FindItemDialog::FindItemDialog(wxWindow* parent, const wxString& title, bool onl
 	buttons_box_sizer->AddButton(cancel_button);
 	buttons_box_sizer->Realize();
 	ok_button->SetDefault();
-	options_box_sizer->Add(buttons_box_sizer, 0, wxALIGN_CENTER | wxALL, 5);
 
-	box_sizer->Add(options_box_sizer, 1, wxALL, 5);
+	box_sizer->Add(options_box_sizer, 1, wxALL, gap);
 
 	// --------------- Types ---------------
 
@@ -131,45 +128,45 @@ FindItemDialog::FindItemDialog(wxWindow* parent, const wxString& title, bool onl
 	types_radio_box = newd wxRadioBox(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, types_choices_count, types_choices, 1, wxRA_SPECIFY_COLS);
 	types_radio_box->SetSelection(0);
 	types_radio_box->Enable(false);
-	type_box_sizer->Add(types_radio_box, 0, wxALL | wxEXPAND, 5);
+	type_box_sizer->Add(types_radio_box, 0, wxALL | wxEXPAND, gap);
 
-	type_column_sizer->Add(type_box_sizer, 0, wxALL | wxEXPAND, 5);
+	type_column_sizer->Add(type_box_sizer, 0, wxALL | wxEXPAND, gap);
 
 	// --------------- Equipment ---------------
 
 	wxStaticBoxSizer* equipment_box_sizer = newd wxStaticBoxSizer(newd wxStaticBox(this, wxID_ANY, "Equipment"), wxVERTICAL);
 	wxStaticBox* equipment_box = equipment_box_sizer->GetStaticBox();
 
-	equipment_box_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Weapon type"), 0, wxLEFT | wxRIGHT | wxTOP, 5);
+	equipment_box_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Weapon type"), 0, wxLEFT | wxRIGHT | wxTOP, gap);
 	weapon_type_choice = newd wxChoice(equipment_box, wxID_ANY, wxDefaultPosition, wxDefaultSize, sizeof(WEAPON_CHOICES) / sizeof(wxString), WEAPON_CHOICES);
 	weapon_type_choice->SetSelection(0);
 	weapon_type_choice->SetToolTip("Match items declaring this weapontype in items.xml.");
-	equipment_box_sizer->Add(weapon_type_choice, 0, wxALL | wxEXPAND, 5);
+	equipment_box_sizer->Add(weapon_type_choice, 0, wxALL | wxEXPAND, gap);
 
-	equipment_box_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Slot"), 0, wxLEFT | wxRIGHT | wxTOP, 5);
+	equipment_box_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Slot"), 0, wxLEFT | wxRIGHT | wxTOP, gap);
 	slot_choice = newd wxChoice(equipment_box, wxID_ANY, wxDefaultPosition, wxDefaultSize, sizeof(SLOT_CHOICES) / sizeof(wxString), SLOT_CHOICES);
 	slot_choice->SetSelection(0);
 	slot_choice->SetToolTip("Match items equippable in this slot.");
-	equipment_box_sizer->Add(slot_choice, 0, wxALL | wxEXPAND, 5);
+	equipment_box_sizer->Add(slot_choice, 0, wxALL | wxEXPAND, gap);
 
 	wxFlexGridSizer* stats_sizer = newd wxFlexGridSizer(3, 2, 0, 0);
 	stats_sizer->AddGrowableCol(1);
 
-	stats_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Min attack"), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
+	stats_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Min attack"), 0, wxALIGN_CENTER_VERTICAL | wxALL, gap);
 	min_attack_spin = newd wxSpinCtrl(equipment_box, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, MAX_STAT_FILTER, 0);
-	stats_sizer->Add(min_attack_spin, 0, wxALL | wxEXPAND, 5);
+	stats_sizer->Add(min_attack_spin, 0, wxALL | wxEXPAND, gap);
 
-	stats_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Min defense"), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
+	stats_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Min defense"), 0, wxALIGN_CENTER_VERTICAL | wxALL, gap);
 	min_defense_spin = newd wxSpinCtrl(equipment_box, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, MAX_STAT_FILTER, 0);
-	stats_sizer->Add(min_defense_spin, 0, wxALL | wxEXPAND, 5);
+	stats_sizer->Add(min_defense_spin, 0, wxALL | wxEXPAND, gap);
 
-	stats_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Min armor"), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
+	stats_sizer->Add(newd wxStaticText(equipment_box, wxID_ANY, "Min armor"), 0, wxALIGN_CENTER_VERTICAL | wxALL, gap);
 	min_armor_spin = newd wxSpinCtrl(equipment_box, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, MAX_STAT_FILTER, 0);
-	stats_sizer->Add(min_armor_spin, 0, wxALL | wxEXPAND, 5);
+	stats_sizer->Add(min_armor_spin, 0, wxALL | wxEXPAND, gap);
 
 	equipment_box_sizer->Add(stats_sizer, 0, wxEXPAND);
 
-	type_column_sizer->Add(equipment_box_sizer, 1, wxALL | wxEXPAND, 5);
+	type_column_sizer->Add(equipment_box_sizer, 1, wxALL | wxEXPAND, gap);
 
 	box_sizer->Add(type_column_sizer, 1, wxEXPAND);
 
@@ -178,140 +175,111 @@ FindItemDialog::FindItemDialog(wxWindow* parent, const wxString& title, bool onl
 	wxStaticBoxSizer* properties_box_sizer = newd wxStaticBoxSizer(newd wxStaticBox(this, wxID_ANY, "Properties"), wxVERTICAL);
 
 	unpassable = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Unpassable", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(unpassable, 0, wxALL, 5);
+	properties_box_sizer->Add(unpassable, 0, wxALL, gap);
 
 	unmovable = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Unmovable", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(unmovable, 0, wxALL, 5);
+	properties_box_sizer->Add(unmovable, 0, wxALL, gap);
 
 	block_missiles = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Block Missiles", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(block_missiles, 0, wxALL, 5);
+	properties_box_sizer->Add(block_missiles, 0, wxALL, gap);
 
 	block_pathfinder = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Block Pathfinder", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(block_pathfinder, 0, wxALL, 5);
+	properties_box_sizer->Add(block_pathfinder, 0, wxALL, gap);
 
 	readable = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Readable", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(readable, 0, wxALL, 5);
+	properties_box_sizer->Add(readable, 0, wxALL, gap);
 
 	writeable = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Writeable", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(writeable, 0, wxALL, 5);
+	properties_box_sizer->Add(writeable, 0, wxALL, gap);
 
 	pickupable = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Pickupable", wxDefaultPosition, wxDefaultSize, 0);
 	pickupable->SetValue(only_pickupables);
 	pickupable->Enable(!only_pickupables);
-	properties_box_sizer->Add(pickupable, 0, wxALL, 5);
+	properties_box_sizer->Add(pickupable, 0, wxALL, gap);
 
 	stackable = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Stackable", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(stackable, 0, wxALL, 5);
+	properties_box_sizer->Add(stackable, 0, wxALL, gap);
 
 	rotatable = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Rotatable", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(rotatable, 0, wxALL, 5);
+	properties_box_sizer->Add(rotatable, 0, wxALL, gap);
 
 	hangable = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Hangable", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(hangable, 0, wxALL, 5);
+	properties_box_sizer->Add(hangable, 0, wxALL, gap);
 
 	hook_east = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Hook East", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(hook_east, 0, wxALL, 5);
+	properties_box_sizer->Add(hook_east, 0, wxALL, gap);
 
 	hook_south = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Hook South", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(hook_south, 0, wxALL, 5);
+	properties_box_sizer->Add(hook_south, 0, wxALL, gap);
 
 	has_elevation = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Has Elevation", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(has_elevation, 0, wxALL, 5);
+	properties_box_sizer->Add(has_elevation, 0, wxALL, gap);
 
 	ignore_look = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Ignore Look", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(ignore_look, 0, wxALL, 5);
+	properties_box_sizer->Add(ignore_look, 0, wxALL, gap);
 
 	floor_change = newd wxCheckBox(properties_box_sizer->GetStaticBox(), wxID_ANY, "Floor Change", wxDefaultPosition, wxDefaultSize, 0);
-	properties_box_sizer->Add(floor_change, 0, wxALL, 5);
+	properties_box_sizer->Add(floor_change, 0, wxALL, gap);
 
-	box_sizer->Add(properties_box_sizer, 1, wxALL | wxEXPAND, 5);
+	box_sizer->Add(properties_box_sizer, 1, wxALL | wxEXPAND, gap);
 
 	// --------------- Items list ---------------
 
 	wxStaticBoxSizer* result_box_sizer = newd wxStaticBoxSizer(newd wxStaticBox(this, wxID_ANY, "Result"), wxVERTICAL);
 	items_list = newd FindDialogListBox(result_box_sizer->GetStaticBox(), wxID_ANY);
 	items_list->SetMinSize(FromDIP(wxSize(230, 512)));
-	result_box_sizer->Add(items_list, 0, wxALL, 5);
-	box_sizer->Add(result_box_sizer, 1, wxALL | wxEXPAND, 5);
+	result_box_sizer->Add(items_list, wxSizerFlags(1).Expand().Border(wxALL, gap));
+	box_sizer->Add(result_box_sizer, 1, wxALL | wxEXPAND, gap);
 
-	this->SetSizer(box_sizer);
-	this->Layout();
-	this->Centre(wxBOTH);
-	this->EnableProperties(false);
-	this->EnableEquipment(false);
-	this->RefreshContentsInternal();
+	// Standard placement: the OK / Cancel row sits under the whole dialog.
+	wxBoxSizer* root_sizer = newd wxBoxSizer(wxVERTICAL);
+	root_sizer->Add(box_sizer, wxSizerFlags(1).Expand());
+	root_sizer->Add(buttons_box_sizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxBOTTOM, gap * 2));
+
+	SetSizer(root_sizer);
+	Layout();
+	Centre(wxBOTH);
+	EnableProperties(false);
+	EnableEquipment(false);
+	RefreshContentsInternal();
 
 	// Connect Events
-	options_radio_box->Connect(wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler(FindItemDialog::OnOptionChange), NULL, this);
-	server_id_spin->Connect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnServerIdChange), NULL, this);
-	server_id_spin->Connect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(FindItemDialog::OnServerIdChange), NULL, this);
-	client_id_spin->Connect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnClientIdChange), NULL, this);
-	client_id_spin->Connect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(FindItemDialog::OnClientIdChange), NULL, this);
-	name_text_input->Connect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(FindItemDialog::OnText), NULL, this);
-	items_list->Connect(wxEVT_COMMAND_LISTBOX_SELECTED, wxCommandEventHandler(FindItemDialog::OnListItemSelected), NULL, this);
-	items_list->Connect(wxEVT_COMMAND_LISTBOX_DOUBLECLICKED, wxCommandEventHandler(FindItemDialog::OnListItemDoubleClick), NULL, this);
+	options_radio_box->Bind(wxEVT_COMMAND_RADIOBOX_SELECTED, &FindItemDialog::OnOptionChange, this);
+	server_id_spin->Bind(wxEVT_COMMAND_SPINCTRL_UPDATED, &FindItemDialog::OnServerIdChange, this);
+	server_id_spin->Bind(wxEVT_COMMAND_TEXT_UPDATED, &FindItemDialog::OnServerIdChange, this);
+	client_id_spin->Bind(wxEVT_COMMAND_SPINCTRL_UPDATED, &FindItemDialog::OnClientIdChange, this);
+	client_id_spin->Bind(wxEVT_COMMAND_TEXT_UPDATED, &FindItemDialog::OnClientIdChange, this);
+	name_text_input->Bind(wxEVT_COMMAND_TEXT_UPDATED, &FindItemDialog::OnText, this);
+	items_list->Bind(wxEVT_COMMAND_LISTBOX_SELECTED, &FindItemDialog::OnListItemSelected, this);
+	items_list->Bind(wxEVT_COMMAND_LISTBOX_DOUBLECLICKED, &FindItemDialog::OnListItemDoubleClick, this);
 
-	types_radio_box->Connect(wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler(FindItemDialog::OnTypeChange), NULL, this);
+	types_radio_box->Bind(wxEVT_COMMAND_RADIOBOX_SELECTED, &FindItemDialog::OnTypeChange, this);
 
-	unpassable->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	unmovable->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	block_missiles->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	block_pathfinder->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	readable->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	writeable->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	pickupable->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	stackable->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	rotatable->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	hangable->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	hook_east->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	hook_south->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	has_elevation->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	ignore_look->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	floor_change->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	invalid_item->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
+	unpassable->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	unmovable->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	block_missiles->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	block_pathfinder->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	readable->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	writeable->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	pickupable->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	stackable->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	rotatable->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	hangable->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	hook_east->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	hook_south->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	has_elevation->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	ignore_look->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	floor_change->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
+	invalid_item->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &FindItemDialog::OnPropertyChange, this);
 
-	weapon_type_choice->Connect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
-	slot_choice->Connect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
-	min_attack_spin->Connect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
-	min_defense_spin->Connect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
-	min_armor_spin->Connect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
+	weapon_type_choice->Bind(wxEVT_COMMAND_CHOICE_SELECTED, &FindItemDialog::OnEquipmentChange, this);
+	slot_choice->Bind(wxEVT_COMMAND_CHOICE_SELECTED, &FindItemDialog::OnEquipmentChange, this);
+	min_attack_spin->Bind(wxEVT_COMMAND_SPINCTRL_UPDATED, &FindItemDialog::OnEquipmentChange, this);
+	min_defense_spin->Bind(wxEVT_COMMAND_SPINCTRL_UPDATED, &FindItemDialog::OnEquipmentChange, this);
+	min_armor_spin->Bind(wxEVT_COMMAND_SPINCTRL_UPDATED, &FindItemDialog::OnEquipmentChange, this);
 }
 
-FindItemDialog::~FindItemDialog() {
-	// Disconnect Events
-	options_radio_box->Disconnect(wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler(FindItemDialog::OnOptionChange), NULL, this);
-	server_id_spin->Disconnect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnServerIdChange), NULL, this);
-	server_id_spin->Disconnect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(FindItemDialog::OnServerIdChange), NULL, this);
-	client_id_spin->Disconnect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnClientIdChange), NULL, this);
-	client_id_spin->Disconnect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(FindItemDialog::OnClientIdChange), NULL, this);
-	name_text_input->Disconnect(wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler(FindItemDialog::OnText), NULL, this);
-	items_list->Disconnect(wxEVT_COMMAND_LISTBOX_SELECTED, wxCommandEventHandler(FindItemDialog::OnListItemSelected), NULL, this);
-	items_list->Disconnect(wxEVT_COMMAND_LISTBOX_DOUBLECLICKED, wxCommandEventHandler(FindItemDialog::OnListItemDoubleClick), NULL, this);
-
-	types_radio_box->Disconnect(wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler(FindItemDialog::OnTypeChange), NULL, this);
-
-	unpassable->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	unmovable->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	block_missiles->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	block_pathfinder->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	readable->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	writeable->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	pickupable->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	stackable->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	rotatable->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	hangable->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	hook_east->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	hook_south->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	has_elevation->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	ignore_look->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-	floor_change->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(FindItemDialog::OnPropertyChange), NULL, this);
-
-	weapon_type_choice->Disconnect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
-	slot_choice->Disconnect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
-	min_attack_spin->Disconnect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
-	min_defense_spin->Disconnect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
-	min_armor_spin->Disconnect(wxEVT_COMMAND_SPINCTRL_UPDATED, wxCommandEventHandler(FindItemDialog::OnEquipmentChange), NULL, this);
-}
+FindItemDialog::~FindItemDialog() = default;
 
 FindItemDialog::SearchMode FindItemDialog::getSearchMode() const {
 	return (SearchMode)options_radio_box->GetSelection();

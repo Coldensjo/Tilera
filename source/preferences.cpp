@@ -32,7 +32,7 @@ wxBoxSizer* CreateBrowsePathRow(wxWindow* parent, wxTextCtrl** pathOut, const wx
 	*pathOut = newd wxTextCtrl(parent, wxID_ANY, initialPath);
 	auto* browseBtn = newd wxButton(parent, wxID_ANY, "Browse...", wxDefaultPosition, wxDefaultSize);
 	rowSizer->Add(*pathOut, 1, wxEXPAND);
-	rowSizer->Add(browseBtn, 0, wxLEFT, 6);
+	rowSizer->Add(browseBtn, 0, wxLEFT, FROM_DIP(parent, 6));
 	(*pathOut)->SetToolTip(tooltip);
 
 	wxTextCtrl* pathCtrl = *pathOut;
@@ -51,7 +51,7 @@ wxBoxSizer* CreateBrowseFileRow(wxWindow* parent, wxTextCtrl** pathOut, const wx
 	*pathOut = newd wxTextCtrl(parent, wxID_ANY, initialPath);
 	auto* browseBtn = newd wxButton(parent, wxID_ANY, "Browse...", wxDefaultPosition, wxDefaultSize);
 	rowSizer->Add(*pathOut, 1, wxEXPAND);
-	rowSizer->Add(browseBtn, 0, wxLEFT, 6);
+	rowSizer->Add(browseBtn, 0, wxLEFT, FROM_DIP(parent, 6));
 	(*pathOut)->SetToolTip(tooltip);
 
 	wxTextCtrl* pathCtrl = *pathOut;
@@ -78,7 +78,7 @@ void AddCheckbox(wxSizer* sizer, wxCheckBox** checkbox, wxWindow* parent, const 
 	if (!tooltip.empty()) {
 		(*checkbox)->SetToolTip(tooltip);
 	}
-	sizer->Add(*checkbox, 0, wxTOP | wxLEFT | wxRIGHT, 4);
+	sizer->Add(*checkbox, 0, wxTOP | wxLEFT | wxRIGHT, FROM_DIP(parent, 4));
 }
 
 void AddFormLabel(wxFlexGridSizer* grid, wxWindow* parent, const wxString& label) {
@@ -99,7 +99,7 @@ PreferencesWindow::ScrollableTab PreferencesWindow::CreateScrollableTab() {
 	tab.page = newd wxPanel(book, wxID_ANY);
 	auto* pageSizer = newd wxBoxSizer(wxVERTICAL);
 	tab.scroll = newd wxScrolledWindow(tab.page, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxVSCROLL);
-	tab.scroll->SetScrollRate(10, 10);
+	tab.scroll->SetScrollRate(FROM_DIP(tab.scroll, 10), FROM_DIP(tab.scroll, 10));
 	tab.content = newd wxBoxSizer(wxVERTICAL);
 	tab.scroll->SetSizer(tab.content);
 	pageSizer->Add(tab.scroll, 1, wxEXPAND);
@@ -109,7 +109,7 @@ PreferencesWindow::ScrollableTab PreferencesWindow::CreateScrollableTab() {
 
 wxStaticBoxSizer* PreferencesWindow::AddSection(wxSizer* parent, wxWindow* window, const wxString& title) {
 	auto* section = newd wxStaticBoxSizer(wxVERTICAL, window, title);
-	parent->Add(section, 0, wxEXPAND | wxALL, 8);
+	parent->Add(section, 0, wxEXPAND | wxALL, FROM_DIP(window, 8));
 	return section;
 }
 
@@ -132,15 +132,9 @@ PreferencesWindow::PreferencesWindow(wxWindow* parent, bool clientVersionSelecte
 	book->AddPage(CreateUIPage(), "Interface");
 	book->AddPage(CreateClientPage(), "Client Version", clientVersionSelected);
 
-	sizer->Add(book, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
+	sizer->Add(book, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(12));
 
-	auto* buttonSizer = newd wxBoxSizer(wxHORIZONTAL);
-	buttonSizer->AddStretchSpacer();
-	buttonSizer->Add(newd wxButton(this, wxID_OK, "OK"), 0, wxRIGHT, 6);
-	buttonSizer->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), 0, wxRIGHT, 6);
-	buttonSizer->Add(newd wxButton(this, wxID_APPLY, "Apply"), 0);
-	buttonSizer->AddStretchSpacer();
-	sizer->Add(buttonSizer, 0, wxEXPAND | wxALL, 12);
+	sizer->Add(CreateStdDialogButtonSizer(wxOK | wxCANCEL | wxAPPLY), 0, wxEXPAND | wxALL, FromDIP(12));
 
 	SetSizer(sizer);
 	SetMinSize(FROM_DIP(this, wxSize(560, 620)));
@@ -180,7 +174,7 @@ wxNotebookPage* PreferencesWindow::CreateGeneralPage() {
 		AddFormLabel(mapGrid, panel, "Startup map:");
 		mapGrid->Add(CreateBrowseFileRow(panel, &open_map_on_startup_path, wxstr(g_settings.getString(Config::OPEN_MAP_ON_STARTUP_PATH)), map_wildcard,
 			"Map file to open automatically when the editor starts."), 1, wxEXPAND);
-		section->Add(mapGrid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
+		section->Add(mapGrid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FROM_DIP(panel, 4));
 
 		const bool open_map_on_startup_enabled = open_map_on_startup_chkbox->GetValue();
 		open_map_on_startup_path->Enable(open_map_on_startup_enabled);
@@ -240,7 +234,7 @@ wxNotebookPage* PreferencesWindow::CreateGeneralPage() {
 		grid->Add(replace_size_spin, 0, wxEXPAND);
 		SetWindowToolTip(tmptext, replace_size_spin, "How many items you can replace using the Replace Item tool.");
 
-		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
+		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FROM_DIP(panel, 4));
 	}
 
 	{
@@ -258,7 +252,7 @@ wxNotebookPage* PreferencesWindow::CreateGeneralPage() {
 		position_format->SetSelection(g_settings.getInteger(Config::COPY_POSITION_FORMAT));
 		grid->Add(position_format, 0, wxEXPAND);
 		SetWindowToolTip(position_format, "The position format when copying from the map.");
-		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
+		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FROM_DIP(panel, 4));
 	}
 
 	tab.scroll->FitInside();
@@ -370,7 +364,7 @@ wxNotebookPage* PreferencesWindow::CreateGraphicsPage() {
 			g_settings.getInteger(Config::VIEWPORT_BACKGROUND_BLUE))), 0);
 		SetWindowToolTip(viewport_background_color_pick, tmp, "Solid color behind the map view.");
 
-		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
+		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FROM_DIP(panel, 4));
 	}
 
 	{
@@ -410,7 +404,7 @@ wxNotebookPage* PreferencesWindow::CreateGraphicsPage() {
 		grid->Add(screenshot_format_choice, 0, wxEXPAND);
 		SetWindowToolTip(screenshot_format_choice, tmp, "Screenshot format used by the editor. Press F11 to capture.");
 
-		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
+		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FROM_DIP(panel, 4));
 	}
 
 	tab.scroll->FitInside();
@@ -488,7 +482,7 @@ wxNotebookPage* PreferencesWindow::CreateUIPage() {
 		flat_chrome_chkbox->SetValue(g_settings.getBoolean(Config::UI_FLAT_CHROME));
 		AddFormLabel(grid, panel, "");
 		grid->Add(flat_chrome_chkbox, 0, wxEXPAND);
-		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
+		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FROM_DIP(panel, 4));
 	}
 
 	{
@@ -498,7 +492,7 @@ wxNotebookPage* PreferencesWindow::CreateUIPage() {
 		doodad_palette_style_choice = AddPaletteStyleChoice(panel, grid, "Doodad palette:", "Configures the look of the doodad palette.", g_settings.getString(Config::PALETTE_DOODAD_STYLE));
 		item_palette_style_choice = AddPaletteStyleChoice(panel, grid, "Item palette:", "Configures the look of the item palette.", g_settings.getString(Config::PALETTE_ITEM_STYLE));
 		raw_palette_style_choice = AddPaletteStyleChoice(panel, grid, "RAW palette:", "Configures the look of the raw palette.", g_settings.getString(Config::PALETTE_RAW_STYLE));
-		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
+		section->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FROM_DIP(panel, 4));
 	}
 
 	{
@@ -543,7 +537,7 @@ wxNotebookPage* PreferencesWindow::CreateUIPage() {
 		large_pick_item_icons_chkbox->SetValue(g_settings.getBoolean(Config::USE_LARGE_CHOOSE_ITEM_ICONS));
 		iconGrid->Add(large_pick_item_icons_chkbox, 0, wxEXPAND);
 
-		section->Add(iconGrid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
+		section->Add(iconGrid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FROM_DIP(panel, 4));
 		AddCheckbox(section, &container_default_name_search_chkbox, panel, "Default to \"Find by Name\" in container picker", g_settings.getBoolean(Config::CONTAINER_FIND_DEFAULT_NAMES),
 			"Automatically switch to name search when opening the container item picker.");
 	}
@@ -561,13 +555,13 @@ wxNotebookPage* PreferencesWindow::CreateUIPage() {
 		const auto true_scrollspeed = int(std::abs(g_settings.getFloat(Config::SCROLL_SPEED)) * 10);
 		scroll_speed_slider = newd wxSlider(panel, wxID_ANY, true_scrollspeed, 1, max(true_scrollspeed, 100), wxDefaultPosition, wxDefaultSize, wxSL_HORIZONTAL);
 		scroll_speed_slider->SetToolTip("How fast the map scrolls when dragging with the center mouse button.");
-		section->Add(scroll_speed_slider, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
+		section->Add(scroll_speed_slider, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FROM_DIP(panel, 4));
 
 		section->Add(newd wxStaticText(panel, wxID_ANY, "Zoom speed:"), 0, wxTOP | wxLEFT | wxRIGHT, 4);
 		const auto true_zoomspeed = int(g_settings.getFloat(Config::ZOOM_SPEED) * 10);
 		zoom_speed_slider = newd wxSlider(panel, wxID_ANY, true_zoomspeed, 1, max(true_zoomspeed, 100), wxDefaultPosition, wxDefaultSize, wxSL_HORIZONTAL);
 		zoom_speed_slider->SetToolTip("How fast the map zooms when scrolling the mouse wheel.");
-		section->Add(zoom_speed_slider, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
+		section->Add(zoom_speed_slider, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FROM_DIP(panel, 4));
 	}
 
 	tab.scroll->FitInside();

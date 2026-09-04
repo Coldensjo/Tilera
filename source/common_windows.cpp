@@ -58,8 +58,9 @@ MapPropertiesWindow::MapPropertiesWindow(wxWindow* parent, MapTab* view, Editor&
 
 	wxSizer* topsizer = newd wxBoxSizer(wxVERTICAL);
 
-	wxFlexGridSizer* grid_sizer = newd wxFlexGridSizer(2, 10, 10);
+	wxFlexGridSizer* grid_sizer = newd wxFlexGridSizer(2, FromDIP(8), FromDIP(10));
 	grid_sizer->AddGrowableCol(1);
+	grid_sizer->AddGrowableRow(0); // the multi-line description soaks up extra height
 
 	// Description
 	grid_sizer->Add(newd wxStaticText(this, wxID_ANY, "Map Description"));
@@ -67,7 +68,7 @@ MapPropertiesWindow::MapPropertiesWindow(wxWindow* parent, MapTab* view, Editor&
 	grid_sizer->Add(description_ctrl, wxSizerFlags(1).Expand());
 
 	// Map version
-	grid_sizer->Add(newd wxStaticText(this, wxID_ANY, "Map Version"));
+	grid_sizer->Add(newd wxStaticText(this, wxID_ANY, "Map Version"), wxSizerFlags().CenterVertical());
 	version_choice = newd wxChoice(this, MAP_PROPERTIES_VERSION);
 	version_choice->Append("OTServ 0.5.0");
 	version_choice->Append("OTServ 0.6.0");
@@ -94,7 +95,7 @@ MapPropertiesWindow::MapPropertiesWindow(wxWindow* parent, MapTab* view, Editor&
 	grid_sizer->Add(version_choice, wxSizerFlags(1).Expand());
 
 	// Version
-	grid_sizer->Add(newd wxStaticText(this, wxID_ANY, "Client Version"));
+	grid_sizer->Add(newd wxStaticText(this, wxID_ANY, "Client Version"), wxSizerFlags().CenterVertical());
 	protocol_choice = newd wxChoice(this, wxID_ANY);
 
 	protocol_choice->SetStringSelection(wxstr(g_gui.GetCurrentVersion().getName()));
@@ -102,41 +103,33 @@ MapPropertiesWindow::MapPropertiesWindow(wxWindow* parent, MapTab* view, Editor&
 	grid_sizer->Add(protocol_choice, wxSizerFlags(1).Expand());
 
 	// Dimensions
-	grid_sizer->Add(newd wxStaticText(this, wxID_ANY, "Map Dimensions"));
+	grid_sizer->Add(newd wxStaticText(this, wxID_ANY, "Map Dimensions"), wxSizerFlags().CenterVertical());
 	{
 		wxSizer* subsizer = newd wxBoxSizer(wxHORIZONTAL);
 		subsizer->Add(
-			width_spin = newd wxSpinCtrl(this, wxID_ANY, wxstr(i2s(map.getWidth())), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 256, MAP_MAX_WIDTH), wxSizerFlags(1).Expand()
+			width_spin = newd wxSpinCtrl(this, wxID_ANY, wxstr(i2s(map.getWidth())), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 256, MAP_MAX_WIDTH), wxSizerFlags(1).Expand().Border(wxRIGHT, FromDIP(6))
 		);
 		subsizer->Add(
 			height_spin = newd wxSpinCtrl(this, wxID_ANY, wxstr(i2s(map.getHeight())), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 256, MAP_MAX_HEIGHT), wxSizerFlags(1).Expand()
 		);
-		grid_sizer->Add(subsizer, 1, wxEXPAND);
+		grid_sizer->Add(subsizer, wxSizerFlags(1).Expand());
 	}
 
 	// External files
-	grid_sizer->Add(
-		newd wxStaticText(this, wxID_ANY, "External Housefile")
-	);
+	grid_sizer->Add(newd wxStaticText(this, wxID_ANY, "External Housefile"), wxSizerFlags().CenterVertical());
 
 	grid_sizer->Add(
 		house_filename_ctrl = newd wxTextCtrl(this, wxID_ANY, wxstr(map.getHouseFilename())), 1, wxEXPAND
 	);
 
-	grid_sizer->Add(
-		newd wxStaticText(this, wxID_ANY, "External Spawnfile")
-	);
+	grid_sizer->Add(newd wxStaticText(this, wxID_ANY, "External Spawnfile"), wxSizerFlags().CenterVertical());
 
 	grid_sizer->Add(
 		spawn_filename_ctrl = newd wxTextCtrl(this, wxID_ANY, wxstr(map.getSpawnFilename())), 1, wxEXPAND
 	);
 
-	topsizer->Add(grid_sizer, wxSizerFlags(1).Expand().Border(wxALL, 20));
-
-	wxSizer* subsizer = newd wxBoxSizer(wxHORIZONTAL);
-	subsizer->Add(newd wxButton(this, wxID_OK, "OK"), wxSizerFlags(1).Center());
-	subsizer->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), wxSizerFlags(1).Center());
-	topsizer->Add(subsizer, wxSizerFlags(0).Center().Border(wxLEFT | wxRIGHT | wxBOTTOM, 20));
+	topsizer->Add(grid_sizer, wxSizerFlags(1).Expand().Border(wxALL, FromDIP(12)));
+	topsizer->Add(CreateStdDialogButtonSizer(wxOK | wxCANCEL), wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(12)));
 
 	SetSizerAndFit(topsizer);
 	Centre(wxBOTH);
