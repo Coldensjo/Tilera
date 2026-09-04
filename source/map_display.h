@@ -110,6 +110,7 @@ public:
 	void OnCopyServerId(wxCommandEvent& event);
 	void OnCopyClientId(wxCommandEvent& event);
 	void OnCopyName(wxCommandEvent& event);
+	void OnEditItemType(wxCommandEvent& event);
 	void OnBrowseTile(wxCommandEvent& event);
 	void OnPaste(wxCommandEvent& event);
 	void OnDelete(wxCommandEvent& event);

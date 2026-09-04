@@ -117,6 +117,8 @@ protected:
 		Image();
 		virtual ~Image();
 
+		friend class GraphicManager;
+
 		bool isGLLoaded;
 		int lastaccess;
 
@@ -136,6 +138,8 @@ protected:
 	public:
 		NormalImage();
 		virtual ~NormalImage();
+
+		friend class GraphicManager;
 
 		// We use the sprite id as GL texture id (unless id < 100, then we use gl_tid)
 		uint32_t id;
@@ -304,6 +308,50 @@ public:
 	bool loadSpriteMetadataFlags(FileReadHandle& file, GameSprite* sType, wxString& error, wxArrayString& warnings);
 	bool loadSpriteData(const FileName& datafile, wxString& error, wxArrayString& warnings);
 
+	// One flag change for patchSpriteMetadataFlags: a canonical DatFlags
+	// value, whether it should be present, and the payload bytes written
+	// after the flag byte (empty for boolean flags; e.g. 4 bytes for light).
+	struct DatFlagPatch {
+		uint8_t flag;
+		bool present;
+		std::vector<uint8_t> data;
+	};
+
+	// Rewrites the client .dat with flags added/removed/replaced on one item
+	// sprite, splicing only that item's flag list and copying every other byte
+	// verbatim. Keeps a one-time .bak of the original file.
+	bool patchSpriteMetadataFlags(const wxString& datafile, uint16_t clientID, const std::vector<DatFlagPatch>& changes, wxString& error);
+
+	enum SpriteTransform {
+		SPRITE_TRANSFORM_ROTATE_90_CW,
+		SPRITE_TRANSFORM_FLIP_HORIZONTAL,
+		SPRITE_TRANSFORM_FLIP_VERTICAL,
+	};
+
+	// Rotates/flips every 32x32 image of an item sprite (all frames, layers
+	// and patterns, permuting multi-tile layouts) and writes the new pixel
+	// data into the .spr file. Rotation requires a square tile layout.
+	// Updates the in-memory images so the editor redraws immediately.
+	bool transformSpriteImages(uint16_t clientID, SpriteTransform transform, wxString& error);
+
+	// Writes replacement compressed sprite dumps into the .spr file by
+	// appending the data and re-pointing the sprite offset table (the old
+	// data becomes orphaned). Keeps a one-time .bak of the original file.
+	bool patchSpriteImages(const std::vector<std::pair<uint32_t, std::vector<uint8_t>>>& replacements, wxString& error);
+
+	// Replaces an item sprite's pixels with an image (scaled to the sprite's
+	// tile layout if needed; alpha or magenta marks transparency). Writes
+	// layer 0 of every frame and pattern, updates the .spr file and the
+	// in-memory images.
+	bool importSpriteImage(uint16_t clientID, const wxImage& source, wxString& error);
+
+	// Clones an item sprite into a brand-new client id with its own copies of
+	// every sub-sprite: appends the pixel data to the .spr (growing the
+	// sprite offset table), clones the .dat entry with the sprite ids
+	// remapped (item count + 1), and registers the new GameSprite in memory.
+	// Keeps one-time .baks of both files.
+	bool duplicateItemSprite(uint16_t sourceClientId, uint16_t& newClientId, wxString& error);
+
 	// Cleans old & unused textures according to config settings
 	void garbageCollection();
 	void addSpriteToCleanup(GameSprite* spr);
@@ -322,6 +370,10 @@ public:
 	ClientVersion* client_version;
 
 private:
+	// Shared tail of transformSpriteImages / importSpriteImage: writes the
+	// new dumps to the .spr file and refreshes the in-memory images.
+	bool applySpriteImageReplacements(GameSprite* sprite, const std::map<uint32_t, std::vector<uint8_t>>& newDumps, wxString& error);
+
 	bool unloaded;
 	// This is used if memcaching is NOT on
 	std::string spritefile;

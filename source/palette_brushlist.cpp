@@ -26,6 +26,8 @@
 #include "add_tileset_window.h"
 #include "add_item_window.h"
 #include "add_to_tileset_window.h"
+#include "edit_item_type_window.h"
+#include "items.h"
 #include "raw_brush.h"
 #include "materials.h"
 #include "graphics.h"
@@ -120,8 +122,59 @@ void TryOpenAddToTileset(std::vector<uint16_t> ids, TilesetCategoryType currentT
 	w->Destroy();
 
 	if (ret != 0) {
-		g_gui.RefreshTilesetAddition(changedCategory, changedTileset);
+		// Deferred: this can run from a brushbox event handler, and the
+		// refresh destroys and recreates the brushboxes - rebuilding while
+		// still inside one of their handlers would unwind into a deleted
+		// window.
+		g_gui.root->CallAfter([changedCategory, changedTileset]() {
+			g_gui.RefreshTilesetAddition(changedCategory, changedTileset);
+		});
 	}
+}
+
+// Plain right-click on a palette item: context menu with the item-type
+// actions, so items can be edited without placing them on the map first.
+void ShowPaletteItemContextMenu(wxWindow* window, uint16_t itemId, const TilesetCategory* category) {
+	const ItemType& it = g_items.getItemType(itemId);
+	if (it.id == 0 || !category) {
+		return;
+	}
+	const TilesetCategoryType categoryType = category->getType();
+	const std::string tilesetName = category->tileset.name;
+
+	wxMenu menu;
+	wxMenuItem* editEntry = menu.Append(wxID_ANY, "Edit Item...", "Edit this item type's name, attributes, flags and sprite");
+	wxMenuItem* duplicateEntry = menu.Append(wxID_ANY, "Duplicate Item", "Create an identical copy with its own sprite (items.xml, items.otb, .dat and .spr)");
+	wxMenuItem* addEntry = menu.Append(wxID_ANY, "Add to Tileset...", "Add or move this item to a tileset");
+	menu.Bind(wxEVT_MENU, [window, itemId](wxCommandEvent&) {
+		EditItemTypeWindow dialog(g_gui.root, itemId);
+		dialog.ShowModal();
+		window->Refresh(); // pick up a changed name/sprite in the palette
+	}, editEntry->GetId());
+	menu.Bind(wxEVT_MENU, [itemId, categoryType, tilesetName](wxCommandEvent&) {
+		wxString error;
+		const uint16_t newId = DuplicateItemType(itemId, error);
+		if (newId == 0) {
+			g_gui.PopupDialog("Error", error, wxOK);
+			return;
+		}
+		// Drop the copy at the bottom of the same tileset so it is visible
+		// right away. Deferred: this handler runs on a palette widget that
+		// the refresh below destroys and recreates - rebuilding here would
+		// unwind into a deleted window.
+		g_gui.root->CallAfter([newId, categoryType, tilesetName]() {
+			wxString addError;
+			if (AddItemToTilesetAt(newId, tilesetName, categoryType, { TilesetInsertSpec::BOTTOM, 0 }, addError)) {
+				g_gui.RefreshTilesetAddition(categoryType, tilesetName);
+			}
+			const ItemType& copy = g_items.getItemType(newId);
+			g_gui.PopupDialog("Item duplicated", wxString::Format("Created server id %u (client id %u) at the bottom of tileset '%s'.", static_cast<unsigned>(newId), static_cast<unsigned>(copy.clientID), wxstr(tilesetName)), wxOK);
+		});
+	}, duplicateEntry->GetId());
+	menu.Bind(wxEVT_MENU, [itemId, categoryType](wxCommandEvent&) {
+		TryOpenAddToTileset({ itemId }, categoryType);
+	}, addEntry->GetId());
+	window->PopupMenu(&menu);
 }
 } // namespace
 
@@ -530,9 +583,18 @@ void BrushPanel::LoadContents() {
 	sizer->Add(brushbox->GetSelfWindow(), 1, wxEXPAND);
 	Fit();
 	brushbox->SelectFirstBrush();
-	
+
 	// Thaw to allow repainting
 	Thaw();
+
+	// Give the new brushbox its size immediately. On a page switch the
+	// choicebook lays the page out afterwards, but when content is rebuilt
+	// in place (RefreshTilesetPage after adding/duplicating an item) no
+	// layout pass follows - the box would stay zero-sized behind the old
+	// content's stale pixels and swallow every click until the page is
+	// re-entered.
+	Layout();
+	Refresh();
 }
 
 void BrushPanel::SelectFirstBrush() {
@@ -1058,6 +1120,19 @@ void BrushIconBox::OnMouseRightClick(wxMouseEvent& event) {
 		return;
 	}
 
+	if (!wxGetKeyState(WXK_CONTROL)) {
+		// Plain right-click: item context menu (Edit Item / Add to Tileset).
+		Brush* brush = cells[index].brush;
+		if (brush && !brush->isPaletteSeparator() && brush->isRaw()) {
+			if (RAWBrush* raw = brush->asRaw()) {
+				ShowPaletteItemContextMenu(this, raw->getItemID(), tileset);
+				return;
+			}
+		}
+		event.Skip();
+		return;
+	}
+
 	// Collect IDs from the clicked cell and every Shift-selected cell.
 	std::vector<uint16_t> ids;
 	auto collectRaw = [&](int idx) {
@@ -1141,10 +1216,21 @@ void BrushListBox::OnMouseRightClick(wxMouseEvent& event) {
 	}
 
 	Brush* b = tileset->brushlist[n];
-	if (b && !b->isPaletteSeparator() && b->isRaw()) {
-		if (RAWBrush* raw = b->asRaw()) {
-			TryOpenAddToTileset({ raw->getItemID() }, tileset->getType());
-		}
+	if (!b || b->isPaletteSeparator() || !b->isRaw()) {
+		event.Skip();
+		return;
+	}
+	RAWBrush* raw = b->asRaw();
+	if (!raw) {
+		event.Skip();
+		return;
+	}
+
+	if (wxGetKeyState(WXK_CONTROL)) {
+		TryOpenAddToTileset({ raw->getItemID() }, tileset->getType());
+	} else {
+		// Plain right-click: item context menu (Edit Item / Add to Tileset).
+		ShowPaletteItemContextMenu(this, raw->getItemID(), tileset);
 	}
 }
 

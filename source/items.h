@@ -439,6 +439,31 @@ public:
 	bool loadItemFromGameXml(pugi::xml_node itemNode, int id);
 	bool loadMetaItem(pugi::xml_node node);
 
+	// Optional light patch for patchOtbFlags: when 'apply' is set, the item's
+	// ITEM_ATTR_LIGHT2 attribute is replaced (hasLight true) or removed.
+	struct OtbLightPatch {
+		bool apply = false;
+		bool hasLight = false;
+		uint16_t level = 0;
+		uint16_t color = 0;
+	};
+
+	// Rewrites items.otb with the given itemflags_t bits set/cleared (plus the
+	// light attribute and, when newClientId is non-zero, the client id
+	// replaced) on one item, copying every other byte verbatim. Keeps a
+	// one-time .bak of the original file. Does NOT touch the in-memory
+	// ItemType.
+	bool patchOtbFlags(const std::string& filename, uint16_t serverId, uint32_t setMask, uint32_t clearMask, const OtbLightPatch& light, uint16_t newClientId, wxString& error);
+
+	// Appends a copy of one item node to items.otb under a new server id and
+	// client id, copying every other byte verbatim. Keeps a one-time .bak.
+	// Does NOT touch the in-memory item types.
+	bool duplicateOtbItem(const std::string& filename, uint16_t sourceId, uint16_t newId, uint16_t newClientId, wxString& error);
+
+	// Registers an in-memory copy of an item type under a new id (files are
+	// not touched). Returns nullptr when the source does not exist.
+	ItemType* duplicateType(uint16_t sourceId, uint16_t newId, uint16_t newClientId);
+
 	// typedef std::map<int32_t, ItemType*> ItemMap;
 	typedef contigous_vector<ItemType*> ItemMap;
 	typedef std::map<std::string, ItemType*> ItemNameMap;

@@ -162,6 +162,12 @@ public:
 	bool getString(std::string& str);
 	bool getLongString(std::string& str);
 
+	// The node's complete (unescaped) property bytes, independent of the read
+	// cursor. The first byte is the node type.
+	const std::string& getPropsData() const {
+		return data;
+	}
+
 	BinaryNode* getChild();
 	// Returns this on success, nullptr on failure
 	BinaryNode* advance();

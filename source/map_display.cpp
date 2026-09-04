@@ -48,6 +48,7 @@
 #include "application.h"
 #include "browse_tile_window.h"
 #include "wall_creator_window.h"
+#include "edit_item_type_window.h"
 #include "item_shaders.h"
 #include "replace_wall_window.h"
 #include "replace_ground_window.h"
@@ -520,6 +521,7 @@ EVT_MENU(MAP_POPUP_MENU_PING_HERE, MapCanvas::OnPingHere)
 EVT_MENU(MAP_POPUP_MENU_COPY_SERVER_ID, MapCanvas::OnCopyServerId)
 EVT_MENU(MAP_POPUP_MENU_COPY_CLIENT_ID, MapCanvas::OnCopyClientId)
 EVT_MENU(MAP_POPUP_MENU_COPY_NAME, MapCanvas::OnCopyName)
+EVT_MENU(MAP_POPUP_MENU_EDIT_ITEM_TYPE, MapCanvas::OnEditItemType)
 EVT_MENU(MAP_POPUP_MENU_CREATE_GENERATE_SCRIPT, MapCanvas::OnCreateGenerateScript)
 EVT_MENU(MAP_POPUP_MENU_CREATE_REMOVE_SCRIPT, MapCanvas::OnCreateRemoveScript)
 EVT_MENU(MAP_POPUP_MENU_CREATE_CREATE_SCRIPT, MapCanvas::OnCreateCreateScript)
@@ -3192,6 +3194,27 @@ void MapCanvas::OnCopyName(wxCommandEvent& WXUNUSED(event)) {
 	}
 }
 
+void MapCanvas::OnEditItemType(wxCommandEvent& WXUNUSED(event)) {
+	Tile* tile = editor.selection.getSelectedTile();
+	if (!tile) {
+		return;
+	}
+	ItemVector selected_items = tile->getSelectedItems();
+	if (selected_items.empty()) {
+		return;
+	}
+
+	const Item* item = selected_items.front();
+	const ItemType& it = g_items.getItemType(item->getID());
+	if (it.id == 0) {
+		g_gui.PopupDialog("Error", "That item does not exist in the item database.", wxOK);
+		return;
+	}
+
+	EditItemTypeWindow dialog(g_gui.root, item->getID());
+	dialog.ShowModal();
+}
+
 void MapCanvas::OnBrowseTile(wxCommandEvent& WXUNUSED(event)) {
 	if (editor.selection.size() != 1) {
 		return;
@@ -3848,6 +3871,7 @@ void MapPopupMenu::Update(const Position& cursorTile) {
 				Append(MAP_POPUP_MENU_COPY_SERVER_ID, "Copy Item Server Id", "Copy the server id of this item");
 				Append(MAP_POPUP_MENU_COPY_CLIENT_ID, "Copy Item Client Id", "Copy the client id of this item");
 				Append(MAP_POPUP_MENU_COPY_NAME, "Copy Item Name", "Copy the name of this item");
+				Append(MAP_POPUP_MENU_EDIT_ITEM_TYPE, "Edit Item...", "Edit this item type's name and attributes (saved to items.xml)");
 				if (g_settings.getBoolean(Config::SHOW_MAKE_SCRIPT_MENU)) {
 					Append(MAP_POPUP_MENU_CREATE_GENERATE_SCRIPT, "Make [Create] Script", "generate(...) script");
 					Append(MAP_POPUP_MENU_CREATE_REMOVE_SCRIPT, "Make [Remove] Script", "remove(...) script");

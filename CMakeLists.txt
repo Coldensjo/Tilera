@@ -55,6 +55,7 @@ set(RME_COMMON_SOURCES
 	source/dcbutton.cpp
 	source/doodad_brush.cpp
 	source/edit_brush_window.cpp
+	source/edit_item_type_window.cpp
 	source/item_shaders.cpp
 	source/editor.cpp
 	source/editor_tabs.cpp

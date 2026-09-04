@@ -20,6 +20,8 @@
 #include "materials.h"
 #include "gui.h"
 #include <string.h> // memcpy
+#include <wx/file.h>
+#include <wx/filefn.h>
 
 #include "items.h"
 #include "item.h"
@@ -827,6 +829,323 @@ bool ItemDatabase::loadFromOtb(const FileName& datafile, wxString& error, wxArra
 	return true;
 }
 
+bool ItemDatabase::patchOtbFlags(const std::string& filename, uint16_t serverId, uint32_t setMask, uint32_t clearMask, const OtbLightPatch& light, uint16_t newClientId, wxString& error) {
+	// Keep the original 4-byte identifier ("OTBI" or the zero wildcard).
+	std::string identifier(4, '\0');
+	{
+		wxFile source(wxstr(filename), wxFile::read);
+		if (!source.IsOpened() || source.Read(&identifier[0], 4) != 4) {
+			error = wxString::Format("Could not open '%s'.", wxstr(filename));
+			return false;
+		}
+	}
+
+	const std::string tmpFilename = filename + ".tmp";
+	bool found = false;
+	{
+		DiskNodeFileReadHandle reader(filename, StringVector(1, "OTBI"));
+		if (!reader.isOk()) {
+			error = "Couldn't open items.otb: " + wxstr(reader.getErrorMessage());
+			return false;
+		}
+		BinaryNode* root = reader.getRootNode();
+		if (!root || root->getPropsData().empty()) {
+			error = "items.otb: invalid root node.";
+			return false;
+		}
+
+		DiskNodeFileWriteHandle writer(tmpFilename, identifier);
+		if (!writer.isOk()) {
+			error = wxString::Format("Could not create '%s'.", wxstr(tmpFilename));
+			return false;
+		}
+
+		const std::string& rootProps = root->getPropsData();
+		writer.addNode(static_cast<uint8_t>(rootProps[0]));
+		writer.addRAW(reinterpret_cast<const uint8_t*>(rootProps.data() + 1), rootProps.size() - 1);
+
+		for (BinaryNode* itemNode = root->getChild(); itemNode; itemNode = itemNode->advance()) {
+			// Item node props: u8 group, u32 flags, then (u8 attribute, u16 datalen, data)...
+			std::string props = itemNode->getPropsData();
+			if (props.empty()) {
+				continue;
+			}
+			if (!found && props.size() >= 5) {
+				// First pass: is this the item we are looking for?
+				bool isTarget = false;
+				size_t pos = 5;
+				while (pos + 3 <= props.size()) {
+					const uint8_t attribute = static_cast<uint8_t>(props[pos]);
+					const uint16_t datalen = static_cast<uint8_t>(props[pos + 1]) | (static_cast<uint8_t>(props[pos + 2]) << 8);
+					pos += 3;
+					if (pos + datalen > props.size()) {
+						break;
+					}
+					if (attribute == ITEM_ATTR_SERVERID && datalen == 2) {
+						const uint16_t id = static_cast<uint8_t>(props[pos]) | (static_cast<uint8_t>(props[pos + 1]) << 8);
+						isTarget = (id == serverId);
+						break;
+					}
+					pos += datalen;
+				}
+
+				if (isTarget) {
+					uint32_t flags = static_cast<uint8_t>(props[1]) | (static_cast<uint8_t>(props[2]) << 8) | (static_cast<uint8_t>(props[3]) << 16) | (static_cast<uint32_t>(static_cast<uint8_t>(props[4])) << 24);
+					flags = (flags | setMask) & ~clearMask;
+					props[1] = static_cast<char>(flags & 0xFF);
+					props[2] = static_cast<char>((flags >> 8) & 0xFF);
+					props[3] = static_cast<char>((flags >> 16) & 0xFF);
+					props[4] = static_cast<char>((flags >> 24) & 0xFF);
+
+					if (light.apply || newClientId != 0) {
+						// Rebuild the attribute list: drop any existing light
+						// attribute (when patching light), swap the client id
+						// value (when re-pointing the sprite), keep the rest.
+						std::string rebuilt(props, 0, 5);
+						rebuilt.reserve(props.size() + 7);
+						pos = 5;
+						while (pos + 3 <= props.size()) {
+							const size_t entryStart = pos;
+							const uint8_t attribute = static_cast<uint8_t>(props[pos]);
+							const uint16_t datalen = static_cast<uint8_t>(props[pos + 1]) | (static_cast<uint8_t>(props[pos + 2]) << 8);
+							pos += 3;
+							if (pos + datalen > props.size()) {
+								rebuilt.append(props, entryStart, std::string::npos);
+								break;
+							}
+							pos += datalen;
+							if (light.apply && attribute == ITEM_ATTR_LIGHT2) {
+								continue;
+							}
+							if (newClientId != 0 && attribute == ITEM_ATTR_CLIENTID && datalen == 2) {
+								rebuilt.push_back(static_cast<char>(ITEM_ATTR_CLIENTID));
+								rebuilt.push_back(2);
+								rebuilt.push_back(0);
+								rebuilt.push_back(static_cast<char>(newClientId & 0xFF));
+								rebuilt.push_back(static_cast<char>((newClientId >> 8) & 0xFF));
+								continue;
+							}
+							rebuilt.append(props, entryStart, pos - entryStart);
+						}
+						if (light.apply && light.hasLight) {
+							rebuilt.push_back(static_cast<char>(ITEM_ATTR_LIGHT2));
+							rebuilt.push_back(4); // datalen low
+							rebuilt.push_back(0); // datalen high
+							rebuilt.push_back(static_cast<char>(light.level & 0xFF));
+							rebuilt.push_back(static_cast<char>((light.level >> 8) & 0xFF));
+							rebuilt.push_back(static_cast<char>(light.color & 0xFF));
+							rebuilt.push_back(static_cast<char>((light.color >> 8) & 0xFF));
+						}
+						props = rebuilt;
+					}
+					found = true;
+				}
+			}
+			writer.addNode(static_cast<uint8_t>(props[0]));
+			writer.addRAW(reinterpret_cast<const uint8_t*>(props.data() + 1), props.size() - 1);
+			writer.endNode();
+		}
+		writer.endNode(); // root
+		writer.close();
+	}
+
+	if (!found) {
+		wxRemoveFile(wxstr(tmpFilename));
+		error = wxString::Format("Item %u was not found in items.otb.", static_cast<unsigned>(serverId));
+		return false;
+	}
+
+	const wxString original = wxstr(filename);
+	const wxString backup = original + ".bak";
+	if (!wxFileExists(backup)) {
+		wxCopyFile(original, backup, false);
+	}
+	if (!wxRemoveFile(original) || !wxRenameFile(wxstr(tmpFilename), original)) {
+		error = "Could not replace items.otb (is it locked by another program?).";
+		return false;
+	}
+	return true;
+}
+
+bool ItemDatabase::duplicateOtbItem(const std::string& filename, uint16_t sourceId, uint16_t newId, uint16_t newClientId, wxString& error) {
+	// Keep the original 4-byte identifier ("OTBI" or the zero wildcard).
+	std::string identifier(4, '\0');
+	{
+		wxFile source(wxstr(filename), wxFile::read);
+		if (!source.IsOpened() || source.Read(&identifier[0], 4) != 4) {
+			error = wxString::Format("Could not open '%s'.", wxstr(filename));
+			return false;
+		}
+	}
+
+	const std::string tmpFilename = filename + ".tmp";
+	std::string sourceProps;
+	{
+		DiskNodeFileReadHandle reader(filename, StringVector(1, "OTBI"));
+		if (!reader.isOk()) {
+			error = "Couldn't open items.otb: " + wxstr(reader.getErrorMessage());
+			return false;
+		}
+		BinaryNode* root = reader.getRootNode();
+		if (!root || root->getPropsData().empty()) {
+			error = "items.otb: invalid root node.";
+			return false;
+		}
+
+		DiskNodeFileWriteHandle writer(tmpFilename, identifier);
+		if (!writer.isOk()) {
+			error = wxString::Format("Could not create '%s'.", wxstr(tmpFilename));
+			return false;
+		}
+
+		const std::string& rootProps = root->getPropsData();
+		writer.addNode(static_cast<uint8_t>(rootProps[0]));
+		writer.addRAW(reinterpret_cast<const uint8_t*>(rootProps.data() + 1), rootProps.size() - 1);
+
+		for (BinaryNode* itemNode = root->getChild(); itemNode; itemNode = itemNode->advance()) {
+			const std::string& props = itemNode->getPropsData();
+			if (props.empty()) {
+				continue;
+			}
+			if (sourceProps.empty() && props.size() >= 5) {
+				size_t pos = 5;
+				while (pos + 3 <= props.size()) {
+					const uint8_t attribute = static_cast<uint8_t>(props[pos]);
+					const uint16_t datalen = static_cast<uint8_t>(props[pos + 1]) | (static_cast<uint8_t>(props[pos + 2]) << 8);
+					pos += 3;
+					if (pos + datalen > props.size()) {
+						break;
+					}
+					if (attribute == ITEM_ATTR_SERVERID && datalen == 2) {
+						const uint16_t id = static_cast<uint8_t>(props[pos]) | (static_cast<uint8_t>(props[pos + 1]) << 8);
+						if (id == sourceId) {
+							sourceProps = props;
+						}
+						break;
+					}
+					pos += datalen;
+				}
+			}
+			writer.addNode(static_cast<uint8_t>(props[0]));
+			writer.addRAW(reinterpret_cast<const uint8_t*>(props.data() + 1), props.size() - 1);
+			writer.endNode();
+		}
+
+		if (!sourceProps.empty()) {
+			// Append the duplicate: source props with server and client id
+			// replaced. New ids are allocated past the current maximum, so
+			// appending keeps the file ordered.
+			size_t pos = 5;
+			while (pos + 3 <= sourceProps.size()) {
+				const uint8_t attribute = static_cast<uint8_t>(sourceProps[pos]);
+				const uint16_t datalen = static_cast<uint8_t>(sourceProps[pos + 1]) | (static_cast<uint8_t>(sourceProps[pos + 2]) << 8);
+				pos += 3;
+				if (pos + datalen > sourceProps.size()) {
+					break;
+				}
+				if (attribute == ITEM_ATTR_SERVERID && datalen == 2) {
+					sourceProps[pos] = static_cast<char>(newId & 0xFF);
+					sourceProps[pos + 1] = static_cast<char>((newId >> 8) & 0xFF);
+				} else if (attribute == ITEM_ATTR_CLIENTID && datalen == 2) {
+					sourceProps[pos] = static_cast<char>(newClientId & 0xFF);
+					sourceProps[pos + 1] = static_cast<char>((newClientId >> 8) & 0xFF);
+				}
+				pos += datalen;
+			}
+			writer.addNode(static_cast<uint8_t>(sourceProps[0]));
+			writer.addRAW(reinterpret_cast<const uint8_t*>(sourceProps.data() + 1), sourceProps.size() - 1);
+			writer.endNode();
+		}
+		writer.endNode(); // root
+		writer.close();
+	}
+
+	if (sourceProps.empty()) {
+		wxRemoveFile(wxstr(tmpFilename));
+		error = wxString::Format("Item %u was not found in items.otb.", static_cast<unsigned>(sourceId));
+		return false;
+	}
+
+	const wxString original = wxstr(filename);
+	const wxString backup = original + ".bak";
+	if (!wxFileExists(backup)) {
+		wxCopyFile(original, backup, false);
+	}
+	if (!wxRemoveFile(original) || !wxRenameFile(wxstr(tmpFilename), original)) {
+		error = "Could not replace items.otb (is it locked by another program?).";
+		return false;
+	}
+	return true;
+}
+
+ItemType* ItemDatabase::duplicateType(uint16_t sourceId, uint16_t newId, uint16_t newClientId) {
+	ItemType* source = items[sourceId];
+	if (!source) {
+		return nullptr;
+	}
+
+	// ItemType forbids copying (its brushes must not be shared), so copy the
+	// semantic fields explicitly and leave the editor-only state fresh.
+	ItemType* t = newd ItemType();
+	t->id = newId;
+	t->clientID = newClientId;
+	t->sprite = static_cast<GameSprite*>(g_gui.gfx.getSprite(newClientId));
+	t->group = source->group;
+	t->type = source->type;
+	t->volume = source->volume;
+	t->maxTextLen = source->maxTextLen;
+	t->slot_position = source->slot_position;
+	t->weapon_type = source->weapon_type;
+	t->classification = source->classification;
+	t->name = source->name;
+	t->editorsuffix = source->editorsuffix;
+	t->description = source->description;
+	t->shader = source->shader;
+	t->weight = source->weight;
+	t->attack = source->attack;
+	t->defense = source->defense;
+	t->armor = source->armor;
+	t->charges = source->charges;
+	t->client_chargeable = source->client_chargeable;
+	t->extra_chargeable = source->extra_chargeable;
+	t->ignoreLook = source->ignoreLook;
+	t->isHangable = source->isHangable;
+	t->hookEast = source->hookEast;
+	t->hookSouth = source->hookSouth;
+	t->canReadText = source->canReadText;
+	t->canWriteText = source->canWriteText;
+	t->allowDistRead = source->allowDistRead;
+	t->replaceable = source->replaceable;
+	t->decays = source->decays;
+	t->stackable = source->stackable;
+	t->moveable = source->moveable;
+	t->alwaysOnBottom = source->alwaysOnBottom;
+	t->pickupable = source->pickupable;
+	t->rotable = source->rotable;
+	t->floorChangeDown = source->floorChangeDown;
+	t->floorChangeNorth = source->floorChangeNorth;
+	t->floorChangeSouth = source->floorChangeSouth;
+	t->floorChangeEast = source->floorChangeEast;
+	t->floorChangeWest = source->floorChangeWest;
+	t->floorChange = source->floorChange;
+	t->unpassable = source->unpassable;
+	t->blockPickupable = source->blockPickupable;
+	t->blockMissiles = source->blockMissiles;
+	t->blockPathfinder = source->blockPathfinder;
+	t->hasElevation = source->hasElevation;
+	t->alwaysOnTopOrder = source->alwaysOnTopOrder;
+	t->rotateTo = source->rotateTo;
+
+	if (items[newId]) {
+		delete items[newId];
+	}
+	items.set(newId, t);
+	if (newId > max_item_id) {
+		max_item_id = newId;
+	}
+	return t;
+}
+
 bool ItemDatabase::loadItemFromGameXml(pugi::xml_node itemNode, int id) {
 	ClientVersionID clientVersion = g_gui.GetCurrentVersionID();
 	if (clientVersion < CLIENT_VERSION_980 && id > 20000 && id < 20100) {
@@ -886,6 +1205,10 @@ bool ItemDatabase::loadItemFromGameXml(pugi::xml_node itemNode, int id) {
 		} else if (key == "description") {
 			if ((attribute = itemAttributesNode.attribute("value"))) {
 				it.description = attribute.as_string();
+			}
+		} else if (key == "shader") {
+			if ((attribute = itemAttributesNode.attribute("value"))) {
+				it.shader = attribute.as_string();
 			}
 		} else if (key == "runespellName") {
 			/*if((attribute = itemAttributesNode.attribute("value"))) {

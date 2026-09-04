@@ -137,6 +137,7 @@
     <ClCompile Include="..\..\source\edit_tileset_window.cpp" />
     <ClCompile Include="..\..\source\add_item_window.cpp" />
     <ClCompile Include="..\..\source\add_to_tileset_window.cpp" />
+    <ClCompile Include="..\..\source\edit_item_type_window.cpp" />
     <ClCompile Include="..\..\source\item_shaders.cpp" />
     <ClCompile Include="..\..\source\add_tileset_window.cpp" />
     <ClCompile Include="..\..\source\wall_creator_window.cpp" />
@@ -156,6 +157,7 @@
     <ClInclude Include="..\..\source\edit_tileset_window.h" />
     <ClInclude Include="..\..\source\add_item_window.h" />
     <ClInclude Include="..\..\source\add_to_tileset_window.h" />
+    <ClInclude Include="..\..\source\edit_item_type_window.h" />
     <ClInclude Include="..\..\source\item_shaders.h" />
     <ClInclude Include="..\..\source\add_tileset_window.h" />
     <ClInclude Include="..\..\source\wall_creator_window.h" />
