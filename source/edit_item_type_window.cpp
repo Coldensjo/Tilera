@@ -465,7 +465,102 @@ pugi::xml_node splitRangeNode(pugi::xml_node root, pugi::xml_node range, uint16_
 	return item;
 }
 
+// Copy/paste clipboards for the Edit Item dialog. Static so a copied set can
+// be pasted onto another item in a later dialog; attributes and flags are
+// independent and can both be carried at once.
+std::vector<ItemXmlAttribute> s_attribute_clipboard;
+bool s_attribute_clipboard_set = false;
+
+struct FlagClipboard {
+	std::vector<bool> flags; // one per getItemFlagSpecs() entry
+	bool has_light = false;
+	int light_intensity = 0;
+	int light_color = 0;
+};
+FlagClipboard s_flag_clipboard;
+bool s_flag_clipboard_set = false;
+
 } // namespace
+
+// ============================================================================
+// Sprite preview panel (Edit Item sidebar)
+// Draws the previewed client sprite at 2x (1x for big multi-tile sprites) and
+// keeps redrawing while the sprite is animated so all frames cycle.
+
+class SpritePreviewPanel : public wxPanel {
+public:
+	SpritePreviewPanel(wxWindow* parent) :
+		wxPanel(parent, wxID_ANY),
+		timer(this) {
+		SetBackgroundStyle(wxBG_STYLE_PAINT);
+		SetMinSize(FromDIP(wxSize(96, 96)));
+		Bind(wxEVT_PAINT, &SpritePreviewPanel::OnPaint, this);
+		Bind(wxEVT_TIMER, &SpritePreviewPanel::OnTimer, this);
+	}
+
+	~SpritePreviewPanel() {
+		timer.Stop();
+	}
+
+	void SetClientId(uint16_t id) {
+		client_id = id;
+		GameSprite* sprite = dynamic_cast<GameSprite*>(g_gui.gfx.getSprite(client_id));
+		const int tilesW = sprite ? std::max(1, static_cast<int>(sprite->width)) : 1;
+		const int tilesH = sprite ? std::max(1, static_cast<int>(sprite->height)) : 1;
+		zoom = (tilesW > 2 || tilesH > 2) ? 1 : 2;
+		SetMinSize(FromDIP(wxSize(std::max(96, tilesW * 32 * zoom + 8), std::max(96, tilesH * 32 * zoom + 8))));
+		if (sprite && sprite->isAnimated()) {
+			timer.Start(100);
+		} else {
+			timer.Stop();
+		}
+		Refresh();
+	}
+
+private:
+	void OnTimer(wxTimerEvent& WXUNUSED(event)) {
+		Refresh();
+	}
+
+	void OnPaint(wxPaintEvent& WXUNUSED(event)) {
+		wxAutoBufferedPaintDC dc(this);
+		dc.SetBackground(wxBrush(ThemeManager::Get().GetPalette().control));
+		dc.Clear();
+		if (g_gui.gfx.isUnloaded()) {
+			return;
+		}
+		Sprite* sprite = g_gui.gfx.getSprite(client_id);
+		if (!sprite) {
+			return;
+		}
+		GameSprite* game = dynamic_cast<GameSprite*>(sprite);
+		const int tilesW = game ? std::max(1, static_cast<int>(game->width)) : 1;
+		const int tilesH = game ? std::max(1, static_cast<int>(game->height)) : 1;
+		const int drawW = tilesW * 32 * zoom;
+		const int drawH = tilesH * 32 * zoom;
+		const wxSize client = GetClientSize();
+		const int x = (client.x - drawW) / 2;
+		const int y = (client.y - drawH) / 2;
+		const int frame = game ? game->getCurrentFrame() : 0;
+
+		wxBitmap* bitmap = sprite->getBitmap(SPRITE_SIZE_ACTUAL, frame);
+		if (!bitmap || !bitmap->IsOk()) {
+			sprite->DrawTo(&dc, SPRITE_SIZE_ACTUAL, x, y, drawW, drawH, frame);
+			return;
+		}
+		if (zoom == 1) {
+			dc.DrawBitmap(*bitmap, x, y, true);
+			return;
+		}
+		wxImage image = bitmap->ConvertToImage();
+		image.Rescale(image.GetWidth() * zoom, image.GetHeight() * zoom, wxIMAGE_QUALITY_NEAREST);
+		dc.DrawBitmap(wxBitmap(image), x, y, true);
+	}
+
+	uint16_t client_id = 0;
+	int zoom = 2;
+	wxTimer timer;
+};
 
 bool LoadItemXmlDefinition(const std::string& file, uint16_t id, ItemXmlDefinition& out, wxString& error) {
 	pugi::xml_document doc;
@@ -738,7 +833,9 @@ EditItemTypeWindow::EditItemTypeWindow(wxWindow* win_parent, uint16_t itemId, wx
 	ObjectPropertiesWindowBase(win_parent, "Edit Item", pos),
 	item_id(itemId),
 	name_field(nullptr),
-	attributes_grid(nullptr) {
+	attributes_grid(nullptr),
+	sprite_preview(nullptr),
+	sprite_info_label(nullptr) {
 
 	// Same path construction as GUI::LoadDataFiles uses to load items.xml.
 	FileName items_path = g_gui.GetCurrentVersion().getItemsPath();
@@ -757,6 +854,7 @@ EditItemTypeWindow::EditItemTypeWindow(wxWindow* win_parent, uint16_t itemId, wx
 	}
 
 	wxSizer* topsizer = newd wxBoxSizer(wxVERTICAL);
+	wxSizer* leftsizer = newd wxBoxSizer(wxVERTICAL); // main column; the sprite sidebar sits to its right
 	wxStaticBoxSizer* boxsizer = newd wxStaticBoxSizer(wxVERTICAL, this, "Edit item type");
 
 	// Item preview: clickable sprite (opens the same-size sprite picker), ids,
@@ -769,8 +867,9 @@ EditItemTypeWindow::EditItemTypeWindow(wxWindow* win_parent, uint16_t itemId, wx
 	sprite_button->SetToolTip("Click to pick a different sprite of the same size, or drop a .png here to replace its pixels");
 	sprite_button->SetDropTarget(newd SpriteImageDropTarget(this));
 	itemsizer->Add(sprite_button, wxSizerFlags(0).CenterVertical().Border(wxRIGHT, 8));
-	item_label = newd wxStaticText(this, wxID_ANY, wxString::Format("Server ID %u  (client ID %u)", static_cast<unsigned>(item_id), static_cast<unsigned>(it.clientID)));
+	item_label = newd wxStaticText(this, wxID_ANY, "");
 	itemsizer->Add(item_label, wxSizerFlags(1).CenterVertical());
+	UpdateItemLabel();
 	wxButton* rotate_button = newd wxButton(this, wxID_ANY, wxString::FromUTF8("Rotate 90\xC2\xB0"), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
 	rotate_button->SetToolTip("Rotate the sprite's pixels 90 degrees clockwise (writes to the .spr file immediately)");
 	wxButton* fliph_button = newd wxButton(this, wxID_ANY, "Flip H", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
@@ -779,10 +878,13 @@ EditItemTypeWindow::EditItemTypeWindow(wxWindow* win_parent, uint16_t itemId, wx
 	flipv_button->SetToolTip("Mirror the sprite's pixels vertically (writes to the .spr file immediately)");
 	wxButton* import_button = newd wxButton(this, wxID_ANY, "Import...", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
 	import_button->SetToolTip("Replace the sprite's pixels with an image file (writes to the .spr file immediately)");
+	wxButton* export_button = newd wxButton(this, wxID_ANY, "Export...", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+	export_button->SetToolTip("Save the full sprite sheet (all frames, patterns and layers) as a PNG - edit it and import it back");
 	itemsizer->Add(rotate_button, wxSizerFlags(0).CenterVertical().Border(wxLEFT, 4));
 	itemsizer->Add(fliph_button, wxSizerFlags(0).CenterVertical().Border(wxLEFT, 4));
 	itemsizer->Add(flipv_button, wxSizerFlags(0).CenterVertical().Border(wxLEFT, 4));
 	itemsizer->Add(import_button, wxSizerFlags(0).CenterVertical().Border(wxLEFT, 4));
+	itemsizer->Add(export_button, wxSizerFlags(0).CenterVertical().Border(wxLEFT, 4));
 	boxsizer->Add(itemsizer, wxSizerFlags(0).Expand().Border(wxALL, 6));
 
 	wxFlexGridSizer* namesizer = newd wxFlexGridSizer(2, 8, 8);
@@ -827,9 +929,17 @@ EditItemTypeWindow::EditItemTypeWindow(wxWindow* win_parent, uint16_t itemId, wx
 	wxButton* remove_button = newd wxButton(this, wxID_ANY, "Remove");
 	attrbuttonsizer->Add(add_button, wxSizerFlags(0).Border(wxRIGHT, 6));
 	attrbuttonsizer->Add(remove_button, wxSizerFlags(0));
+	// Attribute clipboard: copy this list, paste a copied list over it.
+	wxButton* copy_attributes_button = newd wxButton(this, wxID_ANY, "Copy");
+	copy_attributes_button->SetToolTip("Copy all attribute rows to the attribute clipboard");
+	paste_attributes_button = newd wxButton(this, wxID_ANY, "Paste");
+	paste_attributes_button->SetToolTip("Replace all attribute rows with the copied ones");
+	paste_attributes_button->Enable(s_attribute_clipboard_set);
+	attrbuttonsizer->Add(copy_attributes_button, wxSizerFlags(0).Border(wxLEFT, 18));
+	attrbuttonsizer->Add(paste_attributes_button, wxSizerFlags(0).Border(wxLEFT, 6));
 	boxsizer->Add(attrbuttonsizer, wxSizerFlags(0).Border(wxLEFT | wxBOTTOM, 6));
 
-	topsizer->Add(boxsizer, wxSizerFlags(1).Expand().Border(wxLEFT | wxRIGHT | wxTOP, 12));
+	leftsizer->Add(boxsizer, wxSizerFlags(1).Expand().Border(wxLEFT | wxRIGHT | wxTOP, 12));
 
 	// Item flags — separate from the attributes: these live in items.otb and
 	// the client .dat, not in items.xml.
@@ -869,9 +979,51 @@ EditItemTypeWindow::EditItemTypeWindow(wxWindow* win_parent, uint16_t itemId, wx
 	lightsizer->Add(pick_color_button, wxSizerFlags(0).CenterVertical().Border(wxLEFT, 4));
 	flagsizer->Add(lightsizer, wxSizerFlags(0).Border(wxLEFT | wxRIGHT | wxBOTTOM, 6));
 
-	topsizer->Add(flagsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, 12));
+	// Flag clipboard (flags + light), independent of the attribute clipboard.
+	wxSizer* flagbuttonsizer = newd wxBoxSizer(wxHORIZONTAL);
+	wxButton* copy_flags_button = newd wxButton(this, wxID_ANY, "Copy Flags");
+	copy_flags_button->SetToolTip("Copy the flags and light settings to the flag clipboard");
+	paste_flags_button = newd wxButton(this, wxID_ANY, "Paste Flags");
+	paste_flags_button->SetToolTip("Replace the flags and light settings with the copied ones");
+	paste_flags_button->Enable(s_flag_clipboard_set);
+	flagbuttonsizer->Add(copy_flags_button, wxSizerFlags(0));
+	flagbuttonsizer->Add(paste_flags_button, wxSizerFlags(0).Border(wxLEFT, 6));
+	flagsizer->Add(flagbuttonsizer, wxSizerFlags(0).Border(wxLEFT | wxRIGHT | wxBOTTOM, 6));
 
-	topsizer->Add(newd wxStaticText(this, wxID_ANY, "Saving writes name/attributes to items.xml and flag/light/sprite changes to\nitems.otb and the client .dat (originals kept as .bak). Rotate/flip edit the\n.spr immediately. New rows left blank are not saved; existing attributes with\nextra data (min/max values, nested entries) are preserved."), wxSizerFlags(0).Border(wxLEFT | wxRIGHT | wxTOP, 12));
+	leftsizer->Add(flagsizer, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, 12));
+
+	leftsizer->Add(newd wxStaticText(this, wxID_ANY, "Saving writes name/attributes to items.xml and flag/light/sprite changes to\nitems.otb and the client .dat (originals kept as .bak). Rotate/flip edit the\n.spr immediately. New rows left blank are not saved; existing attributes with\nextra data (min/max values, nested entries) are preserved."), wxSizerFlags(0).Border(wxLEFT | wxRIGHT | wxTOP, 12));
+
+	// Right sidebar: live sprite preview and its structure.
+	wxStaticBoxSizer* sidebar = newd wxStaticBoxSizer(wxVERTICAL, this, "Sprite");
+	sprite_preview = newd SpritePreviewPanel(this);
+	sidebar->Add(sprite_preview, wxSizerFlags(0).CenterHorizontal().Border(wxALL, 6));
+	sprite_info_label = newd wxStaticText(this, wxID_ANY, "");
+	sidebar->Add(sprite_info_label, wxSizerFlags(0).Border(wxLEFT | wxRIGHT | wxBOTTOM, 6));
+
+	// Structure editing: rewrites the .dat geometry (and adds sprites to the
+	// .spr) immediately, like the rotate/flip/import buttons.
+	sidebar->Add(newd wxStaticText(this, wxID_ANY, "Structure"), wxSizerFlags(0).Border(wxLEFT | wxTOP, 6));
+	wxFlexGridSizer* structuregrid = newd wxFlexGridSizer(2, FromDIP(4), FromDIP(6));
+	const char* const structureLabels[7] = { "Tiles wide", "Tiles high", "Layers", "Patterns X", "Patterns Y", "Patterns Z", "Frames" };
+	const int structureMax[7] = { 8, 8, 4, 32, 32, 8, 64 };
+	for (int i = 0; i < 7; ++i) {
+		structuregrid->Add(newd wxStaticText(this, wxID_ANY, structureLabels[i]), wxSizerFlags(0).CenterVertical());
+		structure_fields[i] = newd wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, FromDIP(wxSize(64, -1)), wxSP_ARROW_KEYS, 1, structureMax[i], 1);
+		structuregrid->Add(structure_fields[i]);
+	}
+	sidebar->Add(structuregrid, wxSizerFlags(0).Border(wxALL, 6));
+	wxButton* apply_structure_button = newd wxButton(this, wxID_ANY, "Apply Structure");
+	apply_structure_button->SetToolTip("Change tiles/layers/patterns/frames: rewrites the .dat entry and adds sprites to the .spr immediately. New frames and patterns copy the nearest existing ones; new layers and tiles start empty.");
+	sidebar->Add(apply_structure_button, wxSizerFlags(0).Border(wxLEFT | wxRIGHT | wxBOTTOM, 6));
+	apply_structure_button->Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickApplyStructure, this);
+	sidebar->SetMinSize(FromDIP(wxSize(230, -1)));
+	UpdateSpriteSidebar();
+
+	wxSizer* columns = newd wxBoxSizer(wxHORIZONTAL);
+	columns->Add(leftsizer, wxSizerFlags(1).Expand());
+	columns->Add(sidebar, wxSizerFlags(0).Expand().Border(wxLEFT | wxRIGHT | wxTOP, 12));
+	topsizer->Add(columns, wxSizerFlags(1).Expand());
 
 	wxSizer* buttonsizer = newd wxBoxSizer(wxHORIZONTAL);
 	buttonsizer->Add(newd wxButton(this, wxID_OK, "Save"), wxSizerFlags(1).Center().Border(wxALL, 6));
@@ -889,8 +1041,13 @@ EditItemTypeWindow::EditItemTypeWindow(wxWindow* win_parent, uint16_t itemId, wx
 	fliph_button->Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickFlipSpriteHorizontal, this);
 	flipv_button->Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickFlipSpriteVertical, this);
 	import_button->Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickImportSprite, this);
+	export_button->Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickExportSprite, this);
 	add_button->Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickAddAttribute, this);
 	remove_button->Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickRemoveAttribute, this);
+	copy_attributes_button->Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickCopyAttributes, this);
+	paste_attributes_button->Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickPasteAttributes, this);
+	copy_flags_button->Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickCopyFlags, this);
+	paste_flags_button->Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickPasteFlags, this);
 	Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickOK, this, wxID_OK);
 	Bind(wxEVT_BUTTON, &EditItemTypeWindow::OnClickCancel, this, wxID_CANCEL);
 }
@@ -975,11 +1132,7 @@ void EditItemTypeWindow::OnClickSprite(wxCommandEvent& WXUNUSED(event)) {
 	display_client_id = picked;
 	sprite_button->SetSprite(picked);
 	sprite_button->Refresh();
-	wxString label = wxString::Format("Server ID %u  (client ID %u)", static_cast<unsigned>(item_id), static_cast<unsigned>(picked));
-	if (picked != orig_client_id) {
-		label += "  [changed - save to apply]";
-	}
-	item_label->SetLabel(label);
+	UpdateItemLabel();
 }
 
 void EditItemTypeWindow::ApplySpriteTransform(int transform) {
@@ -989,6 +1142,7 @@ void EditItemTypeWindow::ApplySpriteTransform(int transform) {
 		return;
 	}
 	sprite_button->Refresh();
+	sprite_preview->Refresh();
 	g_gui.RefreshView();
 }
 
@@ -1016,17 +1170,148 @@ void EditItemTypeWindow::ImportSpriteFromFile(const wxString& path) {
 		return;
 	}
 	sprite_button->Refresh();
+	sprite_preview->Refresh();
 	g_gui.RefreshView();
 }
 
-void EditItemTypeWindow::OnClickImportSprite(wxCommandEvent& WXUNUSED(event)) {
+void EditItemTypeWindow::UpdateItemLabel() {
+	wxString label = wxString::Format("Server ID %u  (client ID %u)", static_cast<unsigned>(item_id), static_cast<unsigned>(display_client_id));
+	if (display_client_id != orig_client_id) {
+		label += "  [changed - save to apply]";
+	}
+	item_label->SetLabel(label);
+	UpdateSpriteSidebar();
+	Layout();
+}
+
+void EditItemTypeWindow::UpdateSpriteSidebar() {
+	if (!sprite_preview || !sprite_info_label) {
+		return; // sidebar not built yet
+	}
+	sprite_preview->SetClientId(display_client_id);
+	GraphicManager::SpriteStructure structure;
+	if (structure_fields[0] && g_gui.gfx.getSpriteStructure(display_client_id, structure)) {
+		const int values[7] = { structure.width, structure.height, structure.layers, structure.pattern_x, structure.pattern_y, structure.pattern_z, structure.frames };
+		for (int i = 0; i < 7; ++i) {
+			structure_fields[i]->SetValue(values[i]);
+		}
+	}
+
+	wxString info;
 	GameSprite* sprite = dynamic_cast<GameSprite*>(g_gui.gfx.getSprite(display_client_id));
-	const int expectedWidth = (sprite ? sprite->width : 1) * 32;
-	const int expectedHeight = (sprite ? sprite->height : 1) * 32;
-	wxFileDialog dialog(this, wxString::Format("Import Sprite Image (%dx%d)", expectedWidth, expectedHeight), "", "", "Image files (*.png;*.jpg;*.tga)|*.png;*.jpg;*.jpeg;*.tga|All files (*.*)|*.*", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+	GraphicManager::SpriteSheetLayout layout;
+	if (!sprite || !g_gui.gfx.getSpriteSheetLayout(display_client_id, layout)) {
+		info = wxString::Format("Client ID: %u\n(no sprite loaded)", static_cast<unsigned>(display_client_id));
+	} else {
+		info << wxString::Format("Client ID: %u\n", static_cast<unsigned>(display_client_id));
+		info << wxString::Format("Tiles: %ux%u (%dx%d px)\n", static_cast<unsigned>(sprite->width), static_cast<unsigned>(sprite->height), layout.tile_w, layout.tile_h);
+		info << wxString::Format("Layers: %u\n", static_cast<unsigned>(sprite->layers));
+		info << wxString::Format("Frames: %u\n", static_cast<unsigned>(sprite->frames));
+		info << wxString::Format("Patterns: %u x %u x %u\n", static_cast<unsigned>(sprite->pattern_x), static_cast<unsigned>(sprite->pattern_y), static_cast<unsigned>(sprite->pattern_z));
+		info << wxString::Format("Sheet: %dx%d px\n", layout.width_px(), layout.height_px());
+
+		if (sprite->animator && sprite->frames > 1) {
+			int minDuration = -1;
+			int maxDuration = -1;
+			for (int i = 0; i < sprite->frames; ++i) {
+				if (FrameDuration* duration = sprite->animator->getFrameDuration(i)) {
+					minDuration = (minDuration < 0) ? duration->min : std::min(minDuration, duration->min);
+					maxDuration = std::max(maxDuration, duration->max);
+				}
+			}
+			info << wxString::Format("Animation: %d-%d ms/frame\n  start %d, loop %d%s\n", minDuration, maxDuration, sprite->animator->getStartFrame(), sprite->animator->getLoopCount(), sprite->animator->isAsync() ? ", async" : "");
+		} else {
+			info << "Animation: none\n";
+		}
+
+		// Sub-sprite ids (unique, in layout order), abbreviated.
+		std::vector<uint32_t> ids;
+		for (auto* image : sprite->spriteList) {
+			if (!image || image->id == 0) {
+				continue;
+			}
+			if (std::find(ids.begin(), ids.end(), image->id) == ids.end()) {
+				ids.push_back(image->id);
+			}
+		}
+		info << wxString::Format("Sub-sprites: %u (%u unique)\n", static_cast<unsigned>(sprite->spriteList.size()), static_cast<unsigned>(ids.size()));
+		wxString idList;
+		const size_t shown = std::min<size_t>(ids.size(), 12);
+		for (size_t i = 0; i < shown; ++i) {
+			if (i > 0) {
+				idList << (i % 6 == 0 ? ",\n  " : ", ");
+			}
+			idList << ids[i];
+		}
+		if (ids.size() > shown) {
+			idList << ", ...";
+		}
+		info << "Sprite IDs: " << idList << "\n";
+
+		info << wxString::Format("Draw offset: %d, %d\n", static_cast<int>(sprite->drawoffset_x), static_cast<int>(sprite->drawoffset_y));
+		info << wxString::Format("Elevation: %d\n", static_cast<int>(sprite->draw_height));
+		info << wxString::Format("Minimap color: %d\n", static_cast<int>(sprite->minimap_color));
+		if (sprite->has_light) {
+			info << wxString::Format("Light: %u, color %u", static_cast<unsigned>(sprite->light.intensity), static_cast<unsigned>(sprite->light.color));
+		} else {
+			info << "Light: none";
+		}
+	}
+	sprite_info_label->SetLabel(info);
+	Layout();
+}
+
+void EditItemTypeWindow::OnClickExportSprite(wxCommandEvent& WXUNUSED(event)) {
+	wxImage sheet;
+	wxString error;
+	if (!g_gui.gfx.exportSpriteSheet(display_client_id, sheet, error)) {
+		g_gui.PopupDialog("Error", error, wxOK);
+		return;
+	}
+	wxFileDialog dialog(this, wxString::Format("Export Sprite Sheet (%dx%d)", sheet.GetWidth(), sheet.GetHeight()), "", wxString::Format("sprite_%u.png", static_cast<unsigned>(display_client_id)), "PNG files (*.png)|*.png", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+	if (dialog.ShowModal() != wxID_OK) {
+		return;
+	}
+	if (!sheet.SaveFile(dialog.GetPath(), wxBITMAP_TYPE_PNG)) {
+		g_gui.PopupDialog("Error", wxString::Format("Could not write '%s'.", dialog.GetPath()), wxOK);
+	}
+}
+
+void EditItemTypeWindow::OnClickImportSprite(wxCommandEvent& WXUNUSED(event)) {
+	wxString title = "Import Sprite Image";
+	GraphicManager::SpriteSheetLayout layout;
+	if (g_gui.gfx.getSpriteSheetLayout(display_client_id, layout)) {
+		if (layout.width_px() != layout.tile_w || layout.height_px() != layout.tile_h) {
+			title += wxString::Format(" (%dx%d full sheet, or %dx%d single)", layout.width_px(), layout.height_px(), layout.tile_w, layout.tile_h);
+		} else {
+			title += wxString::Format(" (%dx%d)", layout.tile_w, layout.tile_h);
+		}
+	}
+	wxFileDialog dialog(this, title, "", "", "Image files (*.png;*.jpg;*.tga)|*.png;*.jpg;*.jpeg;*.tga|All files (*.*)|*.*", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
 	if (dialog.ShowModal() == wxID_OK) {
 		ImportSpriteFromFile(dialog.GetPath());
 	}
+}
+
+void EditItemTypeWindow::OnClickApplyStructure(wxCommandEvent& WXUNUSED(event)) {
+	GraphicManager::SpriteStructure target;
+	target.width = structure_fields[0]->GetValue();
+	target.height = structure_fields[1]->GetValue();
+	target.layers = structure_fields[2]->GetValue();
+	target.pattern_x = structure_fields[3]->GetValue();
+	target.pattern_y = structure_fields[4]->GetValue();
+	target.pattern_z = structure_fields[5]->GetValue();
+	target.frames = structure_fields[6]->GetValue();
+
+	wxString error;
+	if (!g_gui.gfx.restructureItemSprite(display_client_id, target, error)) {
+		g_gui.PopupDialog("Error", error, wxOK);
+		UpdateSpriteSidebar(); // snap the spinners back to the real structure
+		return;
+	}
+	sprite_button->Refresh();
+	UpdateSpriteSidebar();
+	g_gui.RefreshView();
 }
 
 void EditItemTypeWindow::OnClickPickLightColor(wxCommandEvent& WXUNUSED(event)) {
@@ -1038,6 +1323,66 @@ void EditItemTypeWindow::OnClickPickLightColor(wxCommandEvent& WXUNUSED(event)) 
 		light_color_swatch->Refresh();
 		light_check->SetValue(true); // picking a color implies wanting light
 	}
+}
+
+void EditItemTypeWindow::OnClickCopyAttributes(wxCommandEvent& WXUNUSED(event)) {
+	attributes_grid->SaveEditControlValue();
+	attributes_grid->HideCellEditControl();
+
+	s_attribute_clipboard.clear();
+	for (int row = 0; row < attributes_grid->GetNumberRows(); ++row) {
+		const std::string key = nstr(attributes_grid->GetCellValue(row, 0).Trim(true).Trim(false));
+		if (key.empty()) {
+			continue;
+		}
+		s_attribute_clipboard.push_back({ key, nstr(attributes_grid->GetCellValue(row, 1)) });
+	}
+	s_attribute_clipboard_set = true;
+	paste_attributes_button->Enable(true);
+}
+
+void EditItemTypeWindow::OnClickPasteAttributes(wxCommandEvent& WXUNUSED(event)) {
+	if (!s_attribute_clipboard_set) {
+		return;
+	}
+	attributes_grid->SaveEditControlValue();
+	attributes_grid->HideCellEditControl();
+
+	// Replace, not merge: the pasted set becomes the item's attribute list.
+	if (attributes_grid->GetNumberRows() > 0) {
+		attributes_grid->DeleteRows(0, attributes_grid->GetNumberRows());
+	}
+	for (const ItemXmlAttribute& attribute : s_attribute_clipboard) {
+		AppendAttributeRow(attribute.key, attribute.value);
+	}
+	UpdateKeySuggestions();
+}
+
+void EditItemTypeWindow::OnClickCopyFlags(wxCommandEvent& WXUNUSED(event)) {
+	s_flag_clipboard.flags.resize(flag_boxes.size());
+	for (size_t i = 0; i < flag_boxes.size(); ++i) {
+		s_flag_clipboard.flags[i] = flag_boxes[i]->GetValue();
+	}
+	s_flag_clipboard.has_light = light_check->GetValue();
+	s_flag_clipboard.light_intensity = light_intensity_field->GetValue();
+	s_flag_clipboard.light_color = light_color;
+	s_flag_clipboard_set = true;
+	paste_flags_button->Enable(true);
+}
+
+void EditItemTypeWindow::OnClickPasteFlags(wxCommandEvent& WXUNUSED(event)) {
+	if (!s_flag_clipboard_set) {
+		return;
+	}
+	for (size_t i = 0; i < flag_boxes.size() && i < s_flag_clipboard.flags.size(); ++i) {
+		flag_boxes[i]->SetValue(s_flag_clipboard.flags[i]);
+	}
+	light_check->SetValue(s_flag_clipboard.has_light);
+	light_intensity_field->SetValue(s_flag_clipboard.light_intensity);
+	light_color = s_flag_clipboard.light_color;
+	light_color_swatch->SetBackgroundColour(colorFromEightBit(light_color));
+	light_color_swatch->SetToolTip(wxString::Format("%d", light_color));
+	light_color_swatch->Refresh();
 }
 
 void EditItemTypeWindow::OnClickAddAttribute(wxCommandEvent& WXUNUSED(event)) {

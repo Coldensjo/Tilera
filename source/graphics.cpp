@@ -1351,102 +1351,6 @@ bool GraphicManager::transformSpriteImages(uint16_t clientID, SpriteTransform tr
 	return applySpriteImageReplacements(sprite, newDumps, error);
 }
 
-bool GraphicManager::importSpriteImage(uint16_t clientID, const wxImage& source, wxString& error) {
-	GameSprite* sprite = dynamic_cast<GameSprite*>(getSprite(clientID));
-	if (!sprite || sprite->spriteList.empty()) {
-		error = wxString::Format("No sprite loaded for client id %u.", static_cast<unsigned>(clientID));
-		return false;
-	}
-	if (!source.IsOk()) {
-		error = "The image could not be loaded.";
-		return false;
-	}
-
-	const int tilesWide = sprite->width;
-	const int tilesHigh = sprite->height;
-	const int targetWidth = tilesWide * 32;
-	const int targetHeight = tilesHigh * 32;
-
-	wxImage image = source;
-	if (image.GetWidth() != targetWidth || image.GetHeight() != targetHeight) {
-		image = image.Scale(targetWidth, targetHeight, wxIMAGE_QUALITY_NEAREST);
-	}
-	const unsigned char* rgb = image.GetData();
-	const unsigned char* alpha = image.HasAlpha() ? image.GetAlpha() : nullptr;
-	if (!rgb) {
-		error = "The image has no pixel data.";
-		return false;
-	}
-
-	const bool use_alpha = hasTransparency();
-	std::map<uint32_t, std::vector<uint8_t>> newDumps;
-
-	for (int th = 0; th < tilesHigh; ++th) {
-		for (int tw = 0; tw < tilesWide; ++tw) {
-			// Tile (0, 0) is the bottom-right block: it is drawn at the
-			// anchor, and higher tile indices extend left/up.
-			const int x0 = targetWidth - (tw + 1) * 32;
-			const int y0 = targetHeight - (th + 1) * 32;
-			std::vector<uint8_t> rgba(32 * 32 * 4, 0);
-			bool tileEmpty = true;
-			for (int y = 0; y < 32; ++y) {
-				for (int x = 0; x < 32; ++x) {
-					const size_t srcIndex = static_cast<size_t>(y0 + y) * targetWidth + (x0 + x);
-					const unsigned char r = rgb[srcIndex * 3 + 0];
-					const unsigned char g = rgb[srcIndex * 3 + 1];
-					const unsigned char b = rgb[srcIndex * 3 + 2];
-					uint8_t a;
-					if (alpha) {
-						a = alpha[srcIndex];
-					} else {
-						a = (r == 255 && g == 0 && b == 255) ? 0 : 255; // magenta = transparent
-					}
-					if (!use_alpha) {
-						a = (a < 128) ? 0 : 255; // no partial alpha without transparency support
-					}
-					if (a != 0) {
-						tileEmpty = false;
-					}
-					uint8_t* pixel = rgba.data() + (static_cast<size_t>(y) * 32 + x) * 4;
-					pixel[0] = r;
-					pixel[1] = g;
-					pixel[2] = b;
-					pixel[3] = a;
-				}
-			}
-
-			// Write the tile into layer 0 of every frame and pattern; other
-			// layers (blend masks) are left untouched.
-			for (int f = 0; f < sprite->frames; ++f) {
-				for (int z = 0; z < sprite->pattern_z; ++z) {
-					for (int py = 0; py < sprite->pattern_y; ++py) {
-						for (int px = 0; px < sprite->pattern_x; ++px) {
-							const size_t index = sprite->getIndex(tw, th, 0, px, py, z, f);
-							if (index >= sprite->spriteList.size()) {
-								continue;
-							}
-							GameSprite::NormalImage* dst = sprite->spriteList[index];
-							if (!dst || dst->id == 0) {
-								if (!tileEmpty) {
-									error = "This sprite has empty sub-sprites in its layout and cannot be replaced.";
-									return false;
-								}
-								continue;
-							}
-							newDumps[dst->id] = compressSpriteRGBA(rgba.data(), use_alpha);
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if (newDumps.empty()) {
-		error = "Nothing to import.";
-		return false;
-	}
-	return applySpriteImageReplacements(sprite, newDumps, error);
-}
 
 namespace {
 
@@ -1486,6 +1390,685 @@ bool writeReplacingFile(const wxString& path, const std::vector<uint8_t>& conten
 
 } // namespace
 
+bool GraphicManager::getSpriteSheetLayout(uint16_t clientID, SpriteSheetLayout& out) {
+	GameSprite* sprite = dynamic_cast<GameSprite*>(getSprite(clientID));
+	if (!sprite) {
+		return false;
+	}
+	out.tile_w = std::max(1, static_cast<int>(sprite->width)) * 32;
+	out.tile_h = std::max(1, static_cast<int>(sprite->height)) * 32;
+	out.cells_x = std::max(1, static_cast<int>(sprite->pattern_z)) * std::max(1, static_cast<int>(sprite->pattern_x)) * std::max(1, static_cast<int>(sprite->layers));
+	out.cells_y = std::max(1, static_cast<int>(sprite->frames)) * std::max(1, static_cast<int>(sprite->pattern_y));
+	return true;
+}
+
+namespace {
+
+// Pixel origin of one 32x32 tile inside a sheet: the cell of its
+// (frame, pattern, layer) combination, with tile (0, 0) at the bottom-right
+// of the cell (tiles extend left/up from the anchor, as when drawn).
+void sheetTileOrigin(const GameSprite* sprite, const GraphicManager::SpriteSheetLayout& layout, int tw, int th, int layer, int px, int py, int pz, int frame, int& x0, int& y0) {
+	const int cell = ((((frame * sprite->pattern_z + pz) * sprite->pattern_y + py) * sprite->pattern_x + px) * sprite->layers) + layer;
+	const int fx = (cell % layout.cells_x) * layout.tile_w;
+	const int fy = (cell / layout.cells_x) * layout.tile_h;
+	x0 = fx + (sprite->width - 1 - tw) * 32;
+	y0 = fy + (sprite->height - 1 - th) * 32;
+}
+
+} // namespace
+
+bool GraphicManager::exportSpriteSheet(uint16_t clientID, wxImage& out, wxString& error) {
+	GameSprite* sprite = dynamic_cast<GameSprite*>(getSprite(clientID));
+	SpriteSheetLayout layout;
+	if (!sprite || sprite->spriteList.empty() || !getSpriteSheetLayout(clientID, layout)) {
+		error = wxString::Format("No sprite loaded for client id %u.", static_cast<unsigned>(clientID));
+		return false;
+	}
+
+	const int sheetWidth = layout.width_px();
+	const int sheetHeight = layout.height_px();
+	out.Create(sheetWidth, sheetHeight, true);
+	out.InitAlpha();
+	unsigned char* rgb = out.GetData();
+	unsigned char* alpha = out.GetAlpha();
+	std::memset(alpha, 0, static_cast<size_t>(sheetWidth) * sheetHeight);
+
+	for (int f = 0; f < sprite->frames; ++f) {
+		for (int pz = 0; pz < sprite->pattern_z; ++pz) {
+			for (int py = 0; py < sprite->pattern_y; ++py) {
+				for (int px = 0; px < sprite->pattern_x; ++px) {
+					for (int l = 0; l < sprite->layers; ++l) {
+						for (int th = 0; th < sprite->height; ++th) {
+							for (int tw = 0; tw < sprite->width; ++tw) {
+								const size_t index = sprite->getIndex(tw, th, l, px, py, pz, f);
+								if (index >= sprite->spriteList.size()) {
+									continue;
+								}
+								GameSprite::NormalImage* image = sprite->spriteList[index];
+								if (!image || image->id == 0) {
+									continue;
+								}
+								uint8_t* rgba = image->getRGBAData();
+								if (!rgba) {
+									error = "Could not load the sprite pixel data.";
+									return false;
+								}
+								int x0 = 0, y0 = 0;
+								sheetTileOrigin(sprite, layout, tw, th, l, px, py, pz, f, x0, y0);
+								for (int y = 0; y < 32; ++y) {
+									for (int x = 0; x < 32; ++x) {
+										const uint8_t* src = rgba + (static_cast<size_t>(y) * 32 + x) * 4;
+										const size_t dst = static_cast<size_t>(y0 + y) * sheetWidth + (x0 + x);
+										rgb[dst * 3 + 0] = src[0];
+										rgb[dst * 3 + 1] = src[1];
+										rgb[dst * 3 + 2] = src[2];
+										alpha[dst] = src[3];
+									}
+								}
+								delete[] rgba;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return true;
+}
+
+bool GraphicManager::importSpriteImage(uint16_t clientID, const wxImage& source, wxString& error) {
+	GameSprite* sprite = dynamic_cast<GameSprite*>(getSprite(clientID));
+	SpriteSheetLayout layout;
+	if (!sprite || sprite->spriteList.empty() || !getSpriteSheetLayout(clientID, layout)) {
+		error = wxString::Format("No sprite loaded for client id %u.", static_cast<unsigned>(clientID));
+		return false;
+	}
+	if (!source.IsOk()) {
+		error = "The image could not be loaded.";
+		return false;
+	}
+
+	// Accept either the full sheet (every frame, pattern and layer) or a
+	// single cell (applied to layer 0 of every frame and pattern). Anything
+	// else is refused rather than silently squashed into the wrong shape.
+	const bool fullSheet = source.GetWidth() == layout.width_px() && source.GetHeight() == layout.height_px();
+	const bool singleCell = !fullSheet && source.GetWidth() == layout.tile_w && source.GetHeight() == layout.tile_h;
+	if (!fullSheet && !singleCell) {
+		error = wxString::Format(
+			"The image is %dx%d. Expected %dx%d (full sheet: %u layer(s) x %u frame(s), patterns %ux%ux%u) or %dx%d (one image applied to layer 0 of every frame and pattern).",
+			source.GetWidth(), source.GetHeight(), layout.width_px(), layout.height_px(),
+			static_cast<unsigned>(sprite->layers), static_cast<unsigned>(sprite->frames),
+			static_cast<unsigned>(sprite->pattern_x), static_cast<unsigned>(sprite->pattern_y), static_cast<unsigned>(sprite->pattern_z),
+			layout.tile_w, layout.tile_h
+		);
+		return false;
+	}
+
+	const unsigned char* rgb = source.GetData();
+	const unsigned char* alpha = source.HasAlpha() ? source.GetAlpha() : nullptr;
+	if (!rgb) {
+		error = "The image has no pixel data.";
+		return false;
+	}
+	const int imageWidth = source.GetWidth();
+	const bool use_alpha = hasTransparency();
+
+	// One 32x32 tile at (x0, y0) as RGBA. Alpha 0 and magenta are
+	// transparent; partial alpha only survives with transparency support.
+	// Returns whether any pixel is visible.
+	auto readTile = [&](int x0, int y0, std::vector<uint8_t>& rgba) -> bool {
+		bool visible = false;
+		rgba.assign(32 * 32 * 4, 0);
+		for (int y = 0; y < 32; ++y) {
+			for (int x = 0; x < 32; ++x) {
+				const size_t srcIndex = static_cast<size_t>(y0 + y) * imageWidth + (x0 + x);
+				const unsigned char r = rgb[srcIndex * 3 + 0];
+				const unsigned char g = rgb[srcIndex * 3 + 1];
+				const unsigned char b = rgb[srcIndex * 3 + 2];
+				uint8_t a = alpha ? alpha[srcIndex] : 255;
+				if (r == 255 && g == 0 && b == 255) {
+					a = 0;
+				}
+				if (!use_alpha) {
+					a = (a < 128) ? 0 : 255;
+				}
+				if (a != 0) {
+					visible = true;
+				}
+				uint8_t* pixel = rgba.data() + (static_cast<size_t>(y) * 32 + x) * 4;
+				pixel[0] = r;
+				pixel[1] = g;
+				pixel[2] = b;
+				pixel[3] = a;
+			}
+		}
+		return visible;
+	};
+
+	std::map<uint32_t, std::vector<uint8_t>> newDumps;
+	auto assignTile = [&](size_t index, const std::vector<uint8_t>& rgba, bool visible) -> bool {
+		if (index >= sprite->spriteList.size()) {
+			return true;
+		}
+		GameSprite::NormalImage* dst = sprite->spriteList[index];
+		if (!dst || dst->id == 0) {
+			if (visible) {
+				error = "This sprite has empty sub-sprites in its layout that cannot receive pixels (give them sprite ids in a sprite editor first).";
+				return false;
+			}
+			return true;
+		}
+		newDumps[dst->id] = compressSpriteRGBA(rgba.data(), use_alpha);
+		return true;
+	};
+
+	std::vector<uint8_t> rgba;
+	if (fullSheet) {
+		for (int f = 0; f < sprite->frames; ++f) {
+			for (int pz = 0; pz < sprite->pattern_z; ++pz) {
+				for (int py = 0; py < sprite->pattern_y; ++py) {
+					for (int px = 0; px < sprite->pattern_x; ++px) {
+						for (int l = 0; l < sprite->layers; ++l) {
+							for (int th = 0; th < sprite->height; ++th) {
+								for (int tw = 0; tw < sprite->width; ++tw) {
+									int x0 = 0, y0 = 0;
+									sheetTileOrigin(sprite, layout, tw, th, l, px, py, pz, f, x0, y0);
+									const bool visible = readTile(x0, y0, rgba);
+									if (!assignTile(sprite->getIndex(tw, th, l, px, py, pz, f), rgba, visible)) {
+										return false;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	} else {
+		// Single cell: the same picture into layer 0 of every frame and
+		// pattern; other layers (blend masks) are left untouched.
+		for (int th = 0; th < sprite->height; ++th) {
+			for (int tw = 0; tw < sprite->width; ++tw) {
+				const int x0 = (sprite->width - 1 - tw) * 32;
+				const int y0 = (sprite->height - 1 - th) * 32;
+				const bool visible = readTile(x0, y0, rgba);
+				for (int f = 0; f < sprite->frames; ++f) {
+					for (int pz = 0; pz < sprite->pattern_z; ++pz) {
+						for (int py = 0; py < sprite->pattern_y; ++py) {
+							for (int px = 0; px < sprite->pattern_x; ++px) {
+								if (!assignTile(sprite->getIndex(tw, th, 0, px, py, pz, f), rgba, visible)) {
+									return false;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if (newDumps.empty()) {
+		error = "Nothing to import.";
+		return false;
+	}
+	return applySpriteImageReplacements(sprite, newDumps, error);
+}
+
+bool GraphicManager::appendSpriteDumps(const std::vector<std::vector<uint8_t>>& dumps, std::vector<uint32_t>& newIds, wxString& error) {
+	newIds.clear();
+	if (dumps.empty()) {
+		return true;
+	}
+	for (const std::vector<uint8_t>& dump : dumps) {
+		if (dump.size() > 0xFFFF) {
+			error = "A sprite's compressed data exceeds the 64 KB .spr limit.";
+			return false;
+		}
+	}
+
+	const wxString sprPath = sprites_file.GetFullPath();
+	std::vector<uint8_t> spr;
+	{
+		wxFile input(sprPath, wxFile::read);
+		if (!input.IsOpened()) {
+			error = wxString::Format("Could not open '%s'.", sprPath);
+			return false;
+		}
+		spr.resize(static_cast<size_t>(input.Length()));
+		if (input.Read(spr.data(), spr.size()) != static_cast<ssize_t>(spr.size())) {
+			error = wxString::Format("Could not read '%s'.", sprPath);
+			return false;
+		}
+	}
+
+	const size_t countSize = is_extended ? 4 : 2;
+	if (spr.size() < 4 + countSize) {
+		error = "The .spr file is too small to be valid.";
+		return false;
+	}
+	const uint32_t spriteCount = is_extended ? readLE32(spr, 4) : (spr[4] | (spr[5] << 8));
+	const size_t newSpriteCount = dumps.size();
+	if (!is_extended && spriteCount + newSpriteCount > 0xFFFF) {
+		error = "The .spr sprite id space is full (non-extended clients hold at most 65535 sprites).";
+		return false;
+	}
+	const size_t tableStart = 4 + countSize;
+	const size_t tableEnd = tableStart + static_cast<size_t>(spriteCount) * 4;
+	if (tableEnd > spr.size()) {
+		error = "The .spr file is corrupt (offset table exceeds the file).";
+		return false;
+	}
+
+	// Grow the offset table and append the new sprite data; existing data is
+	// copied verbatim with its offsets shifted by the table growth.
+	const uint32_t tableGrowth = static_cast<uint32_t>(newSpriteCount * 4);
+	std::vector<uint8_t> sprOut;
+	sprOut.reserve(spr.size() + tableGrowth + newSpriteCount * 64);
+	sprOut.insert(sprOut.end(), spr.begin(), spr.begin() + 4); // signature
+	if (is_extended) {
+		appendLE32(sprOut, spriteCount + static_cast<uint32_t>(newSpriteCount));
+	} else {
+		appendLE16(sprOut, spriteCount + static_cast<uint32_t>(newSpriteCount));
+	}
+	for (uint32_t i = 0; i < spriteCount; ++i) {
+		const uint32_t offset = readLE32(spr, tableStart + static_cast<size_t>(i) * 4);
+		appendLE32(sprOut, offset == 0 ? 0 : offset + tableGrowth); // 0 = empty sprite stays 0
+	}
+	uint32_t appendPos = static_cast<uint32_t>(spr.size()) + tableGrowth;
+	for (const std::vector<uint8_t>& dump : dumps) {
+		appendLE32(sprOut, appendPos);
+		appendPos += static_cast<uint32_t>(5 + dump.size());
+	}
+	sprOut.insert(sprOut.end(), spr.begin() + tableEnd, spr.end());
+	for (const std::vector<uint8_t>& dump : dumps) {
+		sprOut.push_back(0xFF);
+		sprOut.push_back(0x00);
+		sprOut.push_back(0xFF);
+		appendLE16(sprOut, static_cast<uint32_t>(dump.size()));
+		sprOut.insert(sprOut.end(), dump.begin(), dump.end());
+	}
+	spr.clear();
+	spr.shrink_to_fit();
+
+	if (!writeReplacingFile(sprPath, sprOut, error)) {
+		return false;
+	}
+	for (size_t i = 0; i < newSpriteCount; ++i) {
+		newIds.push_back(spriteCount + 1 + static_cast<uint32_t>(i));
+	}
+	return true;
+}
+
+bool GraphicManager::getSpriteStructure(uint16_t clientID, SpriteStructure& out) {
+	GameSprite* sprite = dynamic_cast<GameSprite*>(getSprite(clientID));
+	if (!sprite) {
+		return false;
+	}
+	out.width = std::max(1, static_cast<int>(sprite->width));
+	out.height = std::max(1, static_cast<int>(sprite->height));
+	out.layers = std::max(1, static_cast<int>(sprite->layers));
+	out.pattern_x = std::max(1, static_cast<int>(sprite->pattern_x));
+	out.pattern_y = std::max(1, static_cast<int>(sprite->pattern_y));
+	out.pattern_z = std::max(1, static_cast<int>(sprite->pattern_z));
+	out.frames = std::max(1, static_cast<int>(sprite->frames));
+	return true;
+}
+
+namespace {
+
+// Byte span of one item's .dat entry: [start, spriteSectionStart) is the flag
+// list including its 0xFF terminator, [spriteSectionStart, end) the sprite
+// section (geometry, animation, sprite ids).
+struct DatItemEntrySpan {
+	size_t start = 0;
+	size_t spriteSectionStart = 0;
+	size_t end = 0;
+};
+
+bool locateDatItemEntry(const std::vector<uint8_t>& dat, DatFormat format, bool hasFrameDurations, bool extended, uint16_t clientID, DatItemEntrySpan& span, wxString& error) {
+	const wxString premature = "The .dat file ended unexpectedly (corrupt file or unsupported format?).";
+	if (dat.size() < 12) {
+		error = "The .dat file is too small to be valid.";
+		return false;
+	}
+	const uint16_t itemCount = dat[4] | (dat[5] << 8);
+	if (clientID < 100 || clientID > itemCount) {
+		error = wxString::Format("Client id %u is not an item sprite in this .dat file.", static_cast<unsigned>(clientID));
+		return false;
+	}
+
+	size_t pos = 12;
+	const auto need = [&](size_t n) {
+		return pos + n <= dat.size();
+	};
+	for (uint16_t id = 100; id <= clientID; ++id) {
+		const bool target = (id == clientID);
+		if (target) {
+			span.start = pos;
+		}
+		while (true) {
+			if (!need(1)) {
+				error = premature;
+				return false;
+			}
+			const uint8_t raw = dat[pos++];
+			if (raw == 0xFF) {
+				break;
+			}
+			size_t dataLen = 0;
+			switch (datFileByteToFlag(format, raw)) {
+				case DatFlagGround:
+				case DatFlagWritable:
+				case DatFlagWritableOnce:
+				case DatFlagCloth:
+				case DatFlagLensHelp:
+				case DatFlagUsable:
+				case DatFlagElevation:
+				case DatFlagMinimapColor:
+					dataLen = 2;
+					break;
+				case DatFlagLight:
+					dataLen = 4;
+					break;
+				case DatFlagDisplacement:
+					dataLen = (format >= DAT_FORMAT_755) ? 4 : 0;
+					break;
+				case DatFlagMarket: {
+					if (!need(8)) {
+						error = premature;
+						return false;
+					}
+					const uint16_t nameLength = dat[pos + 6] | (dat[pos + 7] << 8);
+					dataLen = 6 + 2 + nameLength + 4;
+					break;
+				}
+				default:
+					break;
+			}
+			if (!need(dataLen)) {
+				error = premature;
+				return false;
+			}
+			pos += dataLen;
+		}
+		if (target) {
+			span.spriteSectionStart = pos;
+		}
+		if (!need(2)) {
+			error = premature;
+			return false;
+		}
+		const uint8_t width = dat[pos++];
+		const uint8_t height = dat[pos++];
+		if (width > 1 || height > 1) {
+			if (!need(1)) {
+				error = premature;
+				return false;
+			}
+			++pos; // exact size
+		}
+		if (!need(format <= DAT_FORMAT_74 ? 4 : 5)) {
+			error = premature;
+			return false;
+		}
+		const uint8_t layers = dat[pos++];
+		const uint8_t pattern_x = dat[pos++];
+		const uint8_t pattern_y = dat[pos++];
+		const uint8_t pattern_z = (format <= DAT_FORMAT_74) ? 1 : dat[pos++];
+		const uint8_t frames = dat[pos++];
+		if (frames > 1 && hasFrameDurations) {
+			if (!need(6 + static_cast<size_t>(frames) * 8)) {
+				error = premature;
+				return false;
+			}
+			pos += 6 + static_cast<size_t>(frames) * 8;
+		}
+		const size_t numSprites = static_cast<size_t>(width) * height * layers * pattern_x * pattern_y * pattern_z * frames;
+		const size_t idSize = extended ? 4 : 2;
+		if (!need(numSprites * idSize)) {
+			error = premature;
+			return false;
+		}
+		pos += numSprites * idSize;
+		if (target) {
+			span.end = pos;
+			return true;
+		}
+	}
+	error = "Could not locate the sprite's .dat entry.";
+	return false;
+}
+
+} // namespace
+
+bool GraphicManager::restructureItemSprite(uint16_t clientID, const SpriteStructure& target, wxString& error) {
+	GameSprite* sprite = dynamic_cast<GameSprite*>(getSprite(clientID));
+	if (!sprite) {
+		error = wxString::Format("No sprite loaded for client id %u.", static_cast<unsigned>(clientID));
+		return false;
+	}
+	if (clientID < 100 || clientID > item_count) {
+		error = wxString::Format("Client id %u is not an item sprite.", static_cast<unsigned>(clientID));
+		return false;
+	}
+	const auto inRange = [](int value, int low, int high) {
+		return value >= low && value <= high;
+	};
+	if (!inRange(target.width, 1, 8) || !inRange(target.height, 1, 8) || !inRange(target.layers, 1, 4) || !inRange(target.pattern_x, 1, 32) || !inRange(target.pattern_y, 1, 32) || !inRange(target.pattern_z, 1, 8) || !inRange(target.frames, 1, 64)) {
+		error = "Structure out of range: tiles 1-8, layers 1-4, patterns X/Y 1-32, patterns Z 1-8, frames 1-64.";
+		return false;
+	}
+	const size_t total = static_cast<size_t>(target.width) * target.height * target.layers * target.pattern_x * target.pattern_y * target.pattern_z * target.frames;
+	if (total > 4096) {
+		error = wxString::Format("That structure needs %u sub-sprites; the limit is 4096.", static_cast<unsigned>(total));
+		return false;
+	}
+
+	SpriteStructure old;
+	getSpriteStructure(clientID, old);
+	if (old.width == target.width && old.height == target.height && old.layers == target.layers && old.pattern_x == target.pattern_x && old.pattern_y == target.pattern_y && old.pattern_z == target.pattern_z && old.frames == target.frames) {
+		return true; // nothing to change
+	}
+
+	// ---- plan the new slot list
+	// Slots that exist in both layouts keep their sprite id. New frames /
+	// patterns get an independent copy of the nearest existing slot so the
+	// item keeps looking the same until edited; new layers and tiles start
+	// empty. Every new slot gets a real sprite id so a sheet import can fill it.
+	const auto oldIndex = [&](int w, int h, int l, int px, int py, int pz, int f) -> size_t {
+		return ((((((static_cast<size_t>(f) * old.pattern_z + pz) * old.pattern_y + py) * old.pattern_x + px) * old.layers + l) * old.height + h) * old.width + w);
+	};
+	const auto oldIdAt = [&](size_t index) -> uint32_t {
+		if (index >= sprite->spriteList.size()) {
+			return 0;
+		}
+		GameSprite::NormalImage* image = sprite->spriteList[index];
+		return image ? image->id : 0;
+	};
+	const auto dumpOf = [&](uint32_t id, std::vector<uint8_t>& out) {
+		out.clear();
+		GameSprite::NormalImage* image = dynamic_cast<GameSprite::NormalImage*>(image_space[id]);
+		if (image && image->dump && image->size > 0) {
+			out.assign(image->dump, image->dump + image->size);
+			return;
+		}
+		uint8_t* data = nullptr;
+		uint16_t size = 0;
+		if (loadSpriteDump(data, size, id) && data) {
+			out.assign(data, data + size);
+			delete[] data;
+		}
+	};
+
+	std::vector<uint32_t> slotIds(total, 0);
+	std::vector<std::vector<uint8_t>> pendingDumps;
+	std::vector<size_t> pendingSlots;
+	{
+		size_t slot = 0;
+		for (int f = 0; f < target.frames; ++f) {
+			for (int pz = 0; pz < target.pattern_z; ++pz) {
+				for (int py = 0; py < target.pattern_y; ++py) {
+					for (int px = 0; px < target.pattern_x; ++px) {
+						for (int l = 0; l < target.layers; ++l) {
+							for (int h = 0; h < target.height; ++h) {
+								for (int w = 0; w < target.width; ++w, ++slot) {
+									const bool tileExists = w < old.width && h < old.height && l < old.layers;
+									if (tileExists && px < old.pattern_x && py < old.pattern_y && pz < old.pattern_z && f < old.frames) {
+										slotIds[slot] = oldIdAt(oldIndex(w, h, l, px, py, pz, f));
+										continue;
+									}
+									std::vector<uint8_t> dump;
+									if (tileExists) {
+										const uint32_t sourceId = oldIdAt(oldIndex(w, h, l, std::min(px, old.pattern_x - 1), std::min(py, old.pattern_y - 1), std::min(pz, old.pattern_z - 1), std::min(f, old.frames - 1)));
+										if (sourceId != 0) {
+											dumpOf(sourceId, dump);
+										}
+									}
+									pendingSlots.push_back(slot);
+									pendingDumps.push_back(std::move(dump));
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// ---- .dat: locate the entry first so a corrupt file fails before the
+	// .spr is touched
+	const wxString datPath = metadata_file.GetFullPath();
+	std::vector<uint8_t> dat;
+	{
+		wxFile input(datPath, wxFile::read);
+		if (!input.IsOpened()) {
+			error = wxString::Format("Could not open '%s'.", datPath);
+			return false;
+		}
+		dat.resize(static_cast<size_t>(input.Length()));
+		if (input.Read(dat.data(), dat.size()) != static_cast<ssize_t>(dat.size())) {
+			error = wxString::Format("Could not read '%s'.", datPath);
+			return false;
+		}
+	}
+	DatItemEntrySpan span;
+	if (!locateDatItemEntry(dat, dat_format, has_frame_durations, is_extended, clientID, span, error)) {
+		return false;
+	}
+
+	// ---- .spr: sprites for the new slots
+	std::vector<uint32_t> newIds;
+	if (!appendSpriteDumps(pendingDumps, newIds, error)) {
+		return false;
+	}
+	for (size_t i = 0; i < pendingSlots.size(); ++i) {
+		slotIds[pendingSlots[i]] = newIds[i];
+	}
+
+	// ---- animation parameters: keep the existing ones, extend durations
+	// for added frames from the last existing frame (100 ms when there was
+	// no animation before)
+	int loopCount = 0;
+	int startFrame = 0;
+	bool async = false;
+	std::vector<std::pair<int, int>> durations(static_cast<size_t>(target.frames), { 100, 100 });
+	if (sprite->animator) {
+		loopCount = sprite->animator->getLoopCount();
+		startFrame = sprite->animator->getStartFrame();
+		async = sprite->animator->isAsync();
+		for (int i = 0; i < target.frames; ++i) {
+			if (FrameDuration* duration = sprite->animator->getFrameDuration(std::min(i, old.frames - 1))) {
+				durations[i] = { duration->min, duration->max };
+			}
+		}
+	}
+	if (startFrame >= target.frames) {
+		startFrame = 0;
+	}
+
+	// ---- .dat: rebuild the sprite section for the new geometry
+	std::vector<uint8_t> section;
+	section.push_back(static_cast<uint8_t>(target.width));
+	section.push_back(static_cast<uint8_t>(target.height));
+	if (target.width > 1 || target.height > 1) {
+		section.push_back(static_cast<uint8_t>(std::min(255, 32 * std::max(target.width, target.height)))); // exact size
+	}
+	section.push_back(static_cast<uint8_t>(target.layers));
+	section.push_back(static_cast<uint8_t>(target.pattern_x));
+	section.push_back(static_cast<uint8_t>(target.pattern_y));
+	if (dat_format > DAT_FORMAT_74) {
+		section.push_back(static_cast<uint8_t>(target.pattern_z));
+	}
+	section.push_back(static_cast<uint8_t>(target.frames));
+	if (target.frames > 1 && has_frame_durations) {
+		section.push_back(async ? 1 : 0);
+		appendLE32(section, static_cast<uint32_t>(loopCount));
+		section.push_back(static_cast<uint8_t>(static_cast<int8_t>(startFrame)));
+		for (const std::pair<int, int>& duration : durations) {
+			appendLE32(section, static_cast<uint32_t>(duration.first));
+			appendLE32(section, static_cast<uint32_t>(duration.second));
+		}
+	}
+	for (uint32_t id : slotIds) {
+		if (is_extended) {
+			appendLE32(section, id);
+		} else {
+			appendLE16(section, id);
+		}
+	}
+
+	std::vector<uint8_t> datOut;
+	datOut.reserve(dat.size() + section.size());
+	datOut.insert(datOut.end(), dat.begin(), dat.begin() + span.spriteSectionStart);
+	datOut.insert(datOut.end(), section.begin(), section.end());
+	datOut.insert(datOut.end(), dat.begin() + span.end, dat.end());
+	if (!writeReplacingFile(datPath, datOut, error)) {
+		return false;
+	}
+
+	// ---- in-memory sprite
+	sprite->width = static_cast<uint8_t>(target.width);
+	sprite->height = static_cast<uint8_t>(target.height);
+	sprite->layers = static_cast<uint8_t>(target.layers);
+	sprite->pattern_x = static_cast<uint8_t>(target.pattern_x);
+	sprite->pattern_y = static_cast<uint8_t>(target.pattern_y);
+	sprite->pattern_z = static_cast<uint8_t>(target.pattern_z);
+	sprite->frames = static_cast<uint8_t>(target.frames);
+	sprite->numsprites = static_cast<uint32_t>(total);
+	delete sprite->animator;
+	sprite->animator = nullptr;
+	if (target.frames > 1) {
+		sprite->animator = newd Animator(target.frames, startFrame, loopCount, async);
+		for (int i = 0; i < target.frames; ++i) {
+			sprite->animator->getFrameDuration(i)->setValues(durations[i].first, durations[i].second);
+		}
+		sprite->animator->reset();
+	}
+	for (size_t i = 0; i < newIds.size(); ++i) {
+		GameSprite::NormalImage* image = newd GameSprite::NormalImage();
+		image->id = newIds[i];
+		const std::vector<uint8_t>& dump = pendingDumps[i];
+		image->size = static_cast<uint16_t>(dump.size());
+		if (image->size > 0) {
+			image->dump = newd uint8_t[image->size];
+			std::memcpy(image->dump, dump.data(), image->size);
+		}
+		image_space[newIds[i]] = image;
+	}
+	sprite->spriteList.clear();
+	for (uint32_t id : slotIds) {
+		if (image_space[id] == nullptr) {
+			GameSprite::NormalImage* empty = newd GameSprite::NormalImage();
+			empty->id = id;
+			image_space[id] = empty;
+		}
+		sprite->spriteList.push_back(static_cast<GameSprite::NormalImage*>(image_space[id]));
+	}
+	sprite->unloadDC();
+	palette_refresh_needed = true;
+	return true;
+}
+
 bool GraphicManager::duplicateItemSprite(uint16_t sourceClientId, uint16_t& newClientId, wxString& error) {
 	GameSprite* source = dynamic_cast<GameSprite*>(getSprite(sourceClientId));
 	if (!source || source->spriteList.empty()) {
@@ -1523,79 +2106,20 @@ bool GraphicManager::duplicateItemSprite(uint16_t sourceClientId, uint16_t& newC
 		return false;
 	}
 
-	// ---- .spr: renumber nothing, just grow the offset table and append the
-	// copied sprite data as brand-new sprite ids
-	const wxString sprPath = sprites_file.GetFullPath();
-	std::vector<uint8_t> spr;
-	{
-		wxFile input(sprPath, wxFile::read);
-		if (!input.IsOpened()) {
-			error = wxString::Format("Could not open '%s'.", sprPath);
-			return false;
-		}
-		spr.resize(static_cast<size_t>(input.Length()));
-		if (input.Read(spr.data(), spr.size()) != static_cast<ssize_t>(spr.size())) {
-			error = wxString::Format("Could not read '%s'.", sprPath);
-			return false;
-		}
+	// ---- .spr: append the copied sprite data as brand-new sprite ids
+	std::vector<std::vector<uint8_t>> dumpList;
+	for (uint32_t oldId : oldIds) {
+		dumpList.push_back(dumps[oldId]);
 	}
-
-	const size_t countSize = is_extended ? 4 : 2;
-	if (spr.size() < 4 + countSize) {
-		error = "The .spr file is too small to be valid.";
+	std::vector<uint32_t> newIds;
+	if (!appendSpriteDumps(dumpList, newIds, error)) {
 		return false;
 	}
-	const uint32_t spriteCount = is_extended ? readLE32(spr, 4) : (spr[4] | (spr[5] << 8));
-	const size_t newSpriteCount = oldIds.size();
-	if (!is_extended && spriteCount + newSpriteCount > 0xFFFF) {
-		error = "The .spr sprite id space is full (non-extended clients hold at most 65535 sprites).";
-		return false;
-	}
-	const size_t tableStart = 4 + countSize;
-	const size_t tableEnd = tableStart + static_cast<size_t>(spriteCount) * 4;
-	if (tableEnd > spr.size()) {
-		error = "The .spr file is corrupt (offset table exceeds the file).";
-		return false;
-	}
-
 	// old sprite id -> newly assigned id (0 stays 0)
 	std::map<uint32_t, uint32_t> spriteIdMap;
 	for (size_t i = 0; i < oldIds.size(); ++i) {
-		spriteIdMap[oldIds[i]] = spriteCount + 1 + static_cast<uint32_t>(i);
+		spriteIdMap[oldIds[i]] = newIds[i];
 	}
-
-	const uint32_t tableGrowth = static_cast<uint32_t>(newSpriteCount * 4);
-	std::vector<uint8_t> sprOut;
-	sprOut.reserve(spr.size() + tableGrowth + newSpriteCount * 64);
-	sprOut.insert(sprOut.end(), spr.begin(), spr.begin() + 4); // signature
-	if (is_extended) {
-		appendLE32(sprOut, spriteCount + static_cast<uint32_t>(newSpriteCount));
-	} else {
-		appendLE16(sprOut, spriteCount + static_cast<uint32_t>(newSpriteCount));
-	}
-	// existing offsets, shifted by the table growth (0 = empty sprite stays 0)
-	for (uint32_t i = 0; i < spriteCount; ++i) {
-		const uint32_t offset = readLE32(spr, tableStart + static_cast<size_t>(i) * 4);
-		appendLE32(sprOut, offset == 0 ? 0 : offset + tableGrowth);
-	}
-	// table entries for the new sprites, pointing past the (shifted) old data
-	uint32_t appendPos = static_cast<uint32_t>(spr.size()) + tableGrowth;
-	for (uint32_t oldId : oldIds) {
-		appendLE32(sprOut, appendPos);
-		appendPos += static_cast<uint32_t>(5 + dumps[oldId].size());
-	}
-	// old sprite data verbatim, then the copied sprites
-	sprOut.insert(sprOut.end(), spr.begin() + tableEnd, spr.end());
-	for (uint32_t oldId : oldIds) {
-		const std::vector<uint8_t>& dump = dumps[oldId];
-		sprOut.push_back(0xFF);
-		sprOut.push_back(0x00);
-		sprOut.push_back(0xFF);
-		appendLE16(sprOut, static_cast<uint32_t>(dump.size()));
-		sprOut.insert(sprOut.end(), dump.begin(), dump.end());
-	}
-	spr.clear();
-	spr.shrink_to_fit();
 
 	// ---- .dat: clone the source entry (sprite ids remapped) at the end of
 	// the item section, item count + 1
@@ -1759,11 +2283,8 @@ bool GraphicManager::duplicateItemSprite(uint16_t sourceClientId, uint16_t& newC
 	datOut.insert(datOut.end(), newEntry.begin(), newEntry.end());
 	datOut.insert(datOut.end(), dat.begin() + itemSectionEnd, dat.end());
 
-	// ---- write both files (spr first: a .dat referencing missing sprites is
-	// worse than an orphaned sprite tail)
-	if (!writeReplacingFile(sprPath, sprOut, error)) {
-		return false;
-	}
+	// ---- .dat (the .spr already holds the new sprites, so a failure here
+	// only leaves an orphaned sprite tail behind)
 	if (!writeReplacingFile(datPath, datOut, error)) {
 		return false;
 	}

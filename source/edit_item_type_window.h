@@ -20,6 +20,8 @@
 
 #include "main.h"
 
+#include <array>
+
 #include "common_windows.h"
 
 class wxGrid;
@@ -28,6 +30,7 @@ class wxChoice;
 class wxCheckBox;
 class wxSpinCtrl;
 class wxPanel;
+class SpritePreviewPanel;
 
 // One <attribute key="..." value="..."/> row of an <item> node in items.xml.
 struct ItemXmlAttribute {
@@ -90,8 +93,18 @@ private:
 	void OnClickFlipSpriteHorizontal(wxCommandEvent&);
 	void OnClickFlipSpriteVertical(wxCommandEvent&);
 	void OnClickImportSprite(wxCommandEvent&);
+	void OnClickExportSprite(wxCommandEvent&);
+	// Refreshes the id/sprite-structure label above the preview.
+	void UpdateItemLabel();
+	// Refreshes the right-hand sprite sidebar (preview + structure info).
+	void UpdateSpriteSidebar();
 	void OnClickAddAttribute(wxCommandEvent&);
 	void OnClickRemoveAttribute(wxCommandEvent&);
+	void OnClickCopyAttributes(wxCommandEvent&);
+	void OnClickPasteAttributes(wxCommandEvent&);
+	void OnClickCopyFlags(wxCommandEvent&);
+	void OnClickPasteFlags(wxCommandEvent&);
+	void OnClickApplyStructure(wxCommandEvent&);
 	void OnClickOK(wxCommandEvent&);
 	void OnClickCancel(wxCommandEvent&);
 
@@ -105,9 +118,14 @@ private:
 	std::vector<wxString> key_choices; // current key-column suggestions
 	std::vector<wxCheckBox*> flag_boxes; // one per entry of getItemFlagSpecs()
 	std::vector<bool> original_flags; // checkbox states at dialog open
+	wxButton* paste_attributes_button; // enabled once an attribute set was copied
+	wxButton* paste_flags_button; // enabled once a flag set was copied
 
 	class DCButton* sprite_button;
 	wxStaticText* item_label;
+	SpritePreviewPanel* sprite_preview; // right sidebar: live preview
+	wxStaticText* sprite_info_label; // right sidebar: structure info
+	std::array<wxSpinCtrl*, 7> structure_fields {}; // sidebar: tiles w/h, layers, patterns x/y/z, frames
 	uint16_t orig_client_id;
 	uint16_t display_client_id; // client id currently previewed (may differ from orig until saved)
 

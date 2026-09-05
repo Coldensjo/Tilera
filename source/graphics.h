@@ -373,6 +373,47 @@ public:
 	// in-memory images.
 	bool importSpriteImage(uint16_t clientID, const wxImage& source, wxString& error);
 
+	// Sprite-sheet geometry shared by sheet export/import (the ObjectBuilder /
+	// sprite-forge layout): one cell per (frame, pattern, layer) combination -
+	// pattern_z * pattern_x * layers cells across, frames * pattern_y cells
+	// down - each cell width x height tiles of 32px, tile (0, 0) bottom-right.
+	struct SpriteSheetLayout {
+		int tile_w = 0; // one cell, in pixels
+		int tile_h = 0;
+		int cells_x = 0;
+		int cells_y = 0;
+		int width_px() const {
+			return cells_x * tile_w;
+		}
+		int height_px() const {
+			return cells_y * tile_h;
+		}
+	};
+	bool getSpriteSheetLayout(uint16_t clientID, SpriteSheetLayout& out);
+
+	// Composes every sub-sprite of an item (all frames, patterns and layers)
+	// into one RGBA sheet in the layout above - the template to edit and
+	// re-import with importSpriteImage.
+	bool exportSpriteSheet(uint16_t clientID, wxImage& out, wxString& error);
+
+	// Editable sprite geometry (tiles, layers, patterns, frames).
+	struct SpriteStructure {
+		int width = 1;
+		int height = 1;
+		int layers = 1;
+		int pattern_x = 1;
+		int pattern_y = 1;
+		int pattern_z = 1;
+		int frames = 1;
+	};
+	bool getSpriteStructure(uint16_t clientID, SpriteStructure& out);
+
+	// Changes an item sprite's geometry: rewrites its .dat sprite section and
+	// appends sprites to the .spr for slots that did not exist before (new
+	// frames/patterns copy the nearest existing slot, new layers/tiles start
+	// empty), then updates the in-memory sprite. Keeps one-time .baks.
+	bool restructureItemSprite(uint16_t clientID, const SpriteStructure& target, wxString& error);
+
 	// Clones an item sprite into a brand-new client id with its own copies of
 	// every sub-sprite: appends the pixel data to the .spr (growing the
 	// sprite offset table), clones the .dat entry with the sprite ids
@@ -401,6 +442,10 @@ private:
 	// Shared tail of transformSpriteImages / importSpriteImage: writes the
 	// new dumps to the .spr file and refreshes the in-memory images.
 	bool applySpriteImageReplacements(GameSprite* sprite, const std::map<uint32_t, std::vector<uint8_t>>& newDumps, wxString& error);
+
+	// Appends compressed sprite dumps to the .spr as brand-new sprite ids
+	// (growing the offset table), returning the ids assigned in order.
+	bool appendSpriteDumps(const std::vector<std::vector<uint8_t>>& dumps, std::vector<uint32_t>& newIds, wxString& error);
 
 	bool unloaded;
 	// This is used if memcaching is NOT on
